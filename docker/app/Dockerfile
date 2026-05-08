@@ -1,0 +1,47 @@
+ARG NODE_VERSION=22
+
+# ── Base ──────────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-alpine AS base
+RUN npm install -g pnpm@9
+WORKDIR /app
+
+# ── Dependencies ──────────────────────────────────────────────
+FROM base AS deps
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/database/package.json packages/database/
+COPY packages/types/package.json packages/types/
+COPY packages/ao-parser/package.json packages/ao-parser/
+COPY packages/queue/package.json packages/queue/
+COPY apps/web/package.json apps/web/
+COPY scripts/package.json scripts/
+RUN pnpm install --frozen-lockfile
+
+# ── Development ───────────────────────────────────────────────
+FROM deps AS development
+COPY . .
+EXPOSE 3000
+CMD ["pnpm", "--filter", "web", "dev", "--host", "0.0.0.0"]
+
+# ── Builder ───────────────────────────────────────────────────
+FROM deps AS builder
+COPY . .
+RUN pnpm --filter @albion-tool/database db:generate
+RUN pnpm --filter web build
+
+# ── Production ────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-alpine AS production
+RUN npm install -g pnpm@9
+WORKDIR /app
+
+# Copier uniquement le build et les deps nécessaires
+COPY --from=builder /app/apps/web/.output ./
+COPY --from=builder /app/packages/database/prisma ./prisma
+COPY --from=builder /app/packages/database/node_modules/.prisma ./node_modules/.prisma
+COPY docker/app/entrypoint.sh ./
+
+RUN chmod +x entrypoint.sh
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+CMD ["./entrypoint.sh"]

@@ -1,0 +1,15 @@
+{
+  "name": "@albion-tool/queue",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

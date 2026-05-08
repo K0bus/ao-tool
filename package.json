@@ -1,0 +1,29 @@
+{
+  "name": "albion-tool",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev --filter=web",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "turbo run db:migrate",
+    "db:studio": "pnpm --filter @albion-tool/database studio",
+    "import:full": "pnpm --filter @albion-tool/scripts run import:full",
+    "import:icons": "pnpm --filter @albion-tool/scripts run import:icons"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.12.0"
+}

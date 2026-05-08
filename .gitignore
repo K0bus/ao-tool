@@ -1,0 +1,30 @@
+node_modules
+.nuxt
+.output
+dist
+.turbo
+*.log
+.env
+.env.local
+.env.*.local
+
+# Prisma
+packages/database/node_modules
+
+# Build artifacts
+apps/web/.output
+apps/web/.nuxt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Docker volumes (si montés localement)
+docker/volumes/
+
+# Icons cache local
+public/icons/cache/
