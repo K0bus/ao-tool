@@ -1,96 +1,81 @@
 <template>
-  <div>
-    <!-- Loading skeleton -->
+  <div class="page item-detail">
+    <!-- Loading -->
     <template v-if="pending">
-      <div class="flex items-start gap-6 mb-8 animate-pulse">
-        <div class="w-24 h-24 rounded-lg bg-surface-700 shrink-0" />
-        <div class="flex-1">
-          <div class="h-8 bg-surface-700 rounded w-64 mb-3" />
-          <div class="h-4 bg-surface-800 rounded w-40 mb-2" />
-          <div class="h-4 bg-surface-800 rounded w-32" />
+      <div class="page-header">
+        <div class="skel" style="width:140px;height:14px;border-radius:4px;margin-bottom:12px" />
+        <div class="skel" style="width:300px;height:28px;border-radius:4px" />
+      </div>
+      <div class="panel" style="padding:24px;display:flex;gap:20px;align-items:flex-start">
+        <div class="skel" style="width:96px;height:96px;border-radius:8px;flex-shrink:0" />
+        <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+          <div class="skel" style="width:220px;height:22px;border-radius:4px" />
+          <div class="skel" style="width:160px;height:14px;border-radius:4px" />
+          <div class="skel" style="width:120px;height:14px;border-radius:4px" />
         </div>
       </div>
     </template>
 
     <!-- Error -->
-    <div v-else-if="error" class="card p-12 text-center">
-      <p class="text-lg font-semibold text-white mb-2">Item not found</p>
-      <p class="text-sm text-gray-500 mb-6">{{ route.params.uniqueName }}</p>
-      <NuxtLink to="/items" class="btn-secondary">← Back to Items</NuxtLink>
+    <div v-else-if="error" class="panel" style="padding:48px;text-align:center">
+      <div style="font-size:32px;margin-bottom:12px">✦</div>
+      <p style="font-size:16px;font-weight:600;color:var(--text-0);margin-bottom:4px">Item introuvable</p>
+      <p class="t-mono t-dim" style="font-size:12px;margin-bottom:20px">{{ route.params.uniqueName }}</p>
+      <NuxtLink to="/items" class="ds-btn ghost">← Retour aux items</NuxtLink>
     </div>
 
     <!-- Content -->
     <template v-else-if="item">
-      <!-- Breadcrumb -->
-      <nav class="flex items-center gap-2 text-xs text-gray-600 mb-6">
-        <NuxtLink to="/" class="hover:text-gray-400">Home</NuxtLink>
-        <span>/</span>
-        <NuxtLink to="/items" class="hover:text-gray-400">Items</NuxtLink>
-        <span>/</span>
-        <span class="text-gray-400 truncate max-w-xs">{{ item.name }}</span>
-      </nav>
-
-      <!-- Item header -->
-      <div class="flex items-start gap-5 mb-8">
-        <!-- Icon large -->
-        <div class="relative shrink-0">
-          <ItemIcon :unique-name="item.uniqueName" size="xl" class="rounded-xl shadow-card" />
-          <div class="absolute -bottom-2 -right-2 flex gap-1">
-            <ItemTierBadge :tier="item.tier" />
-            <span v-if="item.enchantmentLevel > 0" class="tier-badge bg-purple-700 text-white text-xs font-bold">
-              .{{ item.enchantmentLevel }}
-            </span>
-          </div>
+      <!-- Header -->
+      <div class="page-header">
+        <div class="breadcrumb">
+          <NuxtLink to="/">Accueil</NuxtLink>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <NuxtLink to="/items">Items</NuxtLink>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="t-ellipsis" style="max-width:240px">{{ item.name }}</span>
         </div>
+      </div>
 
-        <!-- Info -->
-        <div class="flex-1 min-w-0">
-          <h1 class="text-2xl font-bold text-white mb-1">{{ item.name }}</h1>
-          <p class="text-sm text-gray-500 font-mono mb-3">{{ item.uniqueName }}</p>
-
-          <!-- Tags -->
-          <div class="flex flex-wrap gap-2 mb-4">
-            <span v-if="item.shopCategory" class="inline-flex items-center px-2 py-1 rounded-md bg-surface-700 text-xs text-gray-300 border border-surface-600">
-              {{ item.shopCategory }}
-            </span>
-            <span v-if="item.shopSubcategory" class="inline-flex items-center px-2 py-1 rounded-md bg-surface-700 text-xs text-gray-400">
-              {{ item.shopSubcategory }}
-            </span>
-            <span v-if="item.isCraftable" class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-500/10 text-xs text-green-400 border border-green-500/20">
-              Craftable
-            </span>
-            <span v-if="item.isRefinable" class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 text-xs text-blue-400 border border-blue-500/20">
-              Refinable
-            </span>
+      <!-- Hero panel -->
+      <div class="panel parchment framed item-hero-panel" style="margin-bottom:16px">
+        <div class="item-hero-body">
+          <div :class="`item-frame q-${qualityClass} lg`">
+            <img :src="`https://render.albiononline.com/v1/item/${item.uniqueName}.png`" :alt="item.name" loading="eager" />
+            <span class="corner">T·{{ item.tier }}<span v-if="item.enchantmentLevel > 0">.{{ item.enchantmentLevel }}</span></span>
           </div>
-
-          <!-- Stats inline -->
-          <div class="flex items-center gap-5 text-sm text-gray-400">
-            <span v-if="item.weight">
-              <span class="text-gray-600">Weight </span>
-              <span class="text-gray-200">{{ item.weight }}</span>
-            </span>
-            <span v-if="item.maxStackSize">
-              <span class="text-gray-600">Max stack </span>
-              <span class="text-gray-200">{{ item.maxStackSize.toLocaleString() }}</span>
-            </span>
+          <div class="item-hero-meta">
+            <div class="t-eyebrow">{{ item.shopCategory ?? item.itemType }}</div>
+            <h1 style="font-size:24px;margin:4px 0 8px;color:var(--text-0)">{{ item.name }}</h1>
+            <p class="t-mono t-dim" style="font-size:11px;margin-bottom:12px">{{ item.uniqueName }}</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+              <span v-if="item.shopSubcategory" class="tag">{{ item.shopSubcategory }}</span>
+              <span v-if="item.isCraftable" class="tag success">Craftable</span>
+              <span v-if="item.isRefinable" class="tag info">Raffinable</span>
+              <span v-if="item.weight" class="tag">Poids · {{ item.weight }}</span>
+              <span v-if="item.maxStackSize" class="tag">Stack · {{ item.maxStackSize.toLocaleString('fr-FR') }}</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <NuxtLink :to="`/crafting?id=${item.uniqueName}`" class="ds-btn primary">
+                Crafting tree
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </NuxtLink>
+              <NuxtLink to="/market" class="ds-btn ghost">Voir le marché</NuxtLink>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Tab navigation -->
-      <div class="flex gap-1 border-b border-surface-700 mb-6">
+      <!-- Tabs -->
+      <div class="ds-tabs" style="margin-bottom:16px">
         <button
           v-for="tab in availableTabs"
           :key="tab.id"
-          class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
-          :class="activeTab === tab.id
-            ? 'border-primary-500 text-primary-400'
-            : 'border-transparent text-gray-500 hover:text-gray-300'"
+          :class="['ds-tab', activeTab === tab.id && 'active']"
           @click="activeTab = tab.id"
         >
           {{ tab.label }}
-          <span v-if="tab.count" class="ml-1.5 text-xs text-gray-600">({{ tab.count }})</span>
+          <span v-if="tab.count" class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
 
@@ -103,33 +88,25 @@
       </div>
 
       <!-- Tab: Overview -->
-      <div v-if="activeTab === 'overview'" class="space-y-4">
-        <!-- Description -->
-        <div v-if="description" class="card p-4">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</h3>
-          <p class="text-sm text-gray-300 leading-relaxed">{{ description }}</p>
+      <div v-if="activeTab === 'overview'" style="display:flex;flex-direction:column;gap:12px">
+        <div v-if="description" class="panel">
+          <div class="panel-header"><h3>Description</h3></div>
+          <div style="padding:14px 18px;font-size:13px;color:var(--text-1);line-height:1.65">{{ description }}</div>
         </div>
 
-        <!-- Localizations -->
-        <div class="card overflow-hidden">
-          <div class="px-4 py-3 border-b border-surface-700">
-            <h3 class="text-sm font-semibold text-white">Names by Language</h3>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-3 divide-x divide-y divide-surface-800">
-            <div
-              v-for="loc in item.localizations"
-              :key="loc.locale"
-              class="px-4 py-2.5"
-            >
-              <p class="text-xs text-gray-600 mb-0.5">{{ loc.locale }}</p>
-              <p class="text-sm text-gray-200">{{ loc.name }}</p>
+        <div class="panel">
+          <div class="panel-header"><h3>Noms par langue</h3></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+            <div v-for="loc in item.localizations" :key="loc.locale" style="padding:12px 16px;border-bottom:1px solid var(--border-divider)">
+              <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px">{{ loc.locale }}</div>
+              <div style="font-size:13px;color:var(--text-1)">{{ loc.name }}</div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Tab: Crafting -->
-      <div v-if="activeTab === 'crafting'" class="space-y-4">
+      <div v-if="activeTab === 'crafting'" style="display:flex;flex-direction:column;gap:12px">
         <CraftingTree
           v-if="item.craftingRecipe"
           :item-unique-name="item.uniqueName"
@@ -137,7 +114,7 @@
           :crafting-fame="item.craftingRecipe.craftingFame"
           :result-count="item.craftingRecipe.resultCount"
           :station-id="item.craftingRecipe.craftingStationId"
-          title="Crafting Recipe"
+          title="Recette de craft"
         />
         <CityBonusPanel :bonuses="item.cityBonuses ?? []" />
       </div>
@@ -150,7 +127,7 @@
           :ingredients="item.refiningRecipe.ingredients"
           :result-count="item.refiningRecipe.resultCount"
           :station-id="item.refiningRecipe.craftingStationId"
-          title="Refining Recipe"
+          title="Recette de raffinage"
         />
       </div>
 
@@ -188,26 +165,29 @@ const description = computed(() =>
   item.value?.localizations?.find((l: any) => l.locale === 'EN-US')?.description ?? null
 )
 
-// Tabs dynamiques selon les données disponibles
+const qualityClass = computed(() => {
+  const t = item.value?.tier ?? 1
+  if (t <= 3) return 'normal'
+  if (t === 4) return 'good'
+  if (t === 5) return 'outstanding'
+  if (t === 6) return 'excellent'
+  if (t >= 7) return 'masterpiece'
+  return 'normal'
+})
+
 const availableTabs = computed(() => {
   if (!item.value) return []
-  const tabs = [{ id: 'overview', label: 'Overview', count: 0 }]
-  
-  // Market tab if prices exist
-  if (item.value.marketPrices?.length > 0) {
-    tabs.unshift({ id: 'market', label: 'Market', count: 0 })
-  }
-
-  if (item.value.craftingRecipe) tabs.push({ id: 'crafting', label: 'Crafting', count: item.value.craftingRecipe.ingredients.length })
-  if (item.value.refiningRecipe) tabs.push({ id: 'refining', label: 'Refining', count: item.value.refiningRecipe.ingredients.length })
+  const tabs = [{ id: 'overview', label: 'Aperçu', count: 0 }]
+  if (item.value.marketPrices?.length > 0) tabs.unshift({ id: 'market', label: 'Marché', count: 0 })
+  if (item.value.craftingRecipe) tabs.push({ id: 'crafting', label: 'Craft', count: item.value.craftingRecipe.ingredients.length })
+  if (item.value.refiningRecipe) tabs.push({ id: 'refining', label: 'Raffinage', count: item.value.refiningRecipe.ingredients.length })
   const variantCount = (item.value.enchantVariants?.length ?? 0) + (item.value.baseItem ? 1 : 0)
-  if (variantCount > 0) tabs.push({ id: 'variants', label: 'Variants', count: variantCount })
+  if (variantCount > 0) tabs.push({ id: 'variants', label: 'Variantes', count: variantCount })
   return tabs
 })
 
 const activeTab = ref('overview')
 
-// Set default tab once data is loaded
 watch(item, (v) => {
   if (!v) return
   if (v.marketPrices?.length > 0) activeTab.value = 'market'
@@ -216,16 +196,8 @@ watch(item, (v) => {
   else activeTab.value = 'overview'
 }, { immediate: true })
 
-// SEO
 useHead(() => ({
-  title: item.value ? `${item.value.name} — Albion Tool` : 'Item — Albion Tool',
-  meta: [
-    {
-      name: 'description',
-      content: item.value
-        ? `${item.value.name} T${item.value.tier} — Crafting recipe, return rates, and city bonuses`
-        : '',
-    },
-  ],
+  title: item.value ? `${item.value.name} — Albion Codex` : 'Item — Albion Codex',
+  meta: [{ name: 'description', content: item.value ? `${item.value.name} T${item.value.tier} — Craft, raffinage, marché` : '' }],
 }))
 </script>

@@ -2,86 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
-
-  html {
-    @apply bg-surface-950 text-gray-100 antialiased;
-  }
-
-  body {
-    @apply min-h-screen;
-  }
-
-  * {
-    @apply border-surface-700;
-  }
-
-  ::-webkit-scrollbar {
-    @apply w-1.5 h-1.5;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-surface-900;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-surface-600 rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-500;
-  }
-}
-
 @layer components {
-  .card {
-    @apply bg-surface-900 border border-surface-700 rounded-lg shadow-card;
-  }
-
+  /* Keep legacy btn/input aliases for existing admin pages */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
   }
-
-  .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-500 active:bg-primary-700;
-  }
-
-  .btn-secondary {
-    @apply btn bg-surface-700 text-gray-200 hover:bg-surface-600 border border-surface-600;
-  }
-
-  .btn-ghost {
-    @apply btn text-gray-400 hover:text-gray-100 hover:bg-surface-800;
-  }
-
-  .btn-danger {
-    @apply btn bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-600/30;
-  }
-
-  .input {
-    @apply block w-full rounded-md bg-surface-800 border border-surface-600 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  }
-
-  .label {
-    @apply block text-sm font-medium text-gray-300 mb-1.5;
-  }
-
-  .tier-badge {
-    @apply inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold;
-  }
-
-  .page-header {
-    @apply mb-6 border-b border-surface-700 pb-4;
-  }
-
-  .page-title {
-    @apply text-2xl font-bold text-white;
-  }
-
-  .page-subtitle {
-    @apply text-sm text-gray-400 mt-1;
-  }
+  .btn-primary { @apply btn; background: linear-gradient(180deg, var(--gold) 0%, #a07e35 100%); color: #1a140a; border: 1px solid var(--gold); font-weight: 600; }
+  .btn-primary:hover { background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%); }
+  .btn-secondary { @apply btn; background: var(--bg-2); border: 1px solid var(--border-divider); color: var(--text-1); }
+  .btn-secondary:hover { border-color: var(--gold-deep); color: var(--text-0); }
+  .btn-ghost { @apply btn; background: transparent; color: var(--text-2); }
+  .btn-ghost:hover { color: var(--gold); background: rgba(201,161,74,0.06); }
+  .btn-danger { @apply btn; background: rgba(176,74,50,0.12); color: var(--danger); border: 1px solid rgba(176,74,50,0.3); }
+  .input { @apply block w-full rounded; height: 36px; background: var(--bg-2); border: 1px solid var(--border-divider); padding: 0 12px; color: var(--text-1); font-size: 13px; outline: none; }
+  .input:focus { border-color: var(--gold-deep); background: var(--bg-3); box-shadow: 0 0 0 3px rgba(201,161,74,0.08); }
+  .card { background: var(--bg-2); border: 1px solid var(--border-divider); border-radius: var(--radius); }
 }
