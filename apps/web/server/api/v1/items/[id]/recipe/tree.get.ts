@@ -87,6 +87,9 @@ export default defineEventHandler(async (event) => {
             select: { name: true },
             take: 1,
           },
+          marketPrices: {
+            include: { location: true },
+          },
           craftingRecipe: {
             select: {
               resultCount: true,
@@ -118,7 +121,7 @@ export default defineEventHandler(async (event) => {
         maxReturnRate: number | null,
         depth: number,
         visited: Set<string>,
-      ): TreeNode {
+      ): TreeNode & { marketPrices: any[] } {
         const item = itemMap.get(itemId);
 
         // Fallback si item non trouvé ou cycle / profondeur max
@@ -135,6 +138,7 @@ export default defineEventHandler(async (event) => {
             quantity,
             maxReturnRate,
             type: "raw",
+            marketPrices: item?.marketPrices ?? [],
             recipe: null,
           };
         }
@@ -161,6 +165,7 @@ export default defineEventHandler(async (event) => {
           quantity,
           maxReturnRate,
           type,
+          marketPrices: item.marketPrices,
           recipe: recipe
             ? {
                 resultCount: recipe.resultCount,
@@ -170,7 +175,7 @@ export default defineEventHandler(async (event) => {
                 ingredients: recipe.ingredients.map((ing) =>
                   buildNode(
                     ing.itemId,
-                    ing.quantity * quantity,
+                    ing.quantity, // We store individual quantity per craft
                     ing.maxReturnRate,
                     depth + 1,
                     newVisited,
@@ -183,7 +188,7 @@ export default defineEventHandler(async (event) => {
 
       return buildNode(rootItem.id, 1, null, 0, new Set());
     },
-    3600, // Cache 1h — les recettes ne changent qu'à chaque patch AO
+    300, // 5 min — arbre inclut les marketPrices qui doivent rester frais après un sync
   );
 
   if (!result)

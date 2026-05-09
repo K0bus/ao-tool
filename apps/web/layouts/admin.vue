@@ -23,6 +23,7 @@
 
         <p class="px-3 py-2 mt-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Data</p>
         <AdminNavLink to="/admin/data/imports" icon="download" label="Imports" />
+        <AdminNavLink to="/admin/data/market" icon="chart" label="Market Prices" />
         <AdminNavLink to="/admin/data/icons" icon="image" label="Icons Sync" />
         <AdminNavLink to="/admin/data/system" icon="settings" label="System Config" />
       </nav>

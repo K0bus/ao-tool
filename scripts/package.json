@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "import:full": "tsx --env-file=../.env import/full-import.ts",
+    "import:market": "tsx --env-file=../.env import/trigger-market-sync.ts",
     "import:icons": "tsx --env-file=../.env import/sync-icons.ts",
     "worker": "tsx --env-file=../.env worker/index.ts"
   },
   "dependencies": {
     "@albion-tool/ao-parser": "workspace:*",
     "@albion-tool/database": "workspace:*",
+    "@albion-tool/market-engine": "workspace:*",
     "@albion-tool/queue": "workspace:*"
   },
   "devDependencies": {

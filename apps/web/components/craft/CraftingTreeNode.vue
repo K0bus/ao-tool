@@ -4,7 +4,7 @@
       class="flex items-center gap-3 py-2 px-3 rounded-md group transition-colors"
       :class="[
         depth > 0 ? 'hover:bg-surface-800/50' : '',
-        node.type === 'raw' ? '' : 'cursor-default',
+        isCrafting ? 'bg-green-500/5' : '',
       ]"
       :style="{ paddingLeft: `${0.75 + depth * 1.5}rem` }"
     >
@@ -43,35 +43,56 @@
           <span v-if="node.enchantmentLevel > 0" class="tier-badge bg-purple-700 text-white text-xs">
             .{{ node.enchantmentLevel }}
           </span>
-          <span
-            v-if="node.type !== 'raw'"
-            class="text-xs px-1.5 py-0.5 rounded"
-            :class="node.type === 'craft' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-400'"
-          >
-            {{ node.type }}
+          
+          <!-- Price display -->
+          <span class="text-[10px] text-gray-500 font-mono">
+            {{ getPrice(node).toLocaleString() }} silver
           </span>
         </div>
       </div>
 
+      <!-- Craft / Buy Toggle -->
+      <div v-if="node.type !== 'raw'" class="flex items-center bg-surface-700 rounded p-0.5 mr-2 shadow-inner">
+        <button
+          class="px-2 py-0.5 text-[9px] font-bold rounded transition-all"
+          :class="isCrafting ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-300'"
+          @click.stop="$emit('update-decision', node.uniqueName, true)"
+        >
+          CRAFT
+        </button>
+        <button
+          class="px-2 py-0.5 text-[9px] font-bold rounded transition-all"
+          :class="!isCrafting ? 'bg-surface-500 text-white' : 'text-gray-500 hover:text-gray-300'"
+          @click.stop="$emit('update-decision', node.uniqueName, false)"
+        >
+          BUY
+        </button>
+      </div>
+
       <!-- Quantity + return -->
       <div class="text-right shrink-0 min-w-[4rem]">
-        <span class="text-sm font-bold text-white">× {{ effectiveQty }}</span>
-        <div v-if="returnAmount > 0" class="text-xs text-green-500 mt-0.5">
-          ≈ {{ netQty }} net
+        <div class="flex flex-col items-end">
+          <span class="text-sm font-bold text-white">× {{ effectiveQty }}</span>
+          <div v-if="isCrafting && returnAmount > 0" class="text-[10px] text-green-500">
+            -{{ Math.round(returnAmount) }} ret.
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Sub-ingredients -->
     <Transition name="tree">
-      <div v-if="expanded && node.recipe">
+      <div v-if="expanded && node.recipe && isCrafting">
         <CraftingTreeNode
           v-for="child in node.recipe.ingredients"
           :key="child.uniqueName"
           :node="child"
           :depth="depth + 1"
-          :multiplier="multiplier"
+          :multiplier="multiplier * (node.quantity / node.recipe.resultCount)"
           :return-rate="returnRate"
+          :decisions="decisions"
+          :get-price="getPrice"
+          @update-decision="(name, craft) => $emit('update-decision', name, craft)"
         />
       </div>
     </Transition>
@@ -79,50 +100,37 @@
 </template>
 
 <script setup lang="ts">
-interface RecipeNode {
-  itemId: string
-  uniqueName: string
-  name: string
-  tier: number
-  enchantmentLevel: number
-  isCraftable: boolean
-  isRefinable: boolean
-  iconUrl?: string | null
-  quantity: number
-  maxReturnRate?: number | null
-  type: 'craft' | 'refine' | 'raw'
-  recipe?: {
-    resultCount: number
-    craftingFame: number
-    stationId?: string | null
-    ingredients: RecipeNode[]
-  } | null
-}
+import { type RecipeNode } from '~/composables/useCraftingProfitability'
 
 const props = defineProps<{
   node: RecipeNode
   depth?: number
   multiplier?: number
   returnRate?: number
+  decisions: Record<string, boolean>
+  getPrice: (node: RecipeNode) => number
+}>()
+
+defineEmits<{
+  (e: 'update-decision', uniqueName: string, craft: boolean): void
 }>()
 
 const depth = computed(() => props.depth ?? 0)
 const multiplier = computed(() => props.multiplier ?? 1)
 const returnRate = computed(() => props.returnRate ?? 0)
 
-const effectiveQty = computed(() => props.node.quantity * multiplier.value)
+const isCrafting = computed(() => props.decisions[props.node.uniqueName] ?? (props.node.type !== 'raw'))
+
+const effectiveQty = computed(() => Math.ceil(props.node.quantity * multiplier.value))
 
 const returnAmount = computed(() => {
   if (!props.node.maxReturnRate || returnRate.value === 0) return 0
   return effectiveQty.value * Math.min(returnRate.value, props.node.maxReturnRate)
 })
 
-const netQty = computed(() => Math.ceil(effectiveQty.value - returnAmount.value))
-
-const expanded = ref(true) // Ouvert par défaut au premier niveau, fermé en profondeur
+const expanded = ref(true)
 const hasChildren = computed(() => (props.node.recipe?.ingredients?.length ?? 0) > 0)
 
-// Auto-collapse en profondeur pour garder la lisibilité
 onMounted(() => {
   if (depth.value >= 2) expanded.value = false
 })

@@ -70,6 +70,12 @@ enum ImportStatus {
   PARTIAL_SUCCESS
 }
 
+enum MarketSyncType {
+  FULL
+  BATCH
+  PRIORITY
+}
+
 enum LogLevel {
   DEBUG
   INFO
@@ -102,6 +108,7 @@ model User {
   sessions             Session[]
   auditLogs            AuditLog[]
   importJobs           ImportJob[]
+  marketSyncJobs       MarketSyncJob[]
 
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
@@ -190,6 +197,8 @@ model Item {
   usedInCrafting CraftingIngredient[]
   usedInRefining RefiningIngredient[]
   cityBonuses    CityItemBonus[]
+  marketPrices   MarketPrice[]
+  resolvedPrices ResolvedPrice[]
 
   dataHash   String?
   importedAt DateTime?
@@ -308,7 +317,9 @@ model Location {
   type     LocationType
   isActive Boolean      @default(true)
 
-  cityBonuses CityItemBonus[]
+  cityBonuses    CityItemBonus[]
+  marketPrices   MarketPrice[]
+  resolvedPrices ResolvedPrice[]
 
   @@index([type])
 }
@@ -338,6 +349,84 @@ model ReturnRate {
 
   @@unique([tier, enchantmentLevel])
   @@index([tier])
+}
+
+// ══════════════════════════════════════════════════════════════
+// MARKET DATA
+// ══════════════════════════════════════════════════════════════
+
+enum PriceConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  ESTIMATED
+  MANUAL
+}
+
+model MarketPrice {
+  id               String   @id @default(cuid())
+  itemId           String
+  locationId       String
+  quality          Int      @default(1)
+
+  sellPriceMin     Int      @default(0)
+  sellPriceMinDate DateTime?
+  sellPriceMax     Int      @default(0)
+  sellPriceMaxDate DateTime?
+  
+  buyPriceMin      Int      @default(0)
+  buyPriceMinDate  DateTime?
+  buyPriceMax      Int      @default(0)
+  buyPriceMaxDate  DateTime?
+
+  item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemId, locationId, quality])
+  @@index([itemId])
+  @@index([locationId])
+  @@index([itemId, locationId])
+  @@index([updatedAt])
+}
+
+model ResolvedPrice {
+  id           String          @id @default(cuid())
+  itemId       String
+  locationId   String
+  quality      Int             @default(1)
+  
+  sellPrice    Int             @default(0)
+  buyPrice     Int             @default(0)
+  
+  confidence   PriceConfidence @default(LOW)
+  source       String?         // e.g. "live", "history_median", "cross_city"
+  
+  updatedAt    DateTime        @updatedAt
+
+  item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, locationId, quality])
+  @@index([itemId, locationId, quality])
+  @@index([updatedAt])
+}
+
+model MarketPriceHistory {
+  id           String   @id @default(cuid())
+  itemId       String
+  locationId   String
+  quality      Int      @default(1)
+  
+  sellPriceMin Int
+  buyPriceMax  Int
+  
+  timestamp    DateTime @default(now())
+
+  @@index([itemId, locationId, quality])
+  @@index([itemId, locationId, quality, timestamp])
+  @@index([timestamp])
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -375,6 +464,32 @@ model ImportJob {
   @@index([type])
   @@index([createdAt])
   @@index([triggeredById])
+}
+
+model MarketSyncJob {
+  id            String       @id @default(cuid())
+  type          MarketSyncType
+  status        ImportStatus @default(PENDING)
+
+  triggeredById String?
+  triggeredBy   User?        @relation(fields: [triggeredById], references: [id], onDelete: SetNull)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationMs  Int?
+
+  itemsRequested Int @default(0)
+  itemsUpdated   Int @default(0)
+  itemsFailed    Int @default(0)
+
+  errorMessage String?   @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model ImportLog {

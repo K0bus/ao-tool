@@ -8,6 +8,7 @@ export default defineEventHandler(async (event) => {
 
   const cacheKey = `item:detail:${id}`;
 
+  // Cache stable item data (recipe, localizations) for 1h — prices are fetched live below
   const item = await cached(cacheKey, async () => {
     const raw = await prisma.item.findUnique({
       where: { uniqueName: id },
@@ -128,5 +129,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "Item not found" });
   }
 
-  return { data: item };
+  // Market prices are fetched live (not cached) so syncs are reflected immediately
+  const marketPrices = await prisma.marketPrice.findMany({
+    where: { item: { uniqueName: id } },
+    include: { location: true },
+    orderBy: { quality: "asc" },
+  });
+
+  return { data: { ...item, marketPrices } };
 });

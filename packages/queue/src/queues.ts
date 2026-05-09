@@ -1,10 +1,12 @@
 import { Queue } from 'bullmq'
 import { getConnection } from './connection'
-import type { ImportJobData, ImportJobResult } from './types'
+import type { ImportJobData, ImportJobResult, MarketJobData, MarketJobResult } from './types'
 
 export const IMPORT_QUEUE_NAME = 'albion-import'
+export const MARKET_QUEUE_NAME = 'albion-market'
 
 let _importQueue: Queue<ImportJobData, ImportJobResult> | null = null
+let _marketQueue: Queue<MarketJobData, MarketJobResult> | null = null
 
 export function getImportQueue(): Queue<ImportJobData, ImportJobResult> {
   if (!_importQueue) {
@@ -19,4 +21,19 @@ export function getImportQueue(): Queue<ImportJobData, ImportJobResult> {
     })
   }
   return _importQueue
+}
+
+export function getMarketQueue(): Queue<MarketJobData, MarketJobResult> {
+  if (!_marketQueue) {
+    _marketQueue = new Queue<MarketJobData, MarketJobResult>(MARKET_QUEUE_NAME, {
+      connection: getConnection(),
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 30_000 },
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 50 },
+      },
+    })
+  }
+  return _marketQueue
 }

@@ -1,9 +1,14 @@
 import { prisma } from '@albion-tool/database'
-import { Worker, getConnection, closeAllConnections, IMPORT_QUEUE_NAME } from '@albion-tool/queue'
-import type { ImportJobData, ImportJobProgress, ImportJobResult } from '@albion-tool/queue'
+import { Worker, getConnection, closeAllConnections, IMPORT_QUEUE_NAME, MARKET_QUEUE_NAME } from '@albion-tool/queue'
+import type { ImportJobData, ImportJobProgress, ImportJobResult, MarketJobData, MarketJobResult, MarketJobItem } from '@albion-tool/queue'
 import { runImport } from '../import/run-import.js'
+import { marketPriceService } from '@albion-tool/market-engine'
 
-const worker = new Worker<ImportJobData, ImportJobResult>(
+// ══════════════════════════════════════════════════════════════
+// IMPORT WORKER
+// ══════════════════════════════════════════════════════════════
+
+const importWorker = new Worker<ImportJobData, ImportJobResult>(
   IMPORT_QUEUE_NAME,
   async (job) => {
     const { jobId, type } = job.data
@@ -23,22 +28,100 @@ const worker = new Worker<ImportJobData, ImportJobResult>(
   },
 )
 
-worker.on('completed', (job, result) => {
-  console.log(`[worker] Job ${job.id} completed — ${result.itemsProcessed} items in ${(result.durationMs / 1000).toFixed(1)}s`)
+// ══════════════════════════════════════════════════════════════
+// MARKET WORKER
+// ══════════════════════════════════════════════════════════════
+
+const marketWorker = new Worker<MarketJobData, MarketJobResult>(
+  MARKET_QUEUE_NAME,
+  async (job) => {
+    const { jobId, items, locations, qualities } = job.data
+
+    if (!items || items.length === 0) {
+      return { itemsRequested: 0, itemsUpdated: 0, itemsFailed: 0, durationMs: 0 }
+    }
+
+    const start = Date.now()
+    const result = await marketPriceService.syncMarketPrices({
+      items,
+      locations,
+      qualities,
+      jobId,
+    })
+
+    return {
+      itemsRequested: items.length,
+      itemsUpdated: result.itemsUpdated,
+      itemsFailed: result.itemsFailed,
+      durationMs: Date.now() - start,
+    }
+  },
+  {
+    connection: getConnection(),
+    concurrency: 10, // Many jobs can be active, but limited by rate limiter
+    limiter: {
+      max: 180, // 180 jobs (requests)
+      duration: 60000, // per minute
+    },
+  },
+)
+
+// ══════════════════════════════════════════════════════════════
+// EVENT HANDLERS
+// ══════════════════════════════════════════════════════════════
+
+importWorker.on('completed', (job, result) => {
+  console.log(`[import-worker] Job ${job.id} completed — ${result.itemsProcessed} items in ${(result.durationMs / 1000).toFixed(1)}s`)
 })
 
-worker.on('failed', (job, err) => {
-  console.error(`[worker] Job ${job?.id} failed:`, err.message)
+importWorker.on('failed', (job, err) => {
+  console.error(`[import-worker] Job ${job?.id} failed:`, err.message)
 })
 
-worker.on('progress', (job, progress) => {
-  const p = progress as ImportJobProgress
-  console.log(`[worker] ${job.id} [${p.phase}] ${p.percent}% (${p.processed}/${p.total})`)
+marketWorker.on('completed', async (job, result) => {
+  // Silent in production to avoid log flooding, but useful for now
+  if (Math.random() < 0.1) {
+    console.log(`[market-worker] Sync batch completed: ${result.itemsUpdated} updated, ${result.itemsFailed} failed`)
+  }
+
+  // Check if the whole MarketSyncJob is done — atomic updateMany to avoid TOCTOU race
+  const { jobId } = job.data
+  if (!jobId) return
+
+  // Read current counters to evaluate completion and compute duration
+  const dbJob = await prisma.marketSyncJob.findUnique({
+    where: { id: jobId },
+    select: { status: true, itemsUpdated: true, itemsFailed: true, itemsRequested: true, startedAt: true },
+  })
+
+  if (
+    dbJob &&
+    dbJob.status === 'RUNNING' &&
+    dbJob.itemsUpdated + dbJob.itemsFailed >= dbJob.itemsRequested
+  ) {
+    // updateMany with WHERE status='RUNNING' ensures only one worker wins the race
+    const updated = await prisma.marketSyncJob.updateMany({
+      where: { id: jobId, status: 'RUNNING' },
+      data: {
+        status: 'SUCCESS',
+        completedAt: new Date(),
+        durationMs: dbJob.startedAt ? Date.now() - dbJob.startedAt.getTime() : null,
+      },
+    })
+    if (updated.count === 1) {
+      console.log(`[market-worker] Sync job ${jobId} finished (${dbJob.itemsUpdated} updated, ${dbJob.itemsFailed} failed)`)
+    }
+  }
+})
+
+marketWorker.on('failed', (job, err) => {
+  console.error(`[market-worker] Job ${job?.id} failed:`, err.message)
 })
 
 async function shutdown() {
   console.log('[worker] Shutting down gracefully...')
-  await worker.close()
+  await importWorker.close()
+  await marketWorker.close()
   await closeAllConnections()
   await prisma.$disconnect()
   process.exit(0)
@@ -48,3 +131,4 @@ process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
 
 console.log(`[worker] Listening on queue "${IMPORT_QUEUE_NAME}"`)
+console.log(`[worker] Listening on queue "${MARKET_QUEUE_NAME}"`)

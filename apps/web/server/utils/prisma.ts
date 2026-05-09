@@ -1,1 +1,1 @@
-export { prisma } from '@albion-tool/database'
+export { prisma, Prisma } from '@albion-tool/database'

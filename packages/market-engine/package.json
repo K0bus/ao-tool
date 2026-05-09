@@ -1,0 +1,16 @@
+{
+  "name": "@albion-tool/market-engine",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@albion-tool/database": "workspace:*",
+    "@albion-tool/types": "workspace:*",
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

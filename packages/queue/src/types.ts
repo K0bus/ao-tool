@@ -26,3 +26,30 @@ export interface ImportJobProgress {
   total: number
   percent: number
 }
+
+// ══════════════════════════════════════════════════════════════
+// MARKET JOBS
+// ══════════════════════════════════════════════════════════════
+
+export type MarketJobType = 'FULL' | 'BATCH' | 'PRIORITY'
+
+export interface MarketJobItem {
+  id: string
+  uniqueName: string
+}
+
+export interface MarketJobData {
+  jobId: string
+  type: MarketJobType
+  items?: MarketJobItem[]
+  locations?: string[]
+  qualities?: number[]
+  triggeredById?: string
+}
+
+export interface MarketJobResult {
+  itemsRequested: number
+  itemsUpdated: number
+  itemsFailed: number
+  durationMs: number
+}

@@ -50,6 +50,9 @@
         <button class="btn-primary text-sm" :disabled="importing" @click="triggerImport">
           {{ importing ? 'Starting...' : '↻ Full Data Import' }}
         </button>
+        <button class="btn-secondary text-sm" :disabled="syncing" @click="triggerMarketSync">
+          {{ syncing ? 'Starting...' : '📊 Market Price Sync' }}
+        </button>
         <NuxtLink to="/admin/data/imports" class="btn-secondary text-sm">
           Import History
         </NuxtLink>
@@ -117,6 +120,7 @@ const statsLoading = ref(true)
 const recentJobs = ref<ImportJob[]>([])
 const jobsLoading = ref(true)
 const importing = ref(false)
+const syncing = ref(false)
 const importMessage = ref<string | null>(null)
 const importError = ref(false)
 
@@ -155,6 +159,23 @@ async function triggerImport() {
     importMessage.value = err?.data?.message ?? 'Failed to trigger import'
   } finally {
     importing.value = false
+  }
+}
+
+async function triggerMarketSync() {
+  syncing.value = true
+  importMessage.value = null
+  importError.value = false
+  try {
+    const res = await $fetch<{ data: { message: string } }>('/api/v1/admin/market/sync', {
+      method: 'POST', body: { type: 'FULL' },
+    })
+    importMessage.value = res.data.message
+  } catch (err: any) {
+    importError.value = true
+    importMessage.value = err?.data?.message ?? 'Failed to trigger market sync'
+  } finally {
+    syncing.value = false
   }
 }
 

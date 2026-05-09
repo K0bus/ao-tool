@@ -1,7 +1,7 @@
 import { prisma } from '~/server/utils/prisma'
 import { redis } from '~/server/utils/redis'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   const checks = {
     db: false,
     redis: false,

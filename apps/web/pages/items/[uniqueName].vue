@@ -94,6 +94,14 @@
         </button>
       </div>
 
+      <!-- Tab: Market -->
+      <div v-if="activeTab === 'market'">
+        <ItemMarketDashboard
+          :unique-name="item.uniqueName"
+          :live-prices="item.marketPrices ?? []"
+        />
+      </div>
+
       <!-- Tab: Overview -->
       <div v-if="activeTab === 'overview'" class="space-y-4">
         <!-- Description -->
@@ -162,6 +170,7 @@
 import ItemIcon from '~/components/items/ItemIcon.vue'
 import ItemTierBadge from '~/components/items/ItemTierBadge.vue'
 import ItemVariants from '~/components/items/ItemVariants.vue'
+import ItemMarketDashboard from '~/components/items/ItemMarketDashboard.vue'
 import CraftingTree from '~/components/craft/CraftingTree.vue'
 import CityBonusPanel from '~/components/craft/CityBonusPanel.vue'
 
@@ -170,12 +179,10 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const uniqueName = computed(() => route.params.uniqueName as string)
 
-const { data, pending, error } = await useFetch(() => `/api/v1/items/${encodeURIComponent(uniqueName.value)}`, {
+const { data: item, pending, error } = await useFetch(() => `/api/v1/items/${encodeURIComponent(uniqueName.value)}`, {
   key: () => `item-${uniqueName.value}`,
   transform: (res: { data: any }) => res.data,
 })
-
-const item = data
 
 const description = computed(() =>
   item.value?.localizations?.find((l: any) => l.locale === 'EN-US')?.description ?? null
@@ -185,6 +192,12 @@ const description = computed(() =>
 const availableTabs = computed(() => {
   if (!item.value) return []
   const tabs = [{ id: 'overview', label: 'Overview', count: 0 }]
+  
+  // Market tab if prices exist
+  if (item.value.marketPrices?.length > 0) {
+    tabs.unshift({ id: 'market', label: 'Market', count: 0 })
+  }
+
   if (item.value.craftingRecipe) tabs.push({ id: 'crafting', label: 'Crafting', count: item.value.craftingRecipe.ingredients.length })
   if (item.value.refiningRecipe) tabs.push({ id: 'refining', label: 'Refining', count: item.value.refiningRecipe.ingredients.length })
   const variantCount = (item.value.enchantVariants?.length ?? 0) + (item.value.baseItem ? 1 : 0)
@@ -192,18 +205,16 @@ const availableTabs = computed(() => {
   return tabs
 })
 
-const activeTab = ref(
-  item.value?.craftingRecipe ? 'crafting' :
-  item.value?.refiningRecipe ? 'refining' :
-  'overview'
-)
+const activeTab = ref('overview')
 
-// Reset lors d'une navigation entre items (sans rechargement de page)
+// Set default tab once data is loaded
 watch(item, (v) => {
-  if (v?.craftingRecipe) activeTab.value = 'crafting'
-  else if (v?.refiningRecipe) activeTab.value = 'refining'
+  if (!v) return
+  if (v.marketPrices?.length > 0) activeTab.value = 'market'
+  else if (v.craftingRecipe) activeTab.value = 'crafting'
+  else if (v.refiningRecipe) activeTab.value = 'refining'
   else activeTab.value = 'overview'
-})
+}, { immediate: true })
 
 // SEO
 useHead(() => ({

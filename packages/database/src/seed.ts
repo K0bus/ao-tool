@@ -31,6 +31,7 @@ async function main() {
     { id: 'Martlock', name: 'Martlock', type: 'ROYAL_CITY' as const },
     { id: 'Thetford', name: 'Thetford', type: 'ROYAL_CITY' as const },
     { id: 'Brecilien', name: 'Brecilien', type: 'ROYAL_CITY' as const },
+    { id: 'BlackMarket', name: 'Black Market', type: 'OTHER' as const },
   ]
 
   for (const loc of locations) {
