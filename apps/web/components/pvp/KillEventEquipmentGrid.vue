@@ -8,10 +8,9 @@
       :title="slot.tooltip"
     >
       <template v-if="slot.type">
-        <img
-          :src="`https://render.albiononline.com/v1/item/${slot.type}.png`"
+        <AoItemImage
+          :unique-name="slot.type"
           :alt="slot.type"
-          @error="onImgError"
         />
         <span v-if="showTier" class="eq-tier-badge">{{ slot.tierLabel }}</span>
         <span v-if="showIp && slot.ip" class="eq-ip-badge">{{ slot.ip }}</span>
@@ -53,17 +52,6 @@ const slots = computed(() =>
   })
 )
 
-function onImgError(e: Event) {
-  const img = e.target as HTMLImageElement
-  img.style.display = 'none'
-  const parent = img.parentElement
-  if (parent && !parent.querySelector('.eq-empty')) {
-    const span = document.createElement('span')
-    span.className = 'eq-empty'
-    span.textContent = '?'
-    parent.appendChild(span)
-  }
-}
 </script>
 
 <style scoped>

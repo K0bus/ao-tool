@@ -27,7 +27,7 @@
       <div v-else class="w-4 shrink-0" />
 
       <!-- Icon -->
-      <ItemIcon :unique-name="node.uniqueName" size="sm" class="shrink-0" />
+      <ItemIcon :unique-name="node.uniqueName" :display-name="node.name" size="sm" class="shrink-0" />
 
       <!-- Name + badges -->
       <div class="flex-1 min-w-0">

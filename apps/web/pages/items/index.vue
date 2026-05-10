@@ -82,10 +82,10 @@
         <div v-else class="items-grid">
           <NuxtLink v-for="item in items" :key="item.id" :to="`/items/${item.uniqueName}`" class="ig-card">
             <div :class="`item-frame q-${tierQualityClass(item.tier)}`" style="width:72px;height:72px;flex-shrink:0;position:relative">
-              <img
-                :src="`https://render.albiononline.com/v1/item/${item.uniqueName}.png`"
+              <AoItemImage
+                :unique-name="item.uniqueName"
+                :display-name="item.name"
                 :alt="item.name"
-                loading="lazy"
               />
               <span :class="`tier-badge t${item.tier}`" style="position:absolute;left:4px;top:4px">T{{ item.tier }}</span>
             </div>

@@ -28,7 +28,7 @@
             <!-- Selected item -->
             <div v-if="selectedItem" class="selected-item">
               <div class="item-frame" style="width:64px;height:64px;position:relative;flex-shrink:0">
-                <img :src="`https://render.albiononline.com/v1/item/${selectedItem.uniqueName}.png`" :alt="selectedItem.name" />
+                <AoItemImage :unique-name="selectedItem.uniqueName" :display-name="selectedItem.name" :alt="selectedItem.name" />
                 <span :class="`tier-badge t${selectedItem.tier}`" style="position:absolute;left:3px;top:3px">T{{ selectedItem.tier }}</span>
               </div>
               <div class="si-meta">
@@ -60,7 +60,14 @@
                     class="sd-row"
                     @click="handleSelectItem(r)"
                   >
-                    <img :src="`https://render.albiononline.com/v1/item/${r.uniqueName}.png`" :alt="r.name" width="28" height="28" style="border-radius:3px;background:var(--bg-2);flex-shrink:0" />
+                    <AoItemImage
+                      :unique-name="r.uniqueName"
+                      :display-name="r.name"
+                      :alt="r.name"
+                      :width="28"
+                      :height="28"
+                      :img-style="{ borderRadius: '3px', background: 'var(--bg-2)', flexShrink: '0' }"
+                    />
                     <div style="flex:1;min-width:0">
                       <div style="font-size:13px;color:var(--text-0)">{{ r.name }}</div>
                       <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">{{ r.uniqueName }}</div>
@@ -135,7 +142,7 @@
                     {{ strategyMap.get(node.uniqueName)?.decision === 'craft' ? 'CRAFT' : 'ACHETER' }}
                   </button>
                   <div class="tn-img">
-                    <img :src="`https://render.albiononline.com/v1/item/${node.uniqueName}.png`" :alt="node.name" loading="lazy" />
+                    <AoItemImage :unique-name="node.uniqueName" :display-name="node.name" :alt="node.name" />
                     <span :class="`tier-badge t${node.tier}`" style="position:absolute;left:4px;top:4px">T{{ node.tier }}</span>
                   </div>
                   <div class="tn-meta">
@@ -166,7 +173,7 @@
           <div class="shop-grid">
             <div v-for="mat in shoppingList" :key="mat.uniqueName" class="shop-card">
               <div class="item-frame" style="width:40px;height:40px;flex-shrink:0">
-                <img :src="`https://render.albiononline.com/v1/item/${mat.uniqueName}.png`" :alt="mat.name" loading="lazy" />
+                <AoItemImage :unique-name="mat.uniqueName" :display-name="mat.name" :alt="mat.name" />
               </div>
               <div class="sc-meta">
                 <div class="sc-name">{{ mat.name }}</div>
@@ -493,7 +500,7 @@
                 class="ing-row"
               >
                 <div class="ing-img">
-                  <img :src="`https://render.albiononline.com/v1/item/${ing.uniqueName}.png`" :alt="ing.name" loading="lazy" />
+                  <AoItemImage :unique-name="ing.uniqueName" :display-name="ing.name" :alt="ing.name" />
                   <span :class="`tier-badge t${ing.tier}`" style="position:absolute;left:1px;top:1px;font-size:8px;padding:0 2px">T{{ ing.tier }}</span>
                 </div>
                 <div class="ing-info">

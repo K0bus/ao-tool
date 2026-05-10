@@ -107,7 +107,7 @@
               @mousedown.prevent
             >
               <div class="item-frame" style="width:32px;height:32px;flex-shrink:0">
-                <img :src="`https://render.albiononline.com/v1/item/${item.uniqueName}.png`" :alt="item.name" />
+                <AoItemImage :unique-name="item.uniqueName" :display-name="item.name" :alt="item.name" />
               </div>
               <div class="nsr-meta">
                 <div class="nsr-name">{{ item.name }}</div>

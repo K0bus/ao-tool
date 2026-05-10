@@ -226,10 +226,10 @@
                 <td class="col-item">
                   <div class="item-cell">
                     <div class="item-frame" style="width:40px;height:40px;flex-shrink:0;position:relative">
-                      <img
-                        :src="`https://render.albiononline.com/v1/item/${row.uniqueName}.png`"
+                      <AoItemImage
+                        :unique-name="row.uniqueName"
+                        :display-name="row.name"
                         :alt="row.name"
-                        loading="lazy"
                       />
                       <span :class="`tier-badge t${row.tier}`" style="position:absolute;left:3px;top:3px;font-size:9px;padding:0 3px">T{{ row.tier }}</span>
                     </div>

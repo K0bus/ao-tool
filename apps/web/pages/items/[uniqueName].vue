@@ -23,10 +23,10 @@
       <p class="t-mono t-dim" style="font-size:12px;margin-bottom:20px">{{ route.params.uniqueName }}</p>
       <NuxtLink to="/items" class="ds-btn ghost">← Retour aux items</NuxtLink>
     </div>
-
+    
     <!-- Content -->
     <template v-else-if="item">
-      <!-- Page header -->
+      <!-- Page header --><pre>{{ item }}</pre>
       <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div class="crumbs">
           <NuxtLink to="/">Accueil</NuxtLink><span class="sep">/</span><NuxtLink to="/items">Items</NuxtLink><span class="sep">/</span>{{ item.name }}
@@ -53,11 +53,12 @@
         <div class="item-hero-body">
           <!-- Item image -->
           <div :class="`item-frame q-${qualityFrameClass} item-hero-img`">
-            <img
-              :src="`https://render.albiononline.com/v1/item/${item.uniqueName}.png`"
+            <AoItemImage
+              :unique-name="item.uniqueName"
+              :display-name="item.name"
               :alt="item.name"
               loading="eager"
-              style="width:100%;height:100%;object-fit:contain"
+              :img-style="{ width: '100%', height: '100%', objectFit: 'contain' }"
             />
             <span class="corner">T·{{ item.tier }}<span v-if="item.enchantmentLevel > 0">.{{ item.enchantmentLevel }}</span></span>
           </div>
@@ -245,10 +246,11 @@
                 class="rmi"
               >
                 <div class="item-frame q-normal" style="width:44px;height:44px;flex-shrink:0">
-                  <img
-                    :src="`https://render.albiononline.com/v1/item/${ing.itemId}.png`"
+                  <AoItemImage
+                    :unique-name="ing.itemId"
+                    :display-name="ing.item?.name"
                     :alt="ing.item?.name ?? ing.itemId"
-                    style="width:100%;height:100%;object-fit:contain"
+                    :img-style="{ width: '100%', height: '100%', objectFit: 'contain' }"
                   />
                 </div>
                 <div class="rmi-meta">

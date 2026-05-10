@@ -2,7 +2,7 @@
   <button class="build-slot" :class="{ filled: !!item, active }" @click="$emit('click')">
     <div v-if="item" class="slot-tier">T{{ item.tier }}<template v-if="item.enchantmentLevel > 0">.{{ item.enchantmentLevel }}</template></div>
     <div class="slot-icon">
-      <img v-if="item" :src="`https://render.albiononline.com/v1/item/${item.uniqueName}.png`" :alt="item.name" />
+      <AoItemImage v-if="item" :unique-name="item.uniqueName" :display-name="item.name" :alt="item.name" />
       <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
     </div>
     <span class="slot-label">{{ item ? item.name : label }}</span>

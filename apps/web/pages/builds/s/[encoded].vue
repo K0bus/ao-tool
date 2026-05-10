@@ -37,7 +37,7 @@
         <div class="eq-grid">
           <div v-for="slot in EQUIPMENT_SLOTS" :key="slot.key" class="eq-cell">
             <NuxtLink v-if="payload.equipment[slot.key]" :to="`/items/${payload.equipment[slot.key]}`" class="eq-icon filled">
-              <img :src="`https://render.albiononline.com/v1/item/${payload.equipment[slot.key]}.png`" :alt="slot.label" loading="lazy" />
+              <AoItemImage :unique-name="payload.equipment[slot.key]!" :alt="slot.label" />
             </NuxtLink>
             <div v-else class="eq-icon empty" />
             <span class="eq-label">{{ slot.label }}</span>

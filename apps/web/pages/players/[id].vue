@@ -66,10 +66,9 @@
               >
                 <div class="eq-card-icon">
                   <template v-if="slot.type">
-                    <img
-                      :src="`https://render.albiononline.com/v1/item/${slot.type}.png`"
+                    <AoItemImage
+                      :unique-name="slot.type"
                       :alt="slot.type"
-                      @error="onImgError"
                     />
                   </template>
                   <span v-else class="eq-placeholder">·</span>
@@ -232,17 +231,6 @@ const equipmentSlots = computed(() => {
   })
 })
 
-function onImgError(e: Event) {
-  const img = e.target as HTMLImageElement
-  img.style.display = 'none'
-  const parent = img.parentElement
-  if (parent && !parent.querySelector('.eq-placeholder')) {
-    const span = document.createElement('span')
-    span.className = 'eq-placeholder'
-    span.textContent = '?'
-    parent.appendChild(span)
-  }
-}
 </script>
 
 <style scoped>

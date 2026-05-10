@@ -16,10 +16,9 @@
     <div class="bc-items">
       <template v-for="slot in itemSlots" :key="slot.key">
         <div v-if="equipment[slot.key]" class="bc-item-icon" :title="slot.label">
-          <img
-            :src="`https://render.albiononline.com/v1/item/${equipment[slot.key]}.png`"
+          <AoItemImage
+            :unique-name="equipment[slot.key]!"
             :alt="slot.label"
-            loading="lazy"
           />
         </div>
         <div v-else class="bc-item-icon empty" :title="slot.label" />

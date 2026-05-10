@@ -14,7 +14,53 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@vueuse/nuxt',
+    '@vite-pwa/nuxt',
   ],
+
+  /** Cache client durable des icônes Albion (CDN) via Workbox — affichage quasi instantané au retour */
+  pwa: {
+    registerType: 'autoUpdate',
+    strategies: 'generateSW',
+    manifest: {
+      name: 'Albion Codex',
+      short_name: 'Codex',
+      description: 'Base Albion Online — items, crafting, marché',
+      theme_color: '#0a0a0f',
+      background_color: '#0a0a0f',
+      display: 'standalone',
+      start_url: '/',
+      lang: 'fr',
+    },
+    client: {
+      registerPlugin: true,
+      /** Pas de prompt « Ajouter à l’écran d’accueil » — focus sur le cache CDN */
+      installPrompt: true,
+    },
+    devOptions: {
+      enabled: false,
+    },
+    workbox: {
+      navigateFallbackDenylist: [/^\/api\//],
+      runtimeCaching: [
+        {
+          urlPattern:
+            /^https:\/\/render\.albiononline\.com\/v1\/(item|spell)\/.+\.png(\?.*)?$/i,
+          handler: 'StaleWhileRevalidate',
+          options: {
+            cacheName: 'ao-render-icons-v1',
+            expiration: {
+              maxEntries: 1000,
+              maxAgeSeconds: 60 * 60 * 24 * 30,
+              purgeOnQuotaError: true,
+            },
+            cacheableResponse: {
+              statuses: [0, 200],
+            },
+          },
+        },
+      ],
+    },
+  },
 
   runtimeConfig: {
     sessionSecret: process.env.NUXT_SESSION_SECRET ?? '',

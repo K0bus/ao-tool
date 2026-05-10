@@ -11,7 +11,7 @@
         :to="`/items/${baseItem.uniqueName}`"
         class="flex items-center gap-3 px-4 py-3 hover:bg-surface-800/50 transition-colors group"
       >
-        <ItemIcon :unique-name="baseItem.uniqueName" size="sm" />
+        <ItemIcon :unique-name="baseItem.uniqueName" :display-name="baseItem.name" size="sm" />
         <div class="flex-1 min-w-0">
           <p class="text-sm text-gray-300 truncate group-hover:text-white transition-colors">{{ baseItem.name }}</p>
         </div>
@@ -23,7 +23,7 @@
 
       <!-- Current item (highlighted) -->
       <div class="flex items-center gap-3 px-4 py-3 bg-primary-600/10 border-l-2 border-primary-500">
-        <ItemIcon :unique-name="currentItem.uniqueName" size="sm" />
+        <ItemIcon :unique-name="currentItem.uniqueName" :display-name="currentItem.name" size="sm" />
         <div class="flex-1 min-w-0">
           <p class="text-sm text-white font-medium truncate">{{ currentItem.name }}</p>
           <p class="text-xs text-gray-500">Current</p>
@@ -43,7 +43,7 @@
         :to="`/items/${variant.uniqueName}`"
         class="flex items-center gap-3 px-4 py-3 hover:bg-surface-800/50 transition-colors group"
       >
-        <ItemIcon :unique-name="variant.uniqueName" size="sm" />
+        <ItemIcon :unique-name="variant.uniqueName" :display-name="variant.name" size="sm" />
         <div class="flex-1 min-w-0">
           <p class="text-sm text-gray-300 truncate group-hover:text-white transition-colors">{{ variant.name }}</p>
         </div>

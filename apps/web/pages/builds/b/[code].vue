@@ -38,10 +38,9 @@
           <div class="eq-grid">
             <div v-for="slot in EQUIPMENT_SLOTS" :key="slot.key" class="eq-cell">
               <NuxtLink v-if="equipment[slot.key]" :to="`/items/${equipment[slot.key]}`" class="eq-icon filled">
-                <img
-                  :src="`https://render.albiononline.com/v1/item/${equipment[slot.key]}.png`"
+                <AoItemImage
+                  :unique-name="equipment[slot.key]!"
                   :alt="slot.label"
-                  loading="lazy"
                 />
               </NuxtLink>
               <div v-else class="eq-icon empty" />

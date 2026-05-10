@@ -24,7 +24,7 @@
         <span class="t-dim" style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-display)">Tendances craft</span>
         <NuxtLink v-for="chip in trendingItems" :key="chip.uniqueName" :to="`/items/${chip.uniqueName}`" class="trend-chip">
           <div class="tc-img">
-            <img :src="`https://render.albiononline.com/v1/item/${chip.uniqueName}.png`" :alt="chip.name" loading="lazy" />
+            <AoItemImage :unique-name="chip.uniqueName" :display-name="chip.name" :alt="chip.name" />
           </div>
           <span>{{ chip.name }}</span>
         </NuxtLink>
@@ -65,10 +65,13 @@
         </div>
         <div class="panel-body featured-body">
           <div class="item-frame q-masterpiece featured-img">
-            <img
+            <AoItemImage
               v-if="topProfit"
-              :src="`https://render.albiononline.com/v1/item/${topProfit.uniqueName}.png?quality=5`"
+              :unique-name="topProfit.uniqueName"
+              :display-name="topProfit.name"
               :alt="topProfit.name"
+              :primary-params="{ quality: '5' }"
+              loading="eager"
             />
             <div v-else class="skel" style="width:100%;height:100%;border-radius:var(--radius)" />
             <span v-if="topProfit" class="corner">T·{{ topProfit.tier }}</span>

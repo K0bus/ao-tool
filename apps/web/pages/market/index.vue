@@ -76,7 +76,7 @@
                 <td>
                   <NuxtLink :to="`/items/${r.uniqueName}`" style="display:flex;align-items:center;gap:10px">
                     <div class="item-frame" style="width:32px;height:32px;flex-shrink:0;position:relative">
-                      <img :src="`https://render.albiononline.com/v1/item/${r.uniqueName}.png`" :alt="r.name" loading="lazy" />
+                      <AoItemImage :unique-name="r.uniqueName" :display-name="r.name" :alt="r.name" />
                       <span :class="`tier-badge t${r.tier}`" style="position:absolute;left:2px;top:2px;font-size:8px;padding:0 2px">T{{ r.tier }}</span>
                     </div>
                     <div>

@@ -47,7 +47,12 @@
           <div class="vs-equipment">
             <div v-for="slot in killerSlots" :key="slot.key" class="eq-row" :class="slot.qualityClass">
               <div class="eq-row-icon">
-                <img v-if="slot.type" :src="`https://render.albiononline.com/v1/item/${slot.type}.png`" :alt="slot.type" @error="onImgError" />
+                <AoItemImage
+                  v-if="slot.type"
+                  :unique-name="slot.type"
+                  :display-name="slot.displayName"
+                  :alt="slot.displayName || slot.type"
+                />
                 <span v-else class="eq-row-empty">·</span>
               </div>
               <div class="eq-row-info">
@@ -113,7 +118,12 @@
                 <span v-else class="eq-row-none t-dim">—</span>
               </div>
               <div class="eq-row-icon">
-                <img v-if="slot.type" :src="`https://render.albiononline.com/v1/item/${slot.type}.png`" :alt="slot.type" @error="onImgError" />
+                <AoItemImage
+                  v-if="slot.type"
+                  :unique-name="slot.type"
+                  :display-name="slot.displayName"
+                  :alt="slot.displayName || slot.type"
+                />
                 <span v-else class="eq-row-empty">·</span>
               </div>
             </div>
@@ -226,17 +236,6 @@ function fullDate(iso: string) {
   })
 }
 
-function onImgError(e: Event) {
-  const img = e.target as HTMLImageElement
-  img.style.display = 'none'
-  const parent = img.parentElement
-  if (parent && !parent.querySelector('.eq-row-empty')) {
-    const span = document.createElement('span')
-    span.className = 'eq-row-empty'
-    span.textContent = '?'
-    parent.appendChild(span)
-  }
-}
 </script>
 
 <style scoped>

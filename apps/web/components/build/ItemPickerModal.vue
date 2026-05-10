@@ -46,7 +46,7 @@
               @click="select(item)"
             >
               <div class="ipm-item-icon">
-                <img :src="`https://render.albiononline.com/v1/item/${item.uniqueName}.png`" :alt="item.name" loading="lazy" />
+                <AoItemImage :unique-name="item.uniqueName" :display-name="item.name" :alt="item.name" />
               </div>
               <div class="ipm-item-meta">
                 <div class="ipm-item-name">{{ item.name }}</div>

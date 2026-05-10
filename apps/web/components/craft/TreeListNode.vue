@@ -14,7 +14,7 @@
         </svg>
       </span>
       <div class="tl-img">
-        <img :src="`https://render.albiononline.com/v1/item/${node.uniqueName}.png`" :alt="node.name" loading="lazy" />
+        <AoItemImage :unique-name="node.uniqueName" :display-name="node.name" :alt="node.name" />
         <span :class="`tier-badge t${node.tier}`">T{{ node.tier }}</span>
       </div>
       <div class="tl-meta">
