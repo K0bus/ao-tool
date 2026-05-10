@@ -8,12 +8,35 @@ function createPrismaClient() {
   return new PrismaClient({ adapter })
 }
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
-
-export const prisma = globalForPrisma.prisma || createPrismaClient()
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+/** True when the client matches the generated schema (Build feature, etc.). */
+function prismaClientHasExpectedDelegates(client: PrismaClient): boolean {
+  return typeof (client as PrismaClient & { build?: { findUnique: unknown } }).build?.findUnique === 'function'
 }
+
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
+
+function getPrisma(): PrismaClient {
+  const cached = globalForPrisma.prisma
+  // Dev HMR / prisma generate without restart can leave a stale singleton without newer delegates.
+  if (process.env.NODE_ENV !== 'production' && cached && !prismaClientHasExpectedDelegates(cached)) {
+    globalForPrisma.prisma = undefined
+  }
+
+  const client = globalForPrisma.prisma ?? createPrismaClient()
+
+  if (!prismaClientHasExpectedDelegates(client)) {
+    throw new Error(
+      'Prisma Client is out of date (missing generated models). Run `pnpm db:generate` from the repo root, then restart the dev server.',
+    )
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = client
+  }
+
+  return client
+}
+
+export const prisma = getPrisma()
 
 export * from '@prisma/client'
