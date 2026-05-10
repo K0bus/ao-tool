@@ -5,8 +5,11 @@ import type { Prisma } from "@albion-tool/database";
 const schema = z.object({
   q: z.string().optional(),
   tier: z.coerce.number().int().min(1).max(8).optional(),
+  tiers: z.string().optional(), // comma-separated: "4,5,6"
   enchantment: z.coerce.number().int().min(0).max(3).optional(),
   category: z.string().optional(),
+  subcategory: z.string().optional(),
+  categoryId: z.string().optional(),
   craftable: z.enum(["true", "false"]).optional(),
   refinable: z.enum(["true", "false"]).optional(),
   cursor: z.string().optional(),
@@ -28,8 +31,11 @@ export default defineEventHandler(async (event) => {
   const {
     q,
     tier,
+    tiers,
     enchantment,
     category,
+    subcategory,
+    categoryId,
     craftable,
     refinable,
     cursor,
@@ -38,10 +44,36 @@ export default defineEventHandler(async (event) => {
 
   const where: Prisma.ItemWhereInput = {};
 
-  if (tier !== undefined) where.tier = tier;
+  // Tier filter: single or multi (tiers takes precedence)
+  if (tiers) {
+    const tierNums = tiers.split(',').map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 8);
+    if (tierNums.length === 1) where.tier = tierNums[0];
+    else if (tierNums.length > 1) where.tier = { in: tierNums };
+  } else if (tier !== undefined) {
+    where.tier = tier;
+  }
+
   if (enchantment !== undefined) where.enchantmentLevel = enchantment;
-  if (category)
-    where.shopCategory = { contains: category, mode: "insensitive" };
+  if (categoryId) {
+    // Résoudre tous les IDs descendants (N niveaux) en mémoire
+    const allCats = await prisma.category.findMany({ select: { id: true, parentId: true } })
+    const childrenOf = new Map<string, string[]>()
+    for (const c of allCats) {
+      if (c.parentId) {
+        const arr = childrenOf.get(c.parentId) ?? []
+        arr.push(c.id)
+        childrenOf.set(c.parentId, arr)
+      }
+    }
+    function descendants(id: string): string[] {
+      const kids = childrenOf.get(id) ?? []
+      return [id, ...kids.flatMap(descendants)]
+    }
+    where.categoryId = { in: descendants(categoryId) }
+  } else {
+    if (category) where.shopCategory = { equals: category, mode: "insensitive" }
+    if (subcategory) where.shopSubcategory = { equals: subcategory, mode: "insensitive" }
+  }
   if (craftable === "true") where.isCraftable = true;
   if (refinable === "true") where.isRefinable = true;
 

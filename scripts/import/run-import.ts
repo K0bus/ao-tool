@@ -23,6 +23,18 @@ function stationNameFromId(id: string): string {
   return base || id
 }
 
+function catId(cat: string, sub?: string): string {
+  return sub ? `cat_${cat}_${sub}` : `cat_${cat}`
+}
+
+function catSlug(cat: string, sub?: string): string {
+  return sub ? `${cat}-${sub}` : cat
+}
+
+function toTitleCase(s: string): string {
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 function stationTypeFromId(id: string): string {
   const upper = id.toUpperCase()
   if (upper.startsWith('SMELTER')) return 'REFINING'
@@ -84,7 +96,82 @@ export async function runImport(
 
     await logInfo(`Normalized ${normalized.length} items (${rawItems.length} base items + variants)`)
 
-    // ── Phase 3: Item upsert ────────────────────────────────────────────────
+    // ── Phase 3: Categories ─────────────────────────────────────────────────
+    await report('categories', 0, 0)
+    await logInfo('Importing shop categories...')
+
+    const enUs = localizations['EN-US'] ?? {}
+    const resolveCatName = (cat: string) =>
+      enUs[`@MARKETPLACEGUI_ROLLOUT_SHOPCATEGORY_${cat.toUpperCase()}`] ?? toTitleCase(cat)
+    const resolveSubName = (sub: string) =>
+      enUs[`@MARKETPLACEGUI_ROLLOUT_SHOPSUBCATEGORY_${sub.toUpperCase()}`] ?? toTitleCase(sub)
+
+    const parentCats = new Map<string, { slug: string; nameEn: string; rawCat: string }>()
+    const childCats = new Map<string, { slug: string; parentId: string; nameEn: string; rawSub: string }>()
+
+    for (const item of normalized) {
+      if (!item.shopCategory) continue
+      const cat = item.shopCategory
+      const sub = item.shopSubcategory
+
+      const pId = catId(cat)
+      if (!parentCats.has(pId)) {
+        parentCats.set(pId, { slug: catSlug(cat), nameEn: resolveCatName(cat), rawCat: cat })
+      }
+      if (sub) {
+        const cId = catId(cat, sub)
+        if (!childCats.has(cId)) {
+          childCats.set(cId, { slug: catSlug(cat, sub), parentId: pId, nameEn: resolveSubName(sub), rawSub: sub })
+        }
+      }
+    }
+
+    for (const [id, { slug, nameEn }] of parentCats) {
+      await prisma.category.upsert({
+        where: { id },
+        create: { id, slug, nameEn },
+        update: { nameEn },
+      }).catch(() => {})
+    }
+    for (const [id, { slug, parentId, nameEn }] of childCats) {
+      await prisma.category.upsert({
+        where: { id },
+        create: { id, slug, nameEn, parentId },
+        update: { nameEn, parentId },
+      }).catch(() => {})
+    }
+
+    // ── Localizations pour chaque catégorie ────────────────────────────────
+    const locEntries = Object.entries(localizations).filter(([l]) => l !== 'ForceTranslationByKey')
+    for (const [locale, table] of locEntries) {
+      const rows: { categoryId: string; locale: string; name: string }[] = []
+
+      for (const [id, { rawCat }] of parentCats) {
+        const name = table[`@MARKETPLACEGUI_ROLLOUT_SHOPCATEGORY_${rawCat.toUpperCase()}`]
+        if (name) rows.push({ categoryId: id, locale, name })
+      }
+      for (const [id, { rawSub }] of childCats) {
+        const name = table[`@MARKETPLACEGUI_ROLLOUT_SHOPSUBCATEGORY_${rawSub.toUpperCase()}`]
+        if (name) rows.push({ categoryId: id, locale, name })
+      }
+
+      if (rows.length > 0) {
+        await prisma.$transaction(
+          rows.map((r) =>
+            prisma.categoryLocalization.upsert({
+              where: { categoryId_locale: { categoryId: r.categoryId, locale: r.locale } },
+              create: r,
+              update: { name: r.name },
+            })
+          )
+        ).catch(() => {})
+      }
+    }
+
+    await logInfo(`Imported ${parentCats.size} parent categories and ${childCats.size} subcategories`)
+    await report('categories', parentCats.size + childCats.size, parentCats.size + childCats.size)
+
+    // ── Phase 4: Item upsert ─────────────────────────────────────────────────
     const batches = chunk(normalized, BATCH_SIZE)
     for (const batch of batches) {
       for (const item of batch) {
@@ -103,6 +190,9 @@ export async function runImport(
           const isCreate = !existing
           const statsJson = Object.keys(item.stats).length > 0 ? item.stats : undefined
           const spellsJson = item.craftSpells.length > 0 ? item.craftSpells : undefined
+          const itemCategoryId = item.shopCategory
+            ? catId(item.shopCategory, item.shopSubcategory)
+            : undefined
 
           await prisma.item.upsert({
             where: { uniqueName: item.uniqueName },
@@ -115,6 +205,7 @@ export async function runImport(
               shopCategory: item.shopCategory,
               shopSubcategory: item.shopSubcategory,
               shopSubcategory2: item.shopSubcategory2,
+              categoryId: itemCategoryId,
               weight: item.weight,
               maxStackSize: item.maxStackSize,
               canBeOvercharged: item.canBeOvercharged,
@@ -133,6 +224,7 @@ export async function runImport(
               shopCategory: item.shopCategory,
               shopSubcategory: item.shopSubcategory,
               shopSubcategory2: item.shopSubcategory2,
+              categoryId: itemCategoryId,
               weight: item.weight,
               maxStackSize: item.maxStackSize,
               canBeOvercharged: item.canBeOvercharged,

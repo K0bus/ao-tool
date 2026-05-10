@@ -21,7 +21,7 @@ export interface ImportJobResult {
 }
 
 export interface ImportJobProgress {
-  phase: 'fetching' | 'normalizing' | 'importing' | 'localizations' | 'variants' | 'recipes' | 'refining' | 'done'
+  phase: 'fetching' | 'normalizing' | 'categories' | 'importing' | 'localizations' | 'variants' | 'recipes' | 'refining' | 'done'
   processed: number
   total: number
   percent: number

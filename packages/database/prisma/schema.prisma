@@ -150,9 +150,22 @@ model Category {
   parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryTree")
 
-  items     Item[]
+  items         Item[]
+  localizations CategoryLocalization[]
 
   @@index([parentId])
+}
+
+model CategoryLocalization {
+  id         String @id @default(cuid())
+  categoryId String
+  locale     String
+  name       String
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
 }
 
 // ══════════════════════════════════════════════════════════════
