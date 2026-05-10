@@ -21,13 +21,16 @@
 
       <!-- Trending chips -->
       <div class="hero-suggest">
-        <span class="t-dim" style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-display)">Tendances</span>
-        <NuxtLink v-for="chip in trending" :key="chip.id" :to="`/items/${chip.id}`" class="trend-chip">
+        <span class="t-dim" style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-display)">Tendances craft</span>
+        <NuxtLink v-for="chip in trendingItems" :key="chip.uniqueName" :to="`/items/${chip.uniqueName}`" class="trend-chip">
           <div class="tc-img">
-            <img :src="`https://render.albiononline.com/v1/item/${chip.id}.png`" :alt="chip.label" loading="lazy" />
+            <img :src="`https://render.albiononline.com/v1/item/${chip.uniqueName}.png`" :alt="chip.name" loading="lazy" />
           </div>
-          <span>{{ chip.label }}</span>
+          <span>{{ chip.name }}</span>
         </NuxtLink>
+        <template v-if="trendingItems.length === 0">
+          <div v-for="i in 4" :key="i" class="trend-chip skel" style="width:120px;height:36px" />
+        </template>
       </div>
     </section>
 
@@ -53,31 +56,51 @@
 
     <!-- Lower: featured + stats -->
     <section class="home-lower">
-      <!-- Featured item (parchment panel) -->
+      <!-- Featured item -->
       <div class="panel parchment framed" style="overflow:hidden">
         <div class="panel-header">
           <h3>Item à la une</h3>
-          <span class="tag gold">Artefact · Avalonien</span>
+          <span v-if="topProfit" class="tag gold">T{{ topProfit.tier }} · {{ topProfit.categoryName ?? topProfit.shopCategory ?? topProfit.itemType }}</span>
+          <span v-else class="tag gold">Meilleure marge craft</span>
         </div>
         <div class="panel-body featured-body">
           <div class="item-frame q-masterpiece featured-img">
-            <img src="https://render.albiononline.com/v1/item/T8_2H_AXE_AVALON.png?quality=5" alt="Hache Avalonienne" />
-            <span class="corner">T·VIII</span>
+            <img
+              v-if="topProfit"
+              :src="`https://render.albiononline.com/v1/item/${topProfit.uniqueName}.png?quality=5`"
+              :alt="topProfit.name"
+            />
+            <div v-else class="skel" style="width:100%;height:100%;border-radius:var(--radius)" />
+            <span v-if="topProfit" class="corner">T·{{ topProfit.tier }}</span>
           </div>
           <div class="featured-meta">
-            <span class="t-eyebrow">Hache · 2 mains</span>
-            <h2 style="font-size:26px;margin:4px 0 4px">Hache du Seigneur des Royaumes</h2>
-            <p class="t-muted" style="margin-bottom:12px">Une hache forgée dans l'acier des forêts perdues d'Avalon. Frappes lourdes, charges dévastatrices, requiert l'expertise des plus grands maîtres-armuriers.</p>
-            <div class="featured-stats">
-              <div v-for="stat in featuredStats" :key="stat.k" class="fst">
-                <span class="fst-k">{{ stat.k }}</span>
-                <span class="fst-v t-mono">{{ stat.v }}</span>
-                <span v-if="stat.d" class="fst-d">{{ stat.d }}</span>
+            <span class="t-eyebrow">{{ topProfit?.categoryName ?? topProfit?.shopSubcategory ?? topProfit?.shopCategory ?? topProfit?.itemType ?? '…' }}</span>
+            <h2 style="font-size:26px;margin:4px 0 4px">{{ topProfit?.name ?? '…' }}</h2>
+            <p v-if="!topProfit" class="t-muted" style="margin-bottom:12px">Calcul en cours…</p>
+            <div v-if="topProfit" class="featured-profit-stats">
+              <div class="fps-item">
+                <span class="fps-label">Marge moy.</span>
+                <span class="fps-val" :class="topProfit.avgMargin >= 0 ? 't-success' : 't-danger'">
+                  {{ topProfit.avgMargin >= 0 ? '+' : '' }}{{ topProfit.avgMargin.toFixed(1) }}%
+                </span>
+              </div>
+              <div class="fps-item">
+                <span class="fps-label">Meilleure ville</span>
+                <span class="fps-val t-gold">{{ topProfit.bestCity }}</span>
+              </div>
+              <div class="fps-item">
+                <span class="fps-label">Villes calculées</span>
+                <span class="fps-val t-mono">{{ topProfit.citiesCount }}</span>
               </div>
             </div>
             <div class="row" style="margin-top:16px;gap:10px">
-              <NuxtLink to="/items/T8_2H_AXE_AVALON" class="ds-btn primary">Voir détails <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></NuxtLink>
-              <NuxtLink to="/crafting?id=T8_2H_AXE_AVALON" class="ds-btn">Crafting tree</NuxtLink>
+              <NuxtLink v-if="topProfit" :to="`/items/${topProfit.uniqueName}`" class="ds-btn primary">
+                Voir détails
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </NuxtLink>
+              <NuxtLink :to="topProfit ? `/items/profit?q=${encodeURIComponent(topProfit.name)}` : '/items/profit'" class="ds-btn">
+                Analyse de profit
+              </NuxtLink>
             </div>
           </div>
         </div>
@@ -87,7 +110,8 @@
       <div class="panel">
         <div class="panel-header">
           <h3>État du codex</h3>
-          <span class="status live">Synchronisé</span>
+          <span v-if="statsData" class="status live">Synchronisé</span>
+          <span v-else class="status">Chargement…</span>
         </div>
         <div class="home-stats">
           <div v-for="s in codexStats" :key="s.k" class="home-stat">
@@ -111,10 +135,15 @@
         <NuxtLink to="/admin" class="ds-btn ghost sm">Tout voir <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></NuxtLink>
       </div>
       <div style="padding:0">
-        <div v-for="act in activity" :key="act.t" class="act-row">
-          <span class="t-mono t-dim" style="font-size:11px">{{ act.t }}</span>
-          <span :class="`tag ${act.tag}`" style="justify-content:center">{{ act.k }}</span>
-          <span style="color:var(--text-1);font-size:13px">{{ act.v }}</span>
+        <div v-if="!activityData || activityData.length === 0" class="act-row">
+          <span class="t-mono t-dim" style="font-size:11px">—</span>
+          <span class="tag info" style="justify-content:center">INFO</span>
+          <span style="color:var(--text-1);font-size:13px">Aucun job d'import récent.</span>
+        </div>
+        <div v-for="act in activityData" :key="act.id" class="act-row">
+          <span class="t-mono t-dim" style="font-size:11px">{{ formatRelative(act.createdAt) }}</span>
+          <span :class="`tag ${jobTag(act.status)}`" style="justify-content:center">{{ act.type.replace('_', ' ') }}</span>
+          <span style="color:var(--text-1);font-size:13px">{{ jobLabel(act) }}</span>
         </div>
       </div>
     </div>
@@ -131,13 +160,6 @@ function goSearch() {
   if (!query.value.trim()) return
   router.push({ path: '/items', query: { q: query.value.trim() } })
 }
-
-const trending = [
-  { id: 'T8_2H_AXE_AVALON', label: 'Hache Avalonienne' },
-  { id: 'T7_2H_BOW_KEEPER', label: 'Arc des Druides' },
-  { id: 'T6_PLANKS', label: 'Planches T6' },
-  { id: 'T7_MEAL_OMELETTE', label: 'Omelette T7' },
-]
 
 const tools = [
   {
@@ -156,38 +178,123 @@ const tools = [
   },
   {
     title: 'Base de données',
-    desc: '12 480 items indexés, stats, traductions, sets.',
+    desc: 'Items indexés, stats, traductions, sets.',
     route: '/items',
     tag: null,
     iconPaths: '<path d="M4 19.5V4a2 2 0 0 1 2-2h13v18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2.5z"/><path d="M9 2v18"/>',
   },
   {
     title: 'Administration',
-    desc: 'Suivez vos workers et l\'état de la base.',
+    desc: "Suivez vos workers et l'état de la base.",
     route: '/admin',
     tag: null,
     iconPaths: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
   },
 ]
 
-const featuredStats = [
-  { k: 'Dégâts', v: '168', d: '+12 vs T7' },
-  { k: 'Vitesse', v: '1.21 atk/s', d: null },
-  { k: 'Charge', v: '21.4', d: null },
-  { k: 'IP requis', v: '1 100', d: null },
-]
+// Real data
+const { data: statsRaw } = await useFetch('/api/v1/stats')
+const { data: activityRaw } = await useFetch('/api/v1/activity')
+const { data: topProfitRaw } = useTopProfit()
 
-const codexStats = [
-  { k: 'Items indexés', v: '12 480', d: '+24 cette semaine', iconPaths: '<path d="M4 19.5V4a2 2 0 0 1 2-2h13v18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2.5z"/><path d="M9 2v18"/>' },
-  { k: 'Recettes connues', v: '3 187', d: '100% couvertes', iconPaths: '<path d="M12 2v6"/><path d="M12 8 7 14v8M12 8l5 6v8"/><circle cx="12" cy="2" r="1"/><circle cx="7" cy="14" r="1"/><circle cx="17" cy="14" r="1"/>' },
-  { k: 'Prix collectés / h', v: '184 320', d: '↑ 6.2%', iconPaths: '<circle cx="8" cy="8" r="6"/><path d="M18.1 9a6 6 0 0 1 0 9.8M16 18.5a6 6 0 0 1-7.2.8"/>' },
-  { k: 'Workers actifs', v: '8 / 8', d: 'Tous OK', iconPaths: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>' },
-]
+const statsData = computed(() => (statsRaw.value as any)?.data ?? null)
+const activityData = computed(() => (activityRaw.value as any)?.data ?? [])
+const topProfitItems = computed(() => topProfitRaw.value ?? [])
+const topProfit = computed(() => topProfitItems.value[0] ?? null)
+const trendingItems = computed(() => topProfitItems.value.slice(1, 5))
 
-const activity = [
-  { t: 'il y a 2 min', k: 'PRIX', v: '8 421 nouveaux prix synchronisés depuis Caerleon, Bridgewatch, Lymhurst.', tag: 'info' },
-  { t: 'il y a 14 min', k: 'BASE', v: 'Patch 27 — 12 nouveaux items + 4 recettes mises à jour.', tag: 'gold' },
-  { t: 'il y a 37 min', k: 'TRAD', v: 'Worker translation-fr a complété 320 entrées.', tag: 'success' },
-  { t: 'il y a 2 h', k: 'ALERTE', v: 'Worker market-blackmarket a redémarré (timeout API).', tag: 'danger' },
-]
+function fmtNumber(n: number | null | undefined): string {
+  if (n == null) return '…'
+  return n.toLocaleString('fr-FR')
+}
+
+function formatRelative(dateStr: string | null): string {
+  if (!dateStr) return '—'
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'à l\'instant'
+  if (mins < 60) return `il y a ${mins} min`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `il y a ${hrs} h`
+  return `il y a ${Math.floor(hrs / 24)} j`
+}
+
+function jobTag(status: string): string {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'danger'
+  if (status === 'RUNNING') return 'info'
+  return 'gold'
+}
+
+function jobLabel(act: any): string {
+  if (act.status === 'SUCCESS') {
+    const parts: string[] = []
+    if (act.itemsCreated > 0) parts.push(`${fmtNumber(act.itemsCreated)} créés`)
+    if (act.itemsUpdated > 0) parts.push(`${fmtNumber(act.itemsUpdated)} mis à jour`)
+    if (act.itemsProcessed > 0 && parts.length === 0) parts.push(`${fmtNumber(act.itemsProcessed)} traités`)
+    return parts.length > 0 ? parts.join(', ') + '.' : 'Import terminé.'
+  }
+  if (act.status === 'FAILED') return 'Import échoué.'
+  if (act.status === 'RUNNING') return 'Import en cours…'
+  return 'Import en attente.'
+}
+
+const codexStats = computed(() => {
+  const d = statsData.value
+  const lastImport = d?.lastImport
+  const lastSync = lastImport?.completedAt
+    ? formatRelative(lastImport.completedAt)
+    : 'Jamais'
+
+  return [
+    {
+      k: 'Items indexés',
+      v: fmtNumber(d?.totalItems),
+      d: lastImport ? `Dernier import ${lastSync}` : 'Aucun import',
+      iconPaths: '<path d="M4 19.5V4a2 2 0 0 1 2-2h13v18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2.5z"/><path d="M9 2v18"/>',
+    },
+    {
+      k: 'Recettes connues',
+      v: fmtNumber(d?.totalRecipes),
+      d: 'Craft + raffinage',
+      iconPaths: '<path d="M12 2v6"/><path d="M12 8 7 14v8M12 8l5 6v8"/><circle cx="12" cy="2" r="1"/><circle cx="7" cy="14" r="1"/><circle cx="17" cy="14" r="1"/>',
+    },
+  ]
+})
 </script>
+
+<style scoped>
+.featured-profit-stats {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(201, 161, 74, 0.06);
+  border: 1px solid rgba(201, 161, 74, 0.18);
+  border-radius: var(--radius);
+}
+
+.fps-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fps-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  font-family: var(--font-display);
+}
+
+.fps-val {
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.t-success { color: var(--success); }
+.t-danger  { color: var(--danger); }
+.t-gold    { color: var(--gold); }
+</style>
