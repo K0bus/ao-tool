@@ -1,11 +1,6 @@
 <template>
   <div class="page admin">
     <div class="page-header">
-      <div class="breadcrumb">
-        <NuxtLink to="/">Accueil</NuxtLink>
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-        <span>Administration</span>
-      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div>
           <h1 class="page-title">Dashboard</h1>
@@ -191,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'admin' })
 
 interface Stats {
   totalItems: number

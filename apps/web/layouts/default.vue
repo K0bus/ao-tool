@@ -48,6 +48,17 @@
           <NuxtLink to="/market" class="nav-link" :class="{ active: route.path === '/market' }">Marché</NuxtLink>
 
           <button
+            class="nav-link"
+            :class="{ active: route.path.startsWith('/killboard') || route.path.startsWith('/guilds') || route.path.startsWith('/alliances') || route.path.startsWith('/players'), 'mega-open': activeMega === 'pvp' }"
+            @mouseenter="openMega('pvp')"
+            @click="navigate('/killboard')"
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;color:var(--gold)"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 3.5-3.5"/><path d="m16 16 4 4"/><path d="m9.5 4.5 5 5"/><path d="m4.5 9.5 5 5"/></svg>
+            PvP
+            <svg class="caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <button
             class="nav-link nav-link--builds"
             :class="{ active: route.path.startsWith('/builds'), 'mega-open': activeMega === 'builds' }"
             @mouseenter="openMega('builds')"
@@ -59,6 +70,7 @@
           </button>
 
           <button
+            v-if="auth.isAdmin.value"
             class="nav-link"
             :class="{ active: route.path.startsWith('/admin'), 'mega-open': activeMega === 'admin' }"
             @mouseenter="openMega('admin')"
@@ -107,19 +119,18 @@
           </div>
         </div>
 
-        <!-- Icons -->
-        <button class="nav-icon-btn" aria-label="Notifications">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-          <span class="dot" />
-        </button>
-
         <NuxtLink to="/settings" class="nav-icon-btn" aria-label="Paramètres">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
         </NuxtLink>
 
-        <div class="nav-avatar" :title="auth.user.value?.username ?? 'Profil'">
-          {{ (auth.user.value?.username?.[0] ?? 'A').toUpperCase() }}
-        </div>
+        <template v-if="auth.isAuthenticated.value">
+          <div class="nav-avatar" :title="auth.user.value?.username ?? 'Profil'">
+            {{ (auth.user.value?.username?.[0] ?? '?').toUpperCase() }}
+          </div>
+        </template>
+        <template v-else>
+          <NuxtLink to="/auth/login" class="ds-btn primary sm nav-login-btn">Se connecter</NuxtLink>
+        </template>
       </nav>
 
       <!-- ===== MEGA MENUS ===== -->
@@ -266,6 +277,55 @@
         </div>
       </div>
 
+      <div v-if="activeMega === 'pvp'" class="mega" @mouseenter="cancelClose">
+        <div class="mega-grid">
+          <div class="mega-col">
+            <h4>Killboard</h4>
+            <ul>
+              <li>
+                <NuxtLink to="/killboard">
+                  <div>
+                    <div>Kills récents</div>
+                    <div class="desc">Flux PvP Europe en temps réel</div>
+                  </div>
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
+          <div class="mega-col">
+            <h4>Guildes</h4>
+            <ul>
+              <li>
+                <NuxtLink to="/killboard">
+                  <div>
+                    <div>Rechercher une guilde</div>
+                    <div class="desc">Stats, membres, top kills</div>
+                  </div>
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
+          <div class="mega-col">
+            <h4>Joueurs</h4>
+            <ul>
+              <li>
+                <NuxtLink to="/killboard">
+                  <div>
+                    <div>Rechercher un joueur</div>
+                    <div class="desc">Stats PvP, équipement récent</div>
+                  </div>
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
+          <div class="mega-cta">
+            <span class="label">Killboard</span>
+            <p>Suivez les batailles en temps réel. Recherchez un joueur ou une guilde pour voir leurs stats PvP complètes.</p>
+            <NuxtLink to="/killboard" class="ds-btn primary sm" style="margin-top:auto">Ouvrir le Killboard →</NuxtLink>
+          </div>
+        </div>
+      </div>
+
       <div v-if="activeMega === 'admin'" class="mega" @mouseenter="cancelClose">
         <div class="mega-grid">
           <div class="mega-col">
@@ -313,7 +373,7 @@
           <span class="t-dim" style="font-size:12px">v0.1 · build 1</span>
         </div>
         <div class="row" style="gap:16px">
-          <NuxtLink to="/admin" class="t-dim" style="font-size:12px">État système</NuxtLink>
+          <NuxtLink v-if="auth.isAdmin.value" to="/admin" class="t-dim" style="font-size:12px">État système</NuxtLink>
           <NuxtLink to="/settings" class="t-dim" style="font-size:12px">Paramètres</NuxtLink>
           <span class="t-dim" style="font-size:12px">Outil tiers · non affilié à Sandbox Interactive</span>
         </div>
@@ -411,5 +471,10 @@ onMounted(() => {
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.nav-login-btn {
+  margin-left: 4px;
+  white-space: nowrap;
 }
 </style>
