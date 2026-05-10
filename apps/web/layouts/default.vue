@@ -123,11 +123,32 @@
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
         </NuxtLink>
 
-        <template v-if="auth.isAuthenticated.value">
-          <div class="nav-avatar" :title="auth.user.value?.username ?? 'Profil'">
-            {{ (auth.user.value?.username?.[0] ?? '?').toUpperCase() }}
+        <div v-if="auth.isAuthenticated.value" class="nav-user-wrap">
+          <button
+            type="button"
+            class="nav-user-trigger"
+            :aria-expanded="userMenuOpen"
+            aria-haspopup="menu"
+            aria-label="Menu compte"
+            @click.stop="toggleUserMenu"
+          >
+            <span class="nav-avatar" aria-hidden="true">
+              {{ (auth.user.value?.username?.[0] ?? '?').toUpperCase() }}
+            </span>
+            <svg class="nav-user-caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div v-show="userMenuOpen" class="nav-user-dropdown" role="menu">
+            <div class="nav-user-meta">
+              <div class="nav-user-name">{{ auth.user.value?.username }}</div>
+              <div class="nav-user-email">{{ auth.user.value?.email }}</div>
+            </div>
+            <NuxtLink to="/builds/me" class="nav-user-item" role="menuitem" @click="userMenuOpen = false">Mes builds</NuxtLink>
+            <NuxtLink to="/settings" class="nav-user-item" role="menuitem" @click="userMenuOpen = false">Paramètres</NuxtLink>
+            <button type="button" class="nav-user-item nav-user-logout" role="menuitem" @click="onLogout">
+              Se déconnecter
+            </button>
           </div>
-        </template>
+        </div>
         <template v-else>
           <NuxtLink to="/auth/login" class="ds-btn primary sm nav-login-btn">Se connecter</NuxtLink>
         </template>
@@ -391,6 +412,7 @@ const { data: topProfitRaw } = useTopProfit()
 const topProfit = computed(() => (topProfitRaw.value ?? [])[0] ?? null)
 
 const activeMega = ref<string | null>(null)
+const userMenuOpen = ref(false)
 const searchQuery = ref('')
 const searchFocused = ref(false)
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -425,6 +447,7 @@ function onSearchBlur() {
 
 function openMega(key: string) {
   cancelClose()
+  userMenuOpen.value = false
   activeMega.value = key
 }
 
@@ -436,15 +459,29 @@ function cancelClose() {
   if (closeTimer) clearTimeout(closeTimer)
 }
 
+function toggleUserMenu() {
+  userMenuOpen.value = !userMenuOpen.value
+  if (userMenuOpen.value) activeMega.value = null
+}
+
+async function onLogout() {
+  userMenuOpen.value = false
+  await auth.logout()
+}
+
 function handleOutsideClick(e: MouseEvent) {
   const target = e.target as Element
   if (!target.closest('.sticky-header')) {
     activeMega.value = null
   }
+  if (!target.closest('.nav-user-wrap')) {
+    userMenuOpen.value = false
+  }
 }
 
 function navigate(path: string) {
   activeMega.value = null
+  userMenuOpen.value = false
   router.push(path)
 }
 
@@ -461,6 +498,7 @@ onMounted(() => {
     if (e.key === 'Escape') {
       activeMega.value = null
       searchFocused.value = false
+      userMenuOpen.value = false
     }
   })
 })
