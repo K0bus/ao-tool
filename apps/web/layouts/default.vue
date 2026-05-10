@@ -156,7 +156,7 @@
             <h4>Outils</h4>
             <ul>
               <li><NuxtLink to="/crafting"><div><div>Crafting Tree</div><div class="desc">Arbre vertical complet</div></div></NuxtLink></li>
-              <li><NuxtLink to="/crafting"><div><div>Calculateur de profit</div><div class="desc">Marge + taxes</div></div></NuxtLink></li>
+              <li><NuxtLink to="/items/profit"><div><div>Analyse de profit</div><div class="desc">Profit direct · tous les items</div></div></NuxtLink></li>
               <li><NuxtLink to="/crafting"><div><div>Liste de courses</div><div class="desc">Ressources agrégées</div></div></NuxtLink></li>
             </ul>
           </div>
@@ -181,8 +181,25 @@
           </div>
           <div class="mega-cta">
             <span class="label">Profit du moment</span>
-            <p>Hache Avalonienne T8 — marge estimée <span class="t-gold t-mono">+18.4%</span> à Caerleon avec retour matières.</p>
-            <NuxtLink to="/crafting" class="ds-btn primary sm" style="margin-top:auto">Voir le craft →</NuxtLink>
+            <template v-if="topProfit">
+              <p style="margin-bottom:6px">
+                <span style="font-weight:600;color:var(--text-0)">{{ topProfit.name }}</span>
+                <span v-if="topProfit.enchantmentLevel > 0" style="color:var(--gold);margin-left:3px">.{{ topProfit.enchantmentLevel }}</span>
+                <span style="color:var(--text-3);font-size:11px;margin-left:4px">T{{ topProfit.tier }}</span>
+              </p>
+              <p style="font-size:12px;color:var(--text-3)">
+                Marge moy. <span class="t-gold t-mono" style="font-weight:600">{{ topProfit.avgMargin >= 0 ? '+' : '' }}{{ topProfit.avgMargin.toFixed(1) }}%</span>
+                · meilleure à <span class="t-gold">{{ topProfit.bestCity }}</span>
+              </p>
+              <div style="display:flex;gap:6px;margin-top:auto">
+                <NuxtLink :to="`/items/${topProfit.uniqueName}`" class="ds-btn primary sm">Voir l'item →</NuxtLink>
+                <NuxtLink to="/items/profit" class="ds-btn sm">Tous les profits</NuxtLink>
+              </div>
+            </template>
+            <template v-else>
+              <p>Calcul de la meilleure opportunité craft en cours…</p>
+              <NuxtLink to="/items/profit" class="ds-btn primary sm" style="margin-top:auto">Analyse de profit →</NuxtLink>
+            </template>
           </div>
         </div>
       </div>
@@ -247,6 +264,9 @@
 const auth = useAuth()
 const route = useRoute()
 const router = useRouter()
+
+const { data: topProfitRaw } = useTopProfit()
+const topProfit = computed(() => (topProfitRaw.value ?? [])[0] ?? null)
 
 const activeMega = ref<string | null>(null)
 const searchQuery = ref('')
