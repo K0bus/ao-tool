@@ -19,10 +19,6 @@ export default defineNuxtConfig({
   runtimeConfig: {
     sessionSecret: process.env.NUXT_SESSION_SECRET ?? '',
     redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379',
-    minioEndpoint: process.env.MINIO_ENDPOINT ?? '',
-    minioUser: process.env.MINIO_USER ?? '',
-    minioPassword: process.env.MINIO_PASSWORD ?? '',
-    minioBucket: process.env.MINIO_BUCKET ?? 'albion-icons',
     public: {
       appName: 'Albion Tool',
       appUrl: process.env.APP_URL ?? 'http://localhost:3000',

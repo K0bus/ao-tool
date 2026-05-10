@@ -259,8 +259,9 @@
               </div>
             </div>
             <div class="panel-footer" style="padding:10px 18px;display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--border-divider);font-size:12px;color:var(--text-3)">
-              <span>Coût estimé</span>
-              <span class="t-muted">—</span>
+              <span>Nutrition requise</span>
+              <span v-if="item.craftingRecipe.silverCost > 0" class="t-mono" style="color:var(--gold)">{{ item.craftingRecipe.silverCost.toLocaleString('fr-FR') }}</span>
+              <span v-else class="t-muted">—</span>
             </div>
           </div>
         </div>

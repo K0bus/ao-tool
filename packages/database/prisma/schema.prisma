@@ -58,8 +58,15 @@ enum ImportType {
   FULL
   PARTIAL_ITEMS
   PARTIAL_RECIPES
+  PARTIAL_SPELLS
   ICONS_SYNC
   REINDEX
+}
+
+enum BuildVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
 }
 
 enum ImportStatus {
@@ -109,6 +116,8 @@ model User {
   auditLogs            AuditLog[]
   importJobs           ImportJob[]
   marketSyncJobs       MarketSyncJob[]
+  builds               Build[]
+  buildCollections     BuildCollection[]
 
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
@@ -212,6 +221,7 @@ model Item {
   cityBonuses    CityItemBonus[]
   marketPrices   MarketPrice[]
   resolvedPrices ResolvedPrice[]
+  itemSpells     ItemSpell[]
 
   dataHash   String?
   importedAt DateTime?
@@ -555,4 +565,152 @@ model SystemConfig {
 
   updatedAt   DateTime @updatedAt
   updatedById String?
+}
+
+// ══════════════════════════════════════════════════════════════
+// SPELLS
+// ══════════════════════════════════════════════════════════════
+
+model Spell {
+  id       String  @id // uniqueName from spells.json
+  icon     String? // @uisprite
+  category String? // @category (damage, crowdcontrol, buff...)
+  uiType   String? // @uitype (buff, debuff, damage...)
+  spellKind String  @default("active") // "active" | "passive" | "toggle"
+
+  cooldown        Float? // @recastdelay
+  energyCost      Float? // @energyusage
+  castTime        Float? // @castingtime
+  channelDuration Float? // @channelduration
+  range           Float? // @castrange
+
+  // Localization keys from source (resolve via localization.json)
+  nameLocaTag        String? // @namelocatag
+  descriptionLocaTag String? // @descriptionlocatag
+
+  // Full source JSON preserved for future use
+  rawData Json
+
+  localizations SpellLocalization[]
+  itemSpells    ItemSpell[]
+  buildSpells   BuildSpell[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spellKind])
+  @@index([category])
+}
+
+model SpellLocalization {
+  id          String  @id @default(cuid())
+  spellId     String
+  locale      String
+  name        String
+  description String? @db.Text
+
+  spell Spell @relation(fields: [spellId], references: [id], onDelete: Cascade)
+
+  @@unique([spellId, locale])
+  @@index([locale])
+}
+
+// Junction: which spells are available on each item (from craftingspelllist)
+model ItemSpell {
+  id         String @id @default(cuid())
+  itemId     String
+  spellId    String
+  slotNumber Int?   // null = passive, 1 = Q, 2 = W, 3 = E
+  tag        String? // alternative choice identifier (A, B, C...)
+
+  item  Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  spell Spell @relation(fields: [spellId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, spellId])
+  @@index([itemId])
+  @@index([spellId])
+  @@index([slotNumber])
+}
+
+// ══════════════════════════════════════════════════════════════
+// BUILDS
+// ══════════════════════════════════════════════════════════════
+
+// Build = snapshot d'un équipement complet + sélection de spells
+model Build {
+  id          String          @id @default(cuid())
+  shareCode   String          @unique // ~10 chars, base64url — URL de partage
+  title       String
+  description String?         @db.Text
+  gameMode    String?         // "ZvZ", "Solo PvP", "Ganking", "HCE"...
+  visibility  BuildVisibility @default(PRIVATE)
+  userId      String?
+
+  // Équipement stocké en JSON (itemIds). Pas de FK pour éviter
+  // la cascade de relations sur Item + supporter les items obsolètes.
+  equipment Json? // { weapon?, offhand?, helmet?, armor?, shoes?, cape?, bag?, food?, potion?, mount? }
+
+  spells      BuildSpell[]
+  collections BuildCollectionItem[]
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([shareCode])
+  @@index([visibility, gameMode])
+  @@index([createdAt])
+}
+
+// Spell sélectionné par slot dans un build
+model BuildSpell {
+  id      String @id @default(cuid())
+  buildId String
+  spellId String
+  slotKey String // "Q", "W", "E", "P1", "P2" — identifiant de slot
+
+  build Build @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  spell Spell @relation(fields: [spellId], references: [id])
+
+  @@unique([buildId, slotKey])
+  @@index([buildId])
+}
+
+// Collection de builds (ex: "ZvZ Tank", "Ganking") — nécessite un compte
+model BuildCollection {
+  id          String          @id @default(cuid())
+  shareCode   String          @unique
+  title       String
+  description String?         @db.Text
+  visibility  BuildVisibility @default(PRIVATE)
+  userId      String
+
+  user  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items BuildCollectionItem[]
+
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([shareCode])
+  @@index([visibility])
+}
+
+model BuildCollectionItem {
+  id           String @id @default(cuid())
+  collectionId String
+  buildId      String
+  sortOrder    Int    @default(0)
+  note         String?
+
+  collection BuildCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  build      Build           @relation(fields: [buildId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, buildId])
+  @@index([collectionId])
+  @@index([buildId])
 }

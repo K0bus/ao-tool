@@ -19,6 +19,7 @@ interface TreeNode {
   recipe: {
     resultCount: number;
     craftingFame: number;
+    silverCost: number;
     stationId: string | null;
     ingredients: TreeNode[];
   } | null;
@@ -94,6 +95,7 @@ export default defineEventHandler(async (event) => {
             select: {
               resultCount: true,
               craftingFame: true,
+              silverCost: true,
               craftingStationId: true,
               ingredients: {
                 select: { itemId: true, quantity: true, maxReturnRate: true },
@@ -171,6 +173,7 @@ export default defineEventHandler(async (event) => {
                 resultCount: recipe.resultCount,
                 craftingFame:
                   (recipe as { craftingFame?: number }).craftingFame ?? 0,
+                silverCost: (recipe as { silverCost?: number }).silverCost ?? 0,
                 stationId: recipe.craftingStationId,
                 ingredients: recipe.ingredients.map((ing) =>
                   buildNode(

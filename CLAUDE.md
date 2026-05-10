@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 pnpm install
 
-# Start infrastructure (PostgreSQL, Redis, MinIO)
+# Start infrastructure (PostgreSQL, Redis)
 docker-compose up -d
 
 # Run database migrations
@@ -36,7 +36,6 @@ pnpm db:seed        # Seed initial data
 
 # Data import scripts
 pnpm import:full           # Full Albion Online data import
-pnpm import:icons          # Sync item icons to MinIO
 ```
 
 ## Architecture Overview
@@ -59,7 +58,6 @@ docker/              — Dockerfile(s) for app + worker containers
 
 - **PostgreSQL 16** — primary database
 - **Redis 7** — session cache + BullMQ job queue
-- **MinIO** — S3-compatible object storage for item icons (ports 9000/9001)
 
 ### Web App (`apps/web`)
 

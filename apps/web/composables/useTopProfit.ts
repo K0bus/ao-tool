@@ -7,6 +7,7 @@ export interface TopProfitItem {
   itemType: string | null
   shopCategory: string | null
   shopSubcategory: string | null
+  categoryName: string | null
   avgMargin: number
   bestCity: string
   bestMargin: number

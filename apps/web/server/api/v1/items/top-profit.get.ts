@@ -2,7 +2,7 @@ import { prisma } from "~/server/utils/prisma";
 import { cached } from "~/server/utils/cache";
 
 const EXCLUDED = ["blackmarket", "caerleon", "brecilien"];
-const CRAFT_FEE = 8.5;
+const SILVER_PER_100_NUTRITION = 999; // default public station rate
 const TAX_RATE = 0.04;
 const LOCALE = "FR-FR";
 const MIN_CITIES = 2; // item must be calculable in at least 2 cities
@@ -54,6 +54,7 @@ async function computeTopProfit() {
       craftingRecipe: {
         select: {
           resultCount: true,
+          silverCost: true,
           ingredients: {
             select: {
               quantity: true,
@@ -73,6 +74,10 @@ async function computeTopProfit() {
       marketPrices: {
         where: { locationId: { in: locationIds }, quality: 1 },
         select: { locationId: true, sellPriceMin: true },
+      },
+      cityBonuses: {
+        where: { locationId: { in: locationIds } },
+        select: { locationId: true, craftingBonus: true },
       },
     },
   });
@@ -131,11 +136,17 @@ async function computeTopProfit() {
       }
       if (skip) continue;
 
-      const netCost = rawCost - savings + rawCost * (CRAFT_FEE / 100);
+      const nutritionRequired = item.craftingRecipe!.silverCost ?? 0;
+      const netMat = rawCost - savings;
+      // Station fee = (nutritionRequired / 100) × silverPer100Nutrition
+      const stationFee = (nutritionRequired / 100) * SILVER_PER_100_NUTRITION;
+      const netCost = netMat + stationFee;
       const sellPrice = sellByLoc.get(loc.id);
       if (!sellPrice || sellPrice === 0) continue;
 
-      const revenue = sellPrice * (item.craftingRecipe!.resultCount ?? 1);
+      const cityBonus = item.cityBonuses.find(b => b.locationId === loc.id)?.craftingBonus ?? 0;
+      const effectiveOutput = (item.craftingRecipe!.resultCount ?? 1) * (1 + cityBonus / 100);
+      const revenue = sellPrice * effectiveOutput;
       const profit = revenue - revenue * TAX_RATE - netCost;
       const margin = netCost > 0 ? (profit / netCost) * 100 : 0;
 

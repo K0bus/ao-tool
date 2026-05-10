@@ -12,6 +12,10 @@
           <p class="page-sub">Supervision des workers, état de la base et des imports.</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="ds-btn ghost sm" :disabled="purgingTopProfit" @click="purgeTopProfitCache">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            {{ purgingTopProfit ? 'Purge…' : 'Vider cache top profit' }}
+          </button>
           <button class="ds-btn ghost sm" :disabled="syncing" @click="triggerMarketSync">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
             {{ syncing ? 'Sync…' : 'Sync Marché' }}
@@ -238,6 +242,7 @@ const importLogs = ref<ImportLog[]>([])
 const logsLoading = ref(true)
 const importing = ref(false)
 const syncing = ref(false)
+const purgingTopProfit = ref(false)
 const importMessage = ref<string | null>(null)
 const importError = ref(false)
 
@@ -338,6 +343,17 @@ async function triggerImport() {
     importError.value = true
     importMessage.value = err?.data?.message ?? "Erreur lors du déclenchement de l'import"
   } finally { importing.value = false }
+}
+
+async function purgeTopProfitCache() {
+  purgingTopProfit.value = true; importMessage.value = null; importError.value = false
+  try {
+    const res = await $fetch<{ data: { message: string } }>('/api/v1/admin/cache/purge', { method: 'POST', body: { key: 'top-profit' } })
+    importMessage.value = res.data.message
+  } catch (err: any) {
+    importError.value = true
+    importMessage.value = err?.data?.message ?? 'Erreur lors de la purge du cache'
+  } finally { purgingTopProfit.value = false }
 }
 
 async function triggerMarketSync() {

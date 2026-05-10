@@ -38,10 +38,18 @@
 
           <div class="field">
             <label class="field-label">
-              Frais de craft
-              <span class="t-mono t-gold" style="margin-left:6px">{{ craftFeePercent.toFixed(1) }}%</span>
+              Station (◇/100 nutrition)
+              <span class="t-mono t-gold" style="margin-left:6px">{{ silverPer100Nutrition }}◇</span>
             </label>
-            <input v-model.number="craftFeePercent" type="range" class="range" min="0" max="25" step="0.5" @input="debouncedReload" />
+            <select v-model="stationPreset" class="ds-input" style="margin-bottom:6px" @change="onStationPresetChange">
+              <option value="public">Publique royale (999)</option>
+              <option value="road">Road/route (1 500)</option>
+              <option value="hideout_t7">Hideout T7 (500)</option>
+              <option value="hideout_t8">Hideout T8 (300)</option>
+              <option value="free">Gratuit (0)</option>
+              <option value="custom">Personnalisé</option>
+            </select>
+            <input v-model.number="silverPer100Nutrition" type="number" class="ds-input" min="0" max="10000" step="1" @input="debouncedReload" />
           </div>
 
           <div class="settings-toggles">
@@ -200,7 +208,7 @@
                 <th class="col-item">Item</th>
                 <th class="col-num">Matières brut</th>
                 <th class="col-num">Retour mat.</th>
-                <th class="col-num">Frais craft</th>
+                <th class="col-num">Fee station</th>
                 <th class="col-num">Coût net</th>
                 <th class="col-num">Prix vente</th>
                 <th class="col-num col-profit">Profit</th>
@@ -367,12 +375,26 @@ const DEFAULT_ICON = '<rect x="3" y="3" width="18" height="18" rx="2"/>'
 
 // ── Settings (persisted) ──────────────────────────────────────────────────
 
-const city             = useLocalStorage('profit:city', 'Caerleon')
-const quality          = useLocalStorage('profit:quality', 1)
-const craftFeePercent  = useLocalStorage('profit:craftFeePercent', 8.5)
-const useFocus         = useLocalStorage('profit:useFocus', true)
-const useCityBonus     = useLocalStorage('profit:useCityBonus', true)
-const includeTax       = useLocalStorage('profit:includeTax', true)
+const city                 = useLocalStorage('profit:city', 'Caerleon')
+const quality              = useLocalStorage('profit:quality', 1)
+const silverPer100Nutrition = useLocalStorage('profit:silverPer100Nutrition', 999)
+const useFocus             = useLocalStorage('profit:useFocus', true)
+const useCityBonus         = useLocalStorage('profit:useCityBonus', true)
+const includeTax           = useLocalStorage('profit:includeTax', true)
+
+const STATION_PRESETS_PROFIT: Record<string, number | null> = {
+  public: 999,
+  road: 1500,
+  hideout_t7: 500,
+  hideout_t8: 300,
+  free: 0,
+  custom: null,
+}
+const stationPreset = ref('public')
+function onStationPresetChange() {
+  const preset = STATION_PRESETS_PROFIT[stationPreset.value]
+  if (preset !== null) { silverPer100Nutrition.value = preset; debouncedReload() }
+}
 
 // ── Categories ────────────────────────────────────────────────────────────
 
@@ -466,15 +488,14 @@ function buildQuery(page: number) {
     quality: quality.value,
     useFocus: String(useFocus.value),
     useCityBonus: String(useCityBonus.value),
-    craftFeePercent: craftFeePercent.value,
+    silverPer100Nutrition: silverPer100Nutrition.value,
     includeTax: String(includeTax.value),
     sortBy: sortBy.value,
     page,
     limit: 48,
   }
   if (searchQ.value.trim().length >= 2) q.q = searchQ.value.trim()
-  if (activeTiers.value.length === 1) q.tier = activeTiers.value[0]
-  else if (activeTiers.value.length > 1) q.tier = activeTiers.value[0] // TODO: multi-tier API support
+  if (activeTiers.value.length > 0) q.tier = activeTiers.value as unknown as number
   if (activeCategoryId.value) q.categoryId = activeCategoryId.value
   return q
 }

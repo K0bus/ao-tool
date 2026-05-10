@@ -7,10 +7,17 @@ const schema = z.object({
   quality: z.coerce.number().int().min(1).max(5).default(1),
   useFocus: z.enum(["true", "false"]).default("true"),
   useCityBonus: z.enum(["true", "false"]).default("true"),
-  craftFeePercent: z.coerce.number().min(0).max(25).default(8.5),
+  silverPer100Nutrition: z.coerce.number().min(0).max(10000).default(999),
   includeTax: z.enum(["true", "false"]).default("true"),
   sortBy: z.enum(["profit", "margin", "sellRevenue", "ingredientCost"]).default("profit"),
-  tier: z.coerce.number().int().min(1).max(8).optional(),
+  tier: z.preprocess(
+    (v) => {
+      if (v === undefined) return undefined;
+      const arr = Array.isArray(v) ? v : [v];
+      return arr.map(Number).filter((n) => !isNaN(n));
+    },
+    z.array(z.number().int().min(1).max(8)).optional()
+  ),
   enchantment: z.coerce.number().int().min(0).max(4).optional(),
   categoryId: z.string().optional(),
   q: z.string().optional(),
@@ -30,7 +37,7 @@ export default defineEventHandler(async (event) => {
   const {
     location: locationName, quality,
     useFocus: _useFocus, useCityBonus: _useCityBonus, includeTax: _includeTax,
-    craftFeePercent, sortBy, tier, enchantment, categoryId, q, page, limit,
+    silverPer100Nutrition, sortBy, tier, enchantment, categoryId, q, page, limit,
   } = parsed.data;
 
   const useFocus = _useFocus === "true";
@@ -51,7 +58,9 @@ export default defineEventHandler(async (event) => {
     craftingRecipe: { isNot: null },
   };
 
-  if (tier !== undefined) where.tier = tier;
+  if (tier !== undefined && tier.length > 0) {
+    where.tier = tier.length === 1 ? tier[0] : { in: tier };
+  }
   if (enchantment !== undefined) where.enchantmentLevel = enchantment;
 
   if (categoryId) {
@@ -164,7 +173,9 @@ export default defineEventHandler(async (event) => {
     }
 
     const ingredientCost = rawCost - savings;
-    const craftFee = rawCost * (craftFeePercent / 100);
+    // Station fee = (nutritionRequired / 100) × silverPer100Nutrition
+    const nutritionRequired = item.craftingRecipe?.silverCost ?? 0;
+    const craftFee = (nutritionRequired / 100) * silverPer100Nutrition;
     const netCost = ingredientCost + craftFee;
 
     const effectiveOutput =

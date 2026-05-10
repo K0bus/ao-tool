@@ -1,4 +1,5 @@
-import type { RawBaseItem, RawItemsJson, RawLocalizationTable } from './types'
+import type { RawBaseItem, RawItemsJson, RawLocalizationTable, RawSpellsJson, NormalizedSpell } from './types'
+import { normalizeSpell } from './normalizers/spell'
 
 // Source canonique : items.json (pas /formatted/ qui est une version appauvrie)
 const AO_DATA_BASE = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/refs/heads/master'
@@ -6,6 +7,7 @@ const AO_DATA_BASE = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/ref
 const URLS = {
   items: `${AO_DATA_BASE}/items.json`,
   localizations: `${AO_DATA_BASE}/localization.json`,
+  spells: `${AO_DATA_BASE}/spells.json`,
 } as const
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -92,6 +94,29 @@ export async function fetchAoData(): Promise<AoRawData> {
 
   console.log(`Fetched ${items.length} base items, ${Object.keys(localizations).length} locales`)
   return { items, localizations }
+}
+
+export async function fetchSpells(localizations: RawLocalizationTable): Promise<NormalizedSpell[]> {
+  console.log('Fetching spells.json...')
+  const raw = await fetchJson<RawSpellsJson>(URLS.spells)
+  const spells = raw.spells
+
+  const toArray = <T>(v: T | T[] | undefined): T[] => {
+    if (!v) return []
+    return Array.isArray(v) ? v : [v]
+  }
+
+  const passives = toArray(spells.passivespell)
+  const actives = toArray(spells.activespell)
+  const toggles = toArray(spells.togglespell)
+
+  const result: NormalizedSpell[] = []
+  for (const sp of passives) result.push(normalizeSpell(sp, 'passive', localizations))
+  for (const sp of actives) result.push(normalizeSpell(sp, 'active', localizations))
+  for (const sp of toggles) result.push(normalizeSpell(sp, 'toggle', localizations))
+
+  console.log(`Fetched ${result.length} spells (${passives.length} passive, ${actives.length} active, ${toggles.length} toggle)`)
+  return result
 }
 
 export async function fetchLatestCommit(): Promise<string> {

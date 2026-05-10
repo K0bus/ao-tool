@@ -1,5 +1,5 @@
 import { prisma, type ItemType } from '@albion-tool/database'
-import { fetchAoData, fetchLatestCommit, normalizeItem } from '@albion-tool/ao-parser'
+import { fetchAoData, fetchLatestCommit, normalizeItem, fetchSpells } from '@albion-tool/ao-parser'
 import type { NormalizedItem } from '@albion-tool/ao-parser'
 import type { ImportJobProgress, ImportJobResult, ImportJobType } from '@albion-tool/queue'
 
@@ -383,6 +383,116 @@ export async function runImport(
       if (refiningDone % 100 === 0) await report('refining', refiningDone, refinable.length)
     }
     await report('refining', refiningDone, refinable.length)
+
+    // ── Phase 9: Spells ─────────────────────────────────────────────────────
+    await report('spells', 0, 0)
+    await logInfo('Fetching and importing spells...')
+
+    let spellsCreated = 0, spellsUpdated = 0
+    try {
+      const normalizedSpells = await fetchSpells(localizations)
+      const spellBatches = chunk(normalizedSpells, BATCH_SIZE)
+
+      for (const batch of spellBatches) {
+        for (const spell of batch) {
+          try {
+            const existing = await prisma.spell.findUnique({
+              where: { id: spell.uniqueName },
+              select: { id: true },
+            })
+
+            await prisma.spell.upsert({
+              where: { id: spell.uniqueName },
+              create: {
+                id: spell.uniqueName,
+                spellKind: spell.spellKind,
+                icon: spell.icon,
+                category: spell.category,
+                uiType: spell.uiType,
+                cooldown: spell.cooldown,
+                energyCost: spell.energyCost,
+                castTime: spell.castTime,
+                channelDuration: spell.channelDuration,
+                range: spell.range,
+                nameLocaTag: spell.nameLocaTag,
+                descriptionLocaTag: spell.descriptionLocaTag,
+                rawData: spell.rawData,
+              },
+              update: {
+                spellKind: spell.spellKind,
+                icon: spell.icon,
+                category: spell.category,
+                uiType: spell.uiType,
+                cooldown: spell.cooldown,
+                energyCost: spell.energyCost,
+                castTime: spell.castTime,
+                channelDuration: spell.channelDuration,
+                range: spell.range,
+                nameLocaTag: spell.nameLocaTag,
+                descriptionLocaTag: spell.descriptionLocaTag,
+                rawData: spell.rawData,
+              },
+            })
+
+            existing ? spellsUpdated++ : spellsCreated++
+
+            // Localisations des spells (non-critique)
+            if (spell.localizations.length > 0) {
+              await prisma.$transaction(
+                spell.localizations.map((loc) =>
+                  prisma.spellLocalization.upsert({
+                    where: { spellId_locale: { spellId: spell.uniqueName, locale: loc.locale } },
+                    create: { spellId: spell.uniqueName, locale: loc.locale, name: loc.name, description: loc.description },
+                    update: { name: loc.name, description: loc.description },
+                  })
+                )
+              ).catch(() => {})
+            }
+          } catch (err) {
+            await logError(`Failed to import spell ${spell.uniqueName}`, { error: String(err) })
+          }
+        }
+      }
+
+      await logInfo(`Imported spells: ${spellsCreated} created, ${spellsUpdated} updated`)
+    } catch (err) {
+      await logError('Spell import failed', { error: String(err) })
+    }
+    await report('spells', spellsCreated + spellsUpdated, spellsCreated + spellsUpdated)
+
+    // ── Phase 10: Item → Spell links ────────────────────────────────────────
+    await report('item_spells', 0, normalized.length)
+    await logInfo('Linking items to their spells (craftingspelllist)...')
+
+    let linksDone = 0
+    for (const item of normalized) {
+      linksDone++
+      if (item.craftSpells.length === 0) continue
+
+      try {
+        // Supprimer les anciens liens pour cet item puis recréer
+        await prisma.itemSpell.deleteMany({ where: { itemId: item.uniqueName } })
+
+        const links = item.craftSpells
+          .filter((cs) => cs.uniqueName)
+          .map((cs) => ({
+            itemId: item.uniqueName,
+            spellId: cs.uniqueName,
+            slotNumber: cs.slots ? parseInt(cs.slots, 10) : null,
+            tag: cs.tag,
+          }))
+          .filter((l) => !isNaN(l.slotNumber as number) || l.slotNumber === null)
+
+        if (links.length > 0) {
+          // createMany + skipDuplicates en cas de doublon @uniquename dans craftSpells
+          await prisma.itemSpell.createMany({ data: links, skipDuplicates: true }).catch(() => {})
+        }
+      } catch { /* non-critique */ }
+
+      if (linksDone % 500 === 0) await report('item_spells', linksDone, normalized.length)
+    }
+    await report('item_spells', linksDone, normalized.length)
+    await logInfo(`Item-spell links done for ${linksDone} items`)
 
     // ── Done ────────────────────────────────────────────────────────────────
     const durationMs = Date.now() - startedAt

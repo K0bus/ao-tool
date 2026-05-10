@@ -134,6 +134,7 @@ interface ProfitRow {
     ingredientCost: number
     returnSavings: number
     craftFee: number
+    silverCost: number
     netCost: number
     sellRevenue: number | null
     tax: number
@@ -163,7 +164,7 @@ async function loadProfit() {
       quality: 1,
       useFocus: 'false',
       useCityBonus: 'false',
-      craftFeePercent: 8.5,
+      silverPer100Nutrition: 999,
       includeTax: 'true',
       sortBy: 'profit',
       limit: 10,

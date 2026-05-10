@@ -2,6 +2,12 @@ import { z } from "zod";
 import { prisma } from "~/server/utils/prisma";
 import type { Prisma } from "@albion-tool/database";
 
+const VALID_ITEM_TYPES = [
+  "WEAPON","OFF_HAND","ARMOR_HEAD","ARMOR_CHEST","ARMOR_SHOES",
+  "BAG","CAPE","MOUNT","CONSUMABLE","RESOURCE_RAW","RESOURCE_REFINED",
+  "PRODUCT","FARMABLE","FURNITURE","JOURNAL","LABORER","OTHER",
+] as const
+
 const schema = z.object({
   q: z.string().optional(),
   tier: z.coerce.number().int().min(1).max(8).optional(),
@@ -10,6 +16,7 @@ const schema = z.object({
   category: z.string().optional(),
   subcategory: z.string().optional(),
   categoryId: z.string().optional(),
+  itemType: z.string().optional(), // comma-separated ItemType values
   craftable: z.enum(["true", "false"]).optional(),
   refinable: z.enum(["true", "false"]).optional(),
   cursor: z.string().optional(),
@@ -36,6 +43,7 @@ export default defineEventHandler(async (event) => {
     category,
     subcategory,
     categoryId,
+    itemType,
     craftable,
     refinable,
     cursor,
@@ -54,6 +62,15 @@ export default defineEventHandler(async (event) => {
   }
 
   if (enchantment !== undefined) where.enchantmentLevel = enchantment;
+
+  if (itemType) {
+    const types = itemType.split(",")
+      .map((t) => t.trim().toUpperCase())
+      .filter((t): t is typeof VALID_ITEM_TYPES[number] => VALID_ITEM_TYPES.includes(t as any))
+    if (types.length === 1) where.itemType = types[0] as any
+    else if (types.length > 1) where.itemType = { in: types as any[] }
+  }
+
   if (categoryId) {
     // Résoudre tous les IDs descendants (N niveaux) en mémoire
     const allCats = await prisma.category.findMany({ select: { id: true, parentId: true } })

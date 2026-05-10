@@ -48,6 +48,17 @@
           <NuxtLink to="/market" class="nav-link" :class="{ active: route.path === '/market' }">Marché</NuxtLink>
 
           <button
+            class="nav-link nav-link--builds"
+            :class="{ active: route.path.startsWith('/builds'), 'mega-open': activeMega === 'builds' }"
+            @mouseenter="openMega('builds')"
+            @click="navigate('/builds')"
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;color:var(--gold)"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+            Builds
+            <svg class="caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <button
             class="nav-link"
             :class="{ active: route.path.startsWith('/admin'), 'mega-open': activeMega === 'admin' }"
             @mouseenter="openMega('admin')"
@@ -204,6 +215,57 @@
         </div>
       </div>
 
+      <div v-if="activeMega === 'builds'" class="mega" @mouseenter="cancelClose">
+        <div class="mega-grid">
+          <div class="mega-col">
+            <h4>Créer</h4>
+            <ul>
+              <li>
+                <NuxtLink to="/builds/create">
+                  <div>
+                    <div>Créateur de build</div>
+                    <div class="desc">Composez votre setup complet</div>
+                  </div>
+                </NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/builds/create?mode=zvz">
+                  <div>
+                    <div>Template ZvZ</div>
+                    <div class="desc">Préconfiguration guerre de guildes</div>
+                  </div>
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
+          <div class="mega-col">
+            <h4>Parcourir</h4>
+            <ul>
+              <li><NuxtLink to="/builds">Tous les builds publics</NuxtLink></li>
+              <li><NuxtLink to="/builds?gameMode=Solo+PvP">Solo PvP</NuxtLink></li>
+              <li><NuxtLink to="/builds?gameMode=ZvZ">ZvZ</NuxtLink></li>
+              <li><NuxtLink to="/builds?gameMode=Ganking">Ganking</NuxtLink></li>
+              <li><NuxtLink to="/builds?gameMode=HCE">HCE</NuxtLink></li>
+              <li><NuxtLink to="/builds/collections">Collections</NuxtLink></li>
+            </ul>
+          </div>
+          <div class="mega-col">
+            <h4>Mes builds</h4>
+            <ul>
+              <li><NuxtLink to="/builds/me">Mes builds sauvegardés</NuxtLink></li>
+              <li><NuxtLink to="/builds/me/collections">Mes collections</NuxtLink></li>
+            </ul>
+          </div>
+          <div class="mega-cta">
+            <span class="label">Build Creator</span>
+            <p>Construisez votre setup complet, choisissez vos spells Q/W/E, partagez en un lien — même sans compte.</p>
+            <NuxtLink to="/builds/create" class="ds-btn primary sm" style="margin-top:auto">
+              Créer un build →
+            </NuxtLink>
+          </div>
+        </div>
+      </div>
+
       <div v-if="activeMega === 'admin'" class="mega" @mouseenter="cancelClose">
         <div class="mega-grid">
           <div class="mega-col">
@@ -280,8 +342,8 @@ const searchResults = ref<SearchItem[]>([])
 watch(searchQuery, async (q) => {
   if (q.length < 2) { searchResults.value = []; return }
   try {
-    const res = await $fetch<{ data: { items: SearchItem[] } }>('/api/v1/items', { query: { q, limit: 6 } })
-    searchResults.value = res.data.items.map((i: any) => ({
+    const res = await $fetch<{ data: SearchItem[] }>('/api/v1/items', { query: { q, limit: 6 } })
+    searchResults.value = res.data.map((i: any) => ({
       uniqueName: i.uniqueName,
       name: i.name ?? i.uniqueName,
       tier: i.tier,

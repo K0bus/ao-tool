@@ -93,6 +93,87 @@ export interface RawLocalizationTable {
   [locale: string]: Record<string, string>
 }
 
+// ─── Types bruts pour spells.json ──────────────────────────────────────────
+
+export interface RawPassiveSpell {
+  '@uniquename': string
+  '@namelocatag'?: string
+  '@descriptionlocatag'?: string
+  '@uisprite'?: string
+  '@unlockedtoequip'?: string
+  [key: string]: unknown
+}
+
+export interface RawActiveSpell {
+  '@uniquename': string
+  '@namelocatag'?: string
+  '@descriptionlocatag'?: string
+  '@spelleffectlocatag'?: string
+  '@uisprite'?: string
+  '@castingtime'?: string
+  '@energyusage'?: string
+  '@recastdelay'?: string
+  '@castrange'?: string
+  '@category'?: string
+  '@uitype'?: string
+  '@channelduration'?: string
+  [key: string]: unknown
+}
+
+export interface RawToggleSpell {
+  '@uniquename': string
+  '@namelocatag'?: string
+  '@descriptionlocatag'?: string
+  '@uisprite'?: string
+  '@castingtime'?: string
+  '@energyusage'?: string
+  '@recastdelay'?: string
+  '@castrange'?: string
+  '@category'?: string
+  '@uitype'?: string
+  [key: string]: unknown
+}
+
+export interface RawSpellsJson {
+  spells: {
+    passivespell?: RawPassiveSpell | RawPassiveSpell[]
+    activespell?: RawActiveSpell | RawActiveSpell[]
+    togglespell?: RawToggleSpell | RawToggleSpell[]
+    [key: string]: unknown
+  }
+}
+
+// ─── Types normalisés pour spells ──────────────────────────────────────────
+
+export interface NormalizedSpell {
+  uniqueName: string
+  spellKind: 'active' | 'passive' | 'toggle'
+  icon?: string
+  category?: string
+  uiType?: string
+  cooldown?: number
+  energyCost?: number
+  castTime?: number
+  channelDuration?: number
+  range?: number
+  nameLocaTag?: string
+  descriptionLocaTag?: string
+  rawData: Record<string, unknown>
+  localizations: Array<{
+    locale: string
+    name: string
+    description?: string
+  }>
+}
+
+// Association item → spell (issu du craftingspelllist)
+export interface NormalizedItemSpellLink {
+  itemUniqueName: string
+  spellUniqueName: string
+  slotNumber: number | null // null = passive, 1 = Q, 2 = W, 3 = E
+  tag?: string
+}
+
 // ─── Types normalisés pour import DB ───────────────────────────────────────
 
 export interface NormalizedIngredient {

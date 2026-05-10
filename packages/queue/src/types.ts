@@ -2,6 +2,7 @@ export type ImportJobType =
   | 'FULL'
   | 'PARTIAL_ITEMS'
   | 'PARTIAL_RECIPES'
+  | 'PARTIAL_SPELLS'
   | 'ICONS_SYNC'
   | 'REINDEX'
 
@@ -21,7 +22,7 @@ export interface ImportJobResult {
 }
 
 export interface ImportJobProgress {
-  phase: 'fetching' | 'normalizing' | 'categories' | 'importing' | 'localizations' | 'variants' | 'recipes' | 'refining' | 'done'
+  phase: 'fetching' | 'normalizing' | 'categories' | 'importing' | 'localizations' | 'variants' | 'recipes' | 'refining' | 'spells' | 'item_spells' | 'done'
   processed: number
   total: number
   percent: number
