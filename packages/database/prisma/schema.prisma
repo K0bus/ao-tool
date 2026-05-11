@@ -220,6 +220,7 @@ model Item {
   usedInRefining RefiningIngredient[]
   cityBonuses    CityItemBonus[]
   marketPrices   MarketPrice[]
+  marketPricesHistory MarketPriceHistory[]
   resolvedPrices ResolvedPrice[]
   itemSpells     ItemSpell[]
 
@@ -433,6 +434,7 @@ model ResolvedPrice {
 
   @@unique([itemId, locationId, quality])
   @@index([itemId, locationId, quality])
+  
   @@index([updatedAt])
 }
 
@@ -446,6 +448,8 @@ model MarketPriceHistory {
   buyPriceMax  Int
   
   timestamp    DateTime @default(now())
+
+  item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId, locationId, quality])
   @@index([itemId, locationId, quality, timestamp])
@@ -502,6 +506,7 @@ model MarketSyncJob {
   durationMs  Int?
 
   itemsRequested Int @default(0)
+  itemsProcessed Int @default(0)
   itemsUpdated   Int @default(0)
   itemsFailed    Int @default(0)
 

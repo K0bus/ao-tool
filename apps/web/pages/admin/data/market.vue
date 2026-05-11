@@ -37,8 +37,8 @@
       </div>
 
       <div class="flex justify-between mt-2 text-xs text-gray-500">
-        <span>{{ activeJob.itemsUpdated.toLocaleString() }} / {{ activeJob.itemsRequested.toLocaleString() }} items updated</span>
-        <span v-if="activeJob.itemsFailed > 0" class="text-red-400">{{ activeJob.itemsFailed }} failed</span>
+        <span>{{ activeJob.itemsProcessed.toLocaleString() }} / {{ activeJob.itemsRequested.toLocaleString() }} items processed</span>
+        <span class="text-xs text-gray-400">({{ activeJob.itemsUpdated.toLocaleString() }} updated, {{ activeJob.itemsFailed.toLocaleString() }} errors)</span>
       </div>
     </div>
 
@@ -87,7 +87,7 @@
             </td>
             <td class="px-4 py-3 text-right tabular-nums">
               <div class="flex flex-col items-end">
-                <span class="text-xs text-gray-300">{{ job.itemsUpdated.toLocaleString() }} / {{ job.itemsRequested.toLocaleString() }}</span>
+                <span class="text-xs text-gray-300">{{ job.itemsProcessed.toLocaleString() }} / {{ job.itemsRequested.toLocaleString() }}</span>
                 <div v-if="job.itemsFailed > 0" class="text-[10px] text-red-400">
                   {{ job.itemsFailed }} errors
                 </div>
@@ -115,6 +115,7 @@ interface MarketSyncJob {
   type: string
   status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED'
   itemsRequested: number
+  itemsProcessed: number
   itemsUpdated: number
   itemsFailed: number
   durationMs: number | null
@@ -132,7 +133,7 @@ const activeJobId = computed(() => activeJob.value?.id ?? null)
 
 const progressPercent = computed(() => {
   if (!activeJob.value || activeJob.value.itemsRequested === 0) return 0
-  return Math.round(((activeJob.value.itemsUpdated + activeJob.value.itemsFailed) / activeJob.value.itemsRequested) * 100)
+  return Math.round((activeJob.value.itemsProcessed / activeJob.value.itemsRequested) * 100)
 })
 
 async function loadJobs() {

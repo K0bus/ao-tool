@@ -1,9 +1,41 @@
-import { prisma } from '@albion-tool/database'
-import { marketApiClient, type RawMarketPrice } from './api-client'
+import { randomUUID } from 'node:crypto'
+import { prisma, Prisma, PriceConfidence } from '@albion-tool/database'
+import { marketApiClient } from './api-client'
 
 export interface MarketSyncItem {
   id: string
   uniqueName: string
+}
+
+export interface MarketSyncProgress {
+  processed: number
+  updated: number
+  failed: number
+  total: number
+}
+
+interface MarketPriceRow {
+  itemId: string
+  locationId: string
+  quality: number
+  sellPriceMin: number
+  sellPriceMinDate: Date | null
+  sellPriceMax: number
+  sellPriceMaxDate: Date | null
+  buyPriceMin: number
+  buyPriceMinDate: Date | null
+  buyPriceMax: number
+  buyPriceMaxDate: Date | null
+}
+
+interface ResolvedPriceRow {
+  itemId: string
+  locationId: string
+  quality: number
+  sellPrice: number
+  buyPrice: number
+  confidence: PriceConfidence
+  source: string
 }
 
 export class MarketPriceService {
@@ -11,6 +43,10 @@ export class MarketPriceService {
     'Fort Sterling': 'FortSterling',
     'Black Market': 'BlackMarket',
   }
+
+  private readonly INCOHERENT_PRICES = [999999, 99999999]
+  private readonly BULK_WRITE_SIZE = 1000
+  private validLocationIds?: Set<string>
 
   /**
    * Syncs market prices for a given list of items.
@@ -21,8 +57,9 @@ export class MarketPriceService {
     locations?: string[]
     qualities?: number[]
     jobId?: string
+    onProgress?: (progress: MarketSyncProgress) => void | Promise<void>
   }): Promise<{ itemsUpdated: number; itemsFailed: number }> {
-    const { items, locations, qualities, jobId } = params
+    const { items, locations, qualities, jobId, onProgress } = params
 
     // API receives uniqueNames (e.g. "T4_SWORD"), not internal CUIDs
     const uniqueNames = items.map(i => i.uniqueName)
@@ -31,36 +68,47 @@ export class MarketPriceService {
     // Build reverse map uniqueName → DB id for FK writes
     const uniqueNameToId = new Map(items.map(i => [i.uniqueName, i.id]))
 
-    // Pre-load all valid location IDs once — never inside the loop
-    const validLocationIds = new Set(
-      (await prisma.location.findMany({ select: { id: true } })).map(l => l.id)
-    )
+    const validLocationIds = await this.getValidLocationIds()
 
     let itemsUpdated = 0
     let itemsFailed = 0
 
+    const rows: MarketPriceRow[] = []
     for (const raw of rawPrices) {
-      try {
-        const locationId = this.normalizeLocationId(raw.city)
+      const locationId = this.normalizeLocationId(raw.city)
+      const itemId = uniqueNameToId.get(raw.item_id)
 
-        if (!validLocationIds.has(locationId)) {
-          console.warn(`[MarketPriceService] Skipping unknown location: ${raw.city} (mapped: ${locationId})`)
-          continue
-        }
-
-        const itemDbId = uniqueNameToId.get(raw.item_id)
-        if (!itemDbId) {
-          console.warn(`[MarketPriceService] Skipping unknown item uniqueName: ${raw.item_id}`)
-          continue
-        }
-
-        await this.upsertMarketPrice(raw, itemDbId, locationId)
-        itemsUpdated++
-      } catch (error) {
-        console.error(`[MarketPriceService] Failed to upsert price for ${raw.item_id} in ${raw.city}:`, error)
-        itemsFailed++
+      if (!itemId || !validLocationIds.has(locationId)) {
+        continue
       }
+
+      rows.push({
+        itemId,
+        locationId,
+        quality: raw.quality,
+        sellPriceMin: raw.sell_price_min,
+        sellPriceMinDate: this.parseSafeDate(raw.sell_price_min_date),
+        sellPriceMax: raw.sell_price_max,
+        sellPriceMaxDate: this.parseSafeDate(raw.sell_price_max_date),
+        buyPriceMin: raw.buy_price_min,
+        buyPriceMinDate: this.parseSafeDate(raw.buy_price_min_date),
+        buyPriceMax: raw.buy_price_max,
+        buyPriceMaxDate: this.parseSafeDate(raw.buy_price_max_date),
+      })
     }
+
+    try {
+      if (rows.length > 0) {
+        await this.bulkPersistPrices(rows)
+        itemsUpdated = rows.length
+      }
+    } catch (error) {
+      console.error('[MarketPriceService] Failed to persist market price batch:', error)
+      itemsFailed = rows.length
+    }
+
+    // Mark items from our batch as processed
+    const itemsProcessed = items.length
 
     if (jobId) {
       await prisma.marketSyncJob.update({
@@ -68,68 +116,420 @@ export class MarketPriceService {
         data: {
           itemsUpdated: { increment: itemsUpdated },
           itemsFailed: { increment: itemsFailed },
+          itemsProcessed: { increment: itemsProcessed },
         },
+      })
+    }
+
+    if (onProgress) {
+      await onProgress({
+        processed: itemsProcessed,
+        updated: itemsUpdated,
+        failed: itemsFailed,
+        total: items.length
       })
     }
 
     return { itemsUpdated, itemsFailed }
   }
 
-  private async upsertMarketPrice(raw: RawMarketPrice, itemDbId: string, locationId: string) {
-    const data = {
-      itemId: itemDbId,  // CUID — correct FK reference to Item.id
-      locationId,
-      quality: raw.quality,
-      sellPriceMin: raw.sell_price_min,
-      sellPriceMinDate: this.parseSafeDate(raw.sell_price_min_date),
-      sellPriceMax: raw.sell_price_max,
-      sellPriceMaxDate: this.parseSafeDate(raw.sell_price_max_date),
-      buyPriceMin: raw.buy_price_min,
-      buyPriceMinDate: this.parseSafeDate(raw.buy_price_min_date),
-      buyPriceMax: raw.buy_price_max,
-      buyPriceMaxDate: this.parseSafeDate(raw.buy_price_max_date),
-    }
+  private async bulkPersistPrices(rows: MarketPriceRow[]) {
+    const existingPrices = await this.getExistingPriceMap(rows)
+    const historyRows = rows
+      .filter(row => this.shouldWriteHistory(row, existingPrices.get(this.priceKey(row))))
+      .map(row => ({
+        itemId: row.itemId,
+        locationId: row.locationId,
+        quality: row.quality,
+        sellPriceMin: row.sellPriceMin,
+        buyPriceMax: row.buyPriceMax,
+        timestamp: row.sellPriceMinDate ?? new Date(),
+      }))
+
+    const [sellFallbacks, buyFallbacks] = await Promise.all([
+      this.getLatestHistoryFallbacks(rows, 'sell'),
+      this.getLatestHistoryFallbacks(rows, 'buy'),
+    ])
+
+    const resolvedRows = rows.map(row => this.toResolvedPriceRow(row, sellFallbacks, buyFallbacks))
 
     await prisma.$transaction(async (tx) => {
-      await tx.marketPrice.upsert({
-        where: {
-          itemId_locationId_quality: {
-            itemId: itemDbId,
-            locationId,
-            quality: raw.quality,
-          },
-        },
-        update: data,
-        create: data,
-      })
+      for (const batch of this.chunkArray(rows, this.BULK_WRITE_SIZE)) {
+        await this.bulkUpsertMarketPrices(tx, batch)
+      }
 
-      // Only write history if price data is present and has changed
-      if (raw.sell_price_min > 0 || raw.buy_price_max > 0) {
-        const lastHistory = await tx.marketPriceHistory.findFirst({
-          where: { itemId: itemDbId, locationId, quality: raw.quality },
-          orderBy: { timestamp: 'desc' },
-          select: { sellPriceMin: true, buyPriceMax: true },
-        })
+      for (const batch of this.chunkArray(historyRows, this.BULK_WRITE_SIZE)) {
+        await this.bulkInsertHistory(tx, batch)
+      }
 
-        const priceChanged =
-          !lastHistory ||
-          lastHistory.sellPriceMin !== raw.sell_price_min ||
-          lastHistory.buyPriceMax !== raw.buy_price_max
-
-        if (priceChanged) {
-          await tx.marketPriceHistory.create({
-            data: {
-              itemId: itemDbId,
-              locationId,
-              quality: raw.quality,
-              sellPriceMin: raw.sell_price_min,
-              buyPriceMax: raw.buy_price_max,
-              timestamp: this.parseSafeDate(raw.sell_price_min_date) ?? new Date(),
-            },
-          })
-        }
+      for (const batch of this.chunkArray(resolvedRows, this.BULK_WRITE_SIZE)) {
+        await this.bulkUpsertResolvedPrices(tx, batch)
       }
     })
+  }
+
+  private async getExistingPriceMap(rows: MarketPriceRow[]) {
+    const itemIds = [...new Set(rows.map(row => row.itemId))]
+    const locationIds = [...new Set(rows.map(row => row.locationId))]
+    const qualities = [...new Set(rows.map(row => row.quality))]
+
+    const existing = await prisma.marketPrice.findMany({
+      where: {
+        itemId: { in: itemIds },
+        locationId: { in: locationIds },
+        quality: { in: qualities },
+      },
+      select: {
+        itemId: true,
+        locationId: true,
+        quality: true,
+        sellPriceMin: true,
+        buyPriceMax: true,
+      },
+    })
+
+    return new Map(existing.map(row => [this.priceKey(row), row]))
+  }
+
+  private shouldWriteHistory(
+    row: MarketPriceRow,
+    existing?: { sellPriceMin: number; buyPriceMax: number },
+  ) {
+    if (row.sellPriceMin <= 0 && row.buyPriceMax <= 0) {
+      return false
+    }
+
+    return (
+      !existing ||
+      existing.sellPriceMin !== row.sellPriceMin ||
+      existing.buyPriceMax !== row.buyPriceMax
+    )
+  }
+
+  private async getLatestHistoryFallbacks(rows: MarketPriceRow[], side: 'sell' | 'buy') {
+    const needsFallback = rows.filter(row =>
+      side === 'sell' ? !this.isPriceValid(row.sellPriceMin) : !this.isPriceValid(row.buyPriceMax)
+    )
+
+    if (needsFallback.length === 0) {
+      return new Map<string, number>()
+    }
+
+    const keys = this.uniquePriceKeys(needsFallback)
+    const valueRows = Prisma.join(
+      keys.map(key => Prisma.sql`(${key.itemId}, ${key.locationId}, ${key.quality})`),
+    )
+    const invalidPrices = Prisma.join(this.INCOHERENT_PRICES)
+    const priceColumn = side === 'sell' ? Prisma.sql`h."sellPriceMin"` : Prisma.sql`h."buyPriceMax"`
+
+    const history = await prisma.$queryRaw<Array<{
+      itemId: string
+      locationId: string
+      quality: number
+      price: number
+    }>>(Prisma.sql`
+      WITH requested("itemId", "locationId", "quality") AS (VALUES ${valueRows})
+      SELECT DISTINCT ON (h."itemId", h."locationId", h."quality")
+        h."itemId",
+        h."locationId",
+        h."quality",
+        ${priceColumn} AS price
+      FROM "MarketPriceHistory" h
+      JOIN requested r
+        ON r."itemId" = h."itemId"
+        AND r."locationId" = h."locationId"
+        AND r."quality" = h."quality"
+      WHERE ${priceColumn} > 0
+        AND ${priceColumn} NOT IN (${invalidPrices})
+      ORDER BY h."itemId", h."locationId", h."quality", h."timestamp" DESC
+    `)
+
+    return new Map(history.map(row => [this.priceKey(row), row.price]))
+  }
+
+  private toResolvedPriceRow(
+    row: MarketPriceRow,
+    sellFallbacks: Map<string, number>,
+    buyFallbacks: Map<string, number>,
+  ): ResolvedPriceRow {
+    const key = this.priceKey(row)
+    let sellPrice = row.sellPriceMin
+    let sellSource = 'live'
+    let sellConfidence: PriceConfidence = PriceConfidence.HIGH
+
+    if (!this.isPriceValid(sellPrice)) {
+      sellPrice = sellFallbacks.get(key) ?? 0
+      sellSource = sellPrice > 0 ? 'history' : 'none'
+      sellConfidence = sellPrice > 0 ? PriceConfidence.MEDIUM : PriceConfidence.LOW
+    }
+
+    let buyPrice = row.buyPriceMax
+    let buySource = 'live'
+    let buyConfidence: PriceConfidence = PriceConfidence.HIGH
+
+    if (!this.isPriceValid(buyPrice)) {
+      buyPrice = buyFallbacks.get(key) ?? 0
+      buySource = buyPrice > 0 ? 'history' : 'none'
+      buyConfidence = buyPrice > 0 ? PriceConfidence.MEDIUM : PriceConfidence.LOW
+    }
+
+    return {
+      itemId: row.itemId,
+      locationId: row.locationId,
+      quality: row.quality,
+      sellPrice,
+      buyPrice,
+      confidence: this.getLowerConfidence(sellConfidence, buyConfidence),
+      source: sellSource === buySource ? sellSource : `S:${sellSource}/B:${buySource}`,
+    }
+  }
+
+  private async bulkUpsertMarketPrices(tx: Prisma.TransactionClient, rows: MarketPriceRow[]) {
+    if (rows.length === 0) return
+
+    const values = Prisma.join(rows.map(row => Prisma.sql`(
+      ${randomUUID()},
+      ${row.itemId},
+      ${row.locationId},
+      ${row.quality},
+      ${row.sellPriceMin},
+      ${row.sellPriceMinDate},
+      ${row.sellPriceMax},
+      ${row.sellPriceMaxDate},
+      ${row.buyPriceMin},
+      ${row.buyPriceMinDate},
+      ${row.buyPriceMax},
+      ${row.buyPriceMaxDate}
+    )`))
+
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO "MarketPrice" (
+        "id",
+        "itemId",
+        "locationId",
+        "quality",
+        "sellPriceMin",
+        "sellPriceMinDate",
+        "sellPriceMax",
+        "sellPriceMaxDate",
+        "buyPriceMin",
+        "buyPriceMinDate",
+        "buyPriceMax",
+        "buyPriceMaxDate"
+      )
+      VALUES ${values}
+      ON CONFLICT ("itemId", "locationId", "quality")
+      DO UPDATE SET
+        "sellPriceMin" = EXCLUDED."sellPriceMin",
+        "sellPriceMinDate" = EXCLUDED."sellPriceMinDate",
+        "sellPriceMax" = EXCLUDED."sellPriceMax",
+        "sellPriceMaxDate" = EXCLUDED."sellPriceMaxDate",
+        "buyPriceMin" = EXCLUDED."buyPriceMin",
+        "buyPriceMinDate" = EXCLUDED."buyPriceMinDate",
+        "buyPriceMax" = EXCLUDED."buyPriceMax",
+        "buyPriceMaxDate" = EXCLUDED."buyPriceMaxDate",
+        "updatedAt" = CURRENT_TIMESTAMP
+    `)
+  }
+
+  private async bulkInsertHistory(
+    tx: Prisma.TransactionClient,
+    rows: Array<{
+      itemId: string
+      locationId: string
+      quality: number
+      sellPriceMin: number
+      buyPriceMax: number
+      timestamp: Date
+    }>,
+  ) {
+    if (rows.length === 0) return
+
+    const values = Prisma.join(rows.map(row => Prisma.sql`(
+      ${randomUUID()},
+      ${row.itemId},
+      ${row.locationId},
+      ${row.quality},
+      ${row.sellPriceMin},
+      ${row.buyPriceMax},
+      ${row.timestamp}
+    )`))
+
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO "MarketPriceHistory" (
+        "id",
+        "itemId",
+        "locationId",
+        "quality",
+        "sellPriceMin",
+        "buyPriceMax",
+        "timestamp"
+      )
+      VALUES ${values}
+    `)
+  }
+
+  private async bulkUpsertResolvedPrices(tx: Prisma.TransactionClient, rows: ResolvedPriceRow[]) {
+    if (rows.length === 0) return
+
+    const values = Prisma.join(rows.map(row => Prisma.sql`(
+      ${randomUUID()},
+      ${row.itemId},
+      ${row.locationId},
+      ${row.quality},
+      ${row.sellPrice},
+      ${row.buyPrice},
+      ${row.confidence}::"PriceConfidence",
+      ${row.source}
+    )`))
+
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO "ResolvedPrice" (
+        "id",
+        "itemId",
+        "locationId",
+        "quality",
+        "sellPrice",
+        "buyPrice",
+        "confidence",
+        "source"
+      )
+      VALUES ${values}
+      ON CONFLICT ("itemId", "locationId", "quality")
+      DO UPDATE SET
+        "sellPrice" = EXCLUDED."sellPrice",
+        "buyPrice" = EXCLUDED."buyPrice",
+        "confidence" = EXCLUDED."confidence",
+        "source" = EXCLUDED."source",
+        "updatedAt" = CURRENT_TIMESTAMP
+    `)
+  }
+
+  /**
+   * Backfill: Resolves all existing MarketPrice records.
+   */
+  async resolveAllExistingPrices() {
+    const marketPrices = await prisma.marketPrice.findMany()
+    console.log(`[MarketPriceService] Resolving ${marketPrices.length} existing records...`)
+
+    for (const mp of marketPrices) {
+      await this.updateResolvedPrice(prisma, {
+        itemId: mp.itemId,
+        locationId: mp.locationId,
+        quality: mp.quality,
+        sellPriceMin: mp.sellPriceMin,
+        buyPriceMax: mp.buyPriceMax,
+      })
+    }
+  }
+
+  /**
+   * Updates ResolvedPrice based on live data or historical fallback.
+   */
+  private async updateResolvedPrice(
+    tx: Prisma.TransactionClient | typeof prisma,
+    params: {
+      itemId: string
+      locationId: string
+      quality: number
+      sellPriceMin: number
+      buyPriceMax: number
+    }
+  ) {
+    const { itemId, locationId, quality, sellPriceMin, buyPriceMax } = params
+    let sellPrice = sellPriceMin
+    let sellSource = 'live'
+    let sellConfidence: PriceConfidence = PriceConfidence.HIGH
+
+    // 1. Resolve Sell Price
+    if (!this.isPriceValid(sellPrice)) {
+      const history = await tx.marketPriceHistory.findFirst({
+        where: {
+          itemId,
+          locationId,
+          quality,
+          sellPriceMin: { gt: 0, notIn: this.INCOHERENT_PRICES },
+        },
+        orderBy: { timestamp: 'desc' },
+      })
+
+      if (history) {
+        sellPrice = history.sellPriceMin
+        sellSource = 'history'
+        sellConfidence = PriceConfidence.MEDIUM
+      } else {
+        sellPrice = 0
+        sellSource = 'none'
+        sellConfidence = PriceConfidence.LOW
+      }
+    }
+
+    // 2. Resolve Buy Price
+    let buyPrice = buyPriceMax
+    let buySource = 'live'
+    let buyConfidence: PriceConfidence = PriceConfidence.HIGH
+
+    if (!this.isPriceValid(buyPrice)) {
+      const history = await tx.marketPriceHistory.findFirst({
+        where: {
+          itemId,
+          locationId,
+          quality,
+          buyPriceMax: { gt: 0, notIn: this.INCOHERENT_PRICES },
+        },
+        orderBy: { timestamp: 'desc' },
+      })
+
+      if (history) {
+        buyPrice = history.buyPriceMax
+        buySource = 'history'
+        buyConfidence = PriceConfidence.MEDIUM
+      } else {
+        buyPrice = 0
+        buySource = 'none'
+        buyConfidence = PriceConfidence.LOW
+      }
+    }
+
+    // Determine aggregate source and confidence
+    const source = sellSource === buySource ? sellSource : `S:${sellSource}/B:${buySource}`
+    const confidence = this.getLowerConfidence(sellConfidence, buyConfidence)
+
+    await tx.resolvedPrice.upsert({
+      where: {
+        itemId_locationId_quality: {
+          itemId,
+          locationId,
+          quality,
+        },
+      },
+      update: {
+        sellPrice,
+        buyPrice,
+        confidence,
+        source,
+      },
+      create: {
+        itemId,
+        locationId,
+        quality,
+        sellPrice,
+        buyPrice,
+        confidence,
+        source,
+      },
+    })
+  }
+
+  private isPriceValid(price: number): boolean {
+    return price > 0 && !this.INCOHERENT_PRICES.includes(price)
+  }
+
+  private getLowerConfidence(c1: PriceConfidence, c2: PriceConfidence): PriceConfidence {
+    const order: PriceConfidence[] = [PriceConfidence.LOW, PriceConfidence.MEDIUM, PriceConfidence.HIGH]
+    const i1 = order.indexOf(c1)
+    const i2 = order.indexOf(c2)
+    return order[Math.min(i1, i2)] as PriceConfidence
   }
 
   private parseSafeDate(dateStr: string | null | undefined): Date | null {
@@ -145,6 +545,34 @@ export class MarketPriceService {
 
   private normalizeLocationId(city: string): string {
     return this.cityNameMap[city] ?? city
+  }
+
+  private async getValidLocationIds(): Promise<Set<string>> {
+    if (!this.validLocationIds) {
+      this.validLocationIds = new Set(
+        (await prisma.location.findMany({ select: { id: true } })).map(location => location.id),
+      )
+    }
+
+    return this.validLocationIds
+  }
+
+  private priceKey(row: { itemId: string; locationId: string; quality: number }): string {
+    return `${row.itemId}:${row.locationId}:${row.quality}`
+  }
+
+  private uniquePriceKeys(rows: MarketPriceRow[]) {
+    const map = new Map<string, { itemId: string; locationId: string; quality: number }>()
+
+    for (const row of rows) {
+      map.set(this.priceKey(row), {
+        itemId: row.itemId,
+        locationId: row.locationId,
+        quality: row.quality,
+      })
+    }
+
+    return [...map.values()]
   }
 
   /**
@@ -165,7 +593,7 @@ export class MarketPriceService {
       select: { id: true, uniqueName: true },
     })
 
-    const CHUNK_SIZE = 50
+    const CHUNK_SIZE = 200
     const chunks = this.chunkArray(items, CHUNK_SIZE)
 
     return { jobId: job.id, chunks, totalItems: items.length }

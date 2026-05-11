@@ -122,6 +122,12 @@
         </div>
       </div>
 
+      <!-- Price heatmap -->
+      <ItemPriceHeatmap
+        :prices="item.resolvedPrices ?? []"
+        style="margin-bottom:24px"
+      />
+
       <!-- Two-column info grid -->
       <div class="id-grid">
         <!-- LEFT column -->

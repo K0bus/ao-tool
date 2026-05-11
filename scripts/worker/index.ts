@@ -1,6 +1,6 @@
 import { prisma } from '@albion-tool/database'
 import { Worker, getConnection, closeAllConnections, IMPORT_QUEUE_NAME, MARKET_QUEUE_NAME } from '@albion-tool/queue'
-import type { ImportJobData, ImportJobProgress, ImportJobResult, MarketJobData, MarketJobResult, MarketJobItem } from '@albion-tool/queue'
+import type { ImportJobData, ImportJobProgress, ImportJobResult, MarketJobData, MarketJobResult, MarketJobItem, MarketJobProgress } from '@albion-tool/queue'
 import { runImport } from '../import/run-import.js'
 import { marketPriceService } from '@albion-tool/market-engine'
 
@@ -38,7 +38,7 @@ const marketWorker = new Worker<MarketJobData, MarketJobResult>(
     const { jobId, items, locations, qualities } = job.data
 
     if (!items || items.length === 0) {
-      return { itemsRequested: 0, itemsUpdated: 0, itemsFailed: 0, durationMs: 0 }
+      return { itemsRequested: 0, itemsProcessed: 0, itemsUpdated: 0, itemsFailed: 0, durationMs: 0 }
     }
 
     const start = Date.now()
@@ -47,10 +47,14 @@ const marketWorker = new Worker<MarketJobData, MarketJobResult>(
       locations,
       qualities,
       jobId,
+      onProgress: async (progress: MarketJobProgress) => {
+        await job.updateProgress(progress)
+      }
     })
 
     return {
       itemsRequested: items.length,
+      itemsProcessed: items.length,
       itemsUpdated: result.itemsUpdated,
       itemsFailed: result.itemsFailed,
       durationMs: Date.now() - start,
@@ -79,25 +83,25 @@ importWorker.on('failed', (job, err) => {
 })
 
 marketWorker.on('completed', async (job, result) => {
-  // Silent in production to avoid log flooding, but useful for now
-  if (Math.random() < 0.1) {
-    console.log(`[market-worker] Sync batch completed: ${result.itemsUpdated} updated, ${result.itemsFailed} failed`)
-  }
-
-  // Check if the whole MarketSyncJob is done — atomic updateMany to avoid TOCTOU race
   const { jobId } = job.data
   if (!jobId) return
 
   // Read current counters to evaluate completion and compute duration
   const dbJob = await prisma.marketSyncJob.findUnique({
     where: { id: jobId },
-    select: { status: true, itemsUpdated: true, itemsFailed: true, itemsRequested: true, startedAt: true },
+    select: { status: true, itemsUpdated: true, itemsFailed: true, itemsRequested: true, itemsProcessed: true, startedAt: true },
   })
 
+  if (dbJob) {
+    const progressPercent = ((dbJob.itemsProcessed / dbJob.itemsRequested) * 100).toFixed(1)
+    console.log(`[market-worker] [Sync ${jobId.slice(-6)}] Batch ${job.id} done: ${result.itemsUpdated} items (${progressPercent}% — ${dbJob.itemsProcessed}/${dbJob.itemsRequested})`)
+  }
+
+  // Check if the whole MarketSyncJob is done — atomic updateMany to avoid TOCTOU race
   if (
     dbJob &&
     dbJob.status === 'RUNNING' &&
-    dbJob.itemsUpdated + dbJob.itemsFailed >= dbJob.itemsRequested
+    dbJob.itemsProcessed >= dbJob.itemsRequested
   ) {
     // updateMany with WHERE status='RUNNING' ensures only one worker wins the race
     const updated = await prisma.marketSyncJob.updateMany({

@@ -21,6 +21,7 @@
   "devDependencies": {
     "@types/pg": "^8.11.0",
     "bcryptjs": "^2.4.3",
+    "dotenv": "^17.4.2",
     "prisma": "^7.0.0",
     "tsx": "^4.15.0",
     "typescript": "^5.5.0"

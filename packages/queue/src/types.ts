@@ -50,7 +50,15 @@ export interface MarketJobData {
 
 export interface MarketJobResult {
   itemsRequested: number
+  itemsProcessed: number
   itemsUpdated: number
   itemsFailed: number
   durationMs: number
+}
+
+export interface MarketJobProgress {
+  processed: number
+  updated: number
+  failed: number
+  total: number
 }

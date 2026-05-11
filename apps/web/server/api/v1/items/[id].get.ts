@@ -131,10 +131,16 @@ export default defineEventHandler(async (event) => {
 
   // Market prices are fetched live (not cached) so syncs are reflected immediately
   const marketPrices = await prisma.marketPrice.findMany({
+    where: { item: { uniqueName: id }, sellPriceMin: { not: 999999 } },
+    include: { location: true },
+    orderBy: { quality: "asc" },
+  });
+
+  const resolvedPrices = await prisma.resolvedPrice.findMany({
     where: { item: { uniqueName: id } },
     include: { location: true },
     orderBy: { quality: "asc" },
   });
 
-  return { data: { ...item, marketPrices } };
+  return { data: { ...item, marketPrices, resolvedPrices } };
 });

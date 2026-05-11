@@ -28,7 +28,7 @@ export interface RawHistoryPrice {
 export class MarketApiClient {
   private readonly baseUrl = 'https://www.albion-online-data.com/api/v2/stats/prices'
   private readonly historyUrl = 'https://www.albion-online-data.com/api/v2/stats/history'
-  private readonly maxBatchSize = 50
+  private readonly maxBatchSize = 200
   
   /**
    * Fetches prices for a list of items.
