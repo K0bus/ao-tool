@@ -122,6 +122,8 @@ async function doSearch() {
     const params: Record<string, string | number> = {
       limit: 40,
       tiers: activeTiers.value.join(','),
+      excludeShopCategories: 'artefacts,vanity',
+      excludeShopSubcategories: 'other',
     }
     if (query.value.length >= 2) params.q = query.value
     if (props.slotFilter?.itemType) params.itemType = props.slotFilter.itemType

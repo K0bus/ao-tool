@@ -19,6 +19,8 @@ const schema = z.object({
   itemType: z.string().optional(), // comma-separated ItemType values
   craftable: z.enum(["true", "false"]).optional(),
   refinable: z.enum(["true", "false"]).optional(),
+  excludeShopCategories: z.string().optional(), // comma-separated
+  excludeShopSubcategories: z.string().optional(), // comma-separated
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(96).default(48),
 });
@@ -46,6 +48,8 @@ export default defineEventHandler(async (event) => {
     itemType,
     craftable,
     refinable,
+    excludeShopCategories,
+    excludeShopSubcategories,
     cursor,
     limit,
   } = query.data;
@@ -91,6 +95,21 @@ export default defineEventHandler(async (event) => {
     if (category) where.shopCategory = { equals: category, mode: "insensitive" }
     if (subcategory) where.shopSubcategory = { equals: subcategory, mode: "insensitive" }
   }
+
+  // Exclusions
+  if (excludeShopCategories) {
+    const cats = excludeShopCategories.split(",").map(c => c.trim())
+    if (cats.length > 0) {
+      where.shopCategory = { ...(where.shopCategory as any), notIn: cats, mode: "insensitive" }
+    }
+  }
+  if (excludeShopSubcategories) {
+    const subs = excludeShopSubcategories.split(",").map(s => s.trim())
+    if (subs.length > 0) {
+      where.shopSubcategory = { ...(where.shopSubcategory as any), notIn: subs, mode: "insensitive" }
+    }
+  }
+
   if (craftable === "true") where.isCraftable = true;
   if (refinable === "true") where.isRefinable = true;
 

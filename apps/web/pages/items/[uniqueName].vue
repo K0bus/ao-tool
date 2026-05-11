@@ -26,7 +26,7 @@
     
     <!-- Content -->
     <template v-else-if="item">
-      <!-- Page header --><pre>{{ item }}</pre>
+      <!-- Page header -->
       <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div class="crumbs">
           <NuxtLink to="/">Accueil</NuxtLink><span class="sep">/</span><NuxtLink to="/items">Items</NuxtLink><span class="sep">/</span>{{ item.name }}
@@ -36,15 +36,6 @@
             Crafting tree
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </NuxtLink>
-          <a
-            :href="`https://wiki.albiononline.com/wiki/${item.uniqueName}`"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="ds-btn ghost"
-          >
-            Wiki
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
         </div>
       </div>
 
