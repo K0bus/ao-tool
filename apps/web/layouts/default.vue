@@ -6,16 +6,11 @@
         <!-- Brand -->
         <NuxtLink to="/" class="nav-brand">
           <span class="glyph" aria-hidden="true">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gold)">
-              <polygon points="16 2 28 16 16 30 4 16"/>
-              <polygon points="16 8 23 16 16 24 9 16" fill="currentColor" fill-opacity="0.18"/>
-              <line x1="16" y1="8" x2="16" y2="24"/>
-              <line x1="9" y1="16" x2="23" y2="16"/>
-            </svg>
+            <img src="/images/silvermind/silvermind-logo.png" alt="SilverMind" width="48" height="48" />
           </span>
           <span>
             ALBION
-            <span class="brand-sub">CODEX</span>
+            <span class="brand-sub">SilverMind</span>
           </span>
         </NuxtLink>
 
@@ -200,6 +195,7 @@
             <ul>
               <li><NuxtLink to="/crafting"><div><div>Crafting Tree</div><div class="desc">Arbre vertical complet</div></div></NuxtLink></li>
               <li><NuxtLink to="/items/profit"><div><div>Analyse de profit</div><div class="desc">Profit direct · tous les items</div></div></NuxtLink></li>
+              <li><NuxtLink to="/items/flip"><div><div>Flip inter-cités</div><div class="desc">Acheter bas · revendre haut</div></div></NuxtLink></li>
               <li><NuxtLink to="/crafting"><div><div>Liste de courses</div><div class="desc">Ressources agrégées</div></div></NuxtLink></li>
             </ul>
           </div>

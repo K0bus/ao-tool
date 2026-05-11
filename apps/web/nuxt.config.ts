@@ -22,14 +22,26 @@ export default defineNuxtConfig({
     registerType: 'autoUpdate',
     strategies: 'generateSW',
     manifest: {
-      name: 'Albion Codex',
-      short_name: 'Codex',
+      name: 'Albion - SilverMind',
+      short_name: 'SilverMind',
       description: 'Base Albion Online — items, crafting, marché',
       theme_color: '#0a0a0f',
       background_color: '#0a0a0f',
       display: 'standalone',
       start_url: '/',
       lang: 'fr',
+      icons: [
+        {
+          src: '/images/silvermind/android-chrome-192x192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: '/images/silvermind/android-chrome-512x512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        }
+      ]
     },
     client: {
       registerPlugin: true,
@@ -37,7 +49,7 @@ export default defineNuxtConfig({
       installPrompt: true,
     },
     devOptions: {
-      enabled: false,
+      enabled: true,
     },
     workbox: {
       navigateFallbackDenylist: [/^\/api\//],
@@ -102,12 +114,55 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'theme-color', content: '#0a0a0f' },
+        {
+          name: 'theme-color',
+          content: '#0f172a'
+        },
+        {
+          name: 'apple-mobile-web-app-capable',
+          content: 'yes'
+        },
+        {
+          name: 'apple-mobile-web-app-status-bar-style',
+          content: 'black-translucent'
+        }
       ],
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'preconnect', href: 'https://render.albiononline.com' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap' },
+
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap'
+        },
+
+        // favicon classique
+        {
+          rel: 'icon',
+          type: 'image/png',
+          sizes: '32x32',
+          href: '/images/silvermind/favicon-32x32.png'
+        },
+        {
+          rel: 'icon',
+          type: 'image/png',
+          sizes: '16x16',
+          href: '/images/silvermind/favicon-16x16.png'
+        },
+
+        // Apple
+        {
+          rel: 'apple-touch-icon',
+          sizes: '180x180',
+          href: '/images/silvermind/apple-touch-icon.png'
+        },
+
+        // Android / PWA
+        {
+          rel: 'manifest',
+          href: '/site.webmanifest'
+        }
       ],
     },
   },
