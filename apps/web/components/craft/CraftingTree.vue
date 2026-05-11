@@ -106,7 +106,15 @@
       </div>
 
       <!-- Tree -->
-      <div v-else-if="displayNodes.length > 0" class="py-1">
+      <div
+        v-else-if="displayNodes.length > 0"
+        ref="treeContainer"
+        class="py-1 overflow-auto max-h-[600px] cursor-grab active:cursor-grabbing"
+        @mousedown="onMouseDown"
+        @mousemove="onMouseMove"
+        @mouseup="stopDragging"
+        @mouseleave="stopDragging"
+      >
         <CraftingTreeNode
           v-for="node in displayNodes"
           :key="node.uniqueName"
@@ -208,6 +216,49 @@ const displayNodes = computed<RecipeNode[]>(() => {
   if (treeData.value?.recipe) return treeData.value.recipe.ingredients
   return legacyNodes.value
 })
+
+// ── Drag-to-scroll ──────────────────────────────────────────────────────────
+
+const treeContainer = ref<HTMLElement | null>(null)
+let isDragging = false
+let startY = 0
+let scrollTop = 0
+
+function onMouseDown(e: MouseEvent) {
+  // Only handle left click
+  if (e.button !== 0) return
+
+  // Don't drag if clicking on a button or link
+  const target = e.target as HTMLElement
+  if (target.closest('button') || target.closest('a')) return
+
+  isDragging = true
+  const el = treeContainer.value
+  if (!el) return
+
+  startY = e.pageY - el.offsetTop
+  scrollTop = el.scrollTop
+
+  el.style.userSelect = 'none'
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (!isDragging || !treeContainer.value) return
+  e.preventDefault()
+
+  const el = treeContainer.value
+  const y = e.pageY - el.offsetTop
+  const walkY = (y - startY)
+
+  el.scrollTop = scrollTop - walkY
+}
+
+function stopDragging() {
+  isDragging = false
+  if (treeContainer.value) {
+    treeContainer.value.style.userSelect = ''
+  }
+}
 
 // ── Tree loading ──────────────────────────────────────────────────────────────
 

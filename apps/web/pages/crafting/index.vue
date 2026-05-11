@@ -91,7 +91,15 @@
               <span class="vt-label">Vue liste</span>
             </label>
           </div>
-          <div class="tree-body" :class="{ 'list-mode': listMode }">
+          <div
+            ref="treeBodyRef"
+            class="tree-body"
+            :class="{ 'list-mode': listMode }"
+            @mousedown="onMouseDown"
+            @mousemove="onMouseMove"
+            @mouseup="stopDragging"
+            @mouseleave="stopDragging"
+          >
 
             <div v-if="!selectedItem" class="tree-empty">
               <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M12 8 7 14v8M12 8l5 6v8"/><circle cx="12" cy="2" r="1"/><circle cx="7" cy="14" r="1"/><circle cx="17" cy="14" r="1"/></svg>
@@ -652,6 +660,59 @@ onMounted(async () => {
 // ── Tree view mode ───────────────────────────────────────────────────────────
 
 const listMode = ref(false)
+
+// ── Drag-to-scroll ──────────────────────────────────────────────────────────
+
+const treeBodyRef = ref<HTMLElement | null>(null)
+let isDragging = false
+let startX = 0
+let startY = 0
+let scrollLeft = 0
+let scrollTop = 0
+
+function onMouseDown(e: MouseEvent) {
+  if (listMode.value) return
+  // Only handle left click
+  if (e.button !== 0) return
+
+  // Don't drag if clicking on a button or link
+  const target = e.target as HTMLElement
+  if (target.closest('button') || target.closest('a')) return
+
+  isDragging = true
+  const el = treeBodyRef.value
+  if (!el) return
+
+  startX = e.pageX - el.offsetLeft
+  startY = e.pageY - el.offsetTop
+  scrollLeft = el.scrollLeft
+  scrollTop = el.scrollTop
+
+  el.style.cursor = 'grabbing'
+  el.style.userSelect = 'none'
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (!isDragging || !treeBodyRef.value) return
+  e.preventDefault()
+
+  const el = treeBodyRef.value
+  const x = e.pageX - el.offsetLeft
+  const y = e.pageY - el.offsetTop
+  const walkX = (x - startX)
+  const walkY = (y - startY)
+
+  el.scrollLeft = scrollLeft - walkX
+  el.scrollTop = scrollTop - walkY
+}
+
+function stopDragging() {
+  isDragging = false
+  if (treeBodyRef.value) {
+    treeBodyRef.value.style.cursor = ''
+    treeBodyRef.value.style.userSelect = ''
+  }
+}
 
 // ── Strategy engine (client-side for tree visualization) ────────────────────
 
@@ -1480,5 +1541,12 @@ function fmtQty(v: number) {
 
 .field:last-child {
   margin-bottom: 0;
+}
+
+.tree-body:not(.list-mode) {
+  cursor: grab;
+}
+.tree-body:not(.list-mode):active {
+  cursor: grabbing;
 }
 </style>
