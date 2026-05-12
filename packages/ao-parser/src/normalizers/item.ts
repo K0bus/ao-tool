@@ -223,11 +223,11 @@ function buildVariant(
     itemLocalizations.push({ locale: 'EN-US', name: uniqueName })
   }
 
-  const baseItemUniqueName = enchantmentLevel > 0 ? uniqueName.replace(/@\d+$/, '') : undefined
+  const hasEnchantSuffix = /@\d+$/.test(uniqueName)
+  const baseItemUniqueName =
+    enchantmentLevel > 0 && hasEnchantSuffix ? uniqueName.replace(/@\d+$/, '') : undefined
 
-  const hashSource = override
-    ? { uniqueName, tier, enchantmentLevel, craftingReqs, stats }
-    : { uniqueName, tier, craftingReqs, stats }
+  const hashSource = { uniqueName, tier, enchantmentLevel, craftingReqs, stats }
 
   return {
     uniqueName,
@@ -264,10 +264,14 @@ export function normalizeItem(
 
   const baseUniqueName = raw['@uniquename']
   const baseTier = parseInt(raw['@tier'] ?? '1', 10)
+  const rawBaseEnchantLevel = parseInt(raw['@enchantmentlevel'] ?? '0', 10)
+  const baseEnchantLevel = Number.isNaN(rawBaseEnchantLevel)
+    ? 0
+    : Math.max(0, Math.min(4, rawBaseEnchantLevel))
 
   const results: NormalizedItem[] = []
 
-  results.push(buildVariant(baseUniqueName, baseTier, 0, raw, undefined, localizations))
+  results.push(buildVariant(baseUniqueName, baseTier, baseEnchantLevel, raw, undefined, localizations))
 
   const enchantments = raw.enchantments?.enchantment
   if (enchantments) {

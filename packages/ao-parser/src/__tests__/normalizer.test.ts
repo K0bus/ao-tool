@@ -6,6 +6,7 @@ import {
   SWORD_WITH_ENCHANTS,
   RAW_ORE,
   REFINABLE_METALBAR,
+  ENCHANTED_BASE_NO_SUFFIX,
   LOCALIZATIONS,
 } from './fixtures'
 
@@ -54,6 +55,16 @@ describe('normalizeItem', () => {
       const [b] = normalizeItem(CRAFTABLE_SWORD, {})
       expect(a?.dataHash).toBe(b?.dataHash)
     })
+
+    it('dataHash changes when base enchantmentLevel changes', () => {
+      const sameBase0 = { ...ENCHANTED_BASE_NO_SUFFIX, '@enchantmentlevel': '0' as const }
+      const [base0] = normalizeItem(sameBase0, LOCALIZATIONS)
+      const [base2] = normalizeItem(ENCHANTED_BASE_NO_SUFFIX, LOCALIZATIONS)
+      expect(base0?.uniqueName).toBe(base2?.uniqueName)
+      expect(base0?.enchantmentLevel).toBe(0)
+      expect(base2?.enchantmentLevel).toBe(2)
+      expect(base0?.dataHash).not.toBe(base2?.dataHash)
+    })
   })
 
   describe('enchantment variants expansion', () => {
@@ -97,6 +108,17 @@ describe('normalizeItem', () => {
     it('item with no enchantments returns exactly 1 entry', () => {
       const items = normalizeItem(BAG_ITEM, {})
       expect(items).toHaveLength(1)
+    })
+
+    it('uses raw base @enchantmentlevel when present on base item', () => {
+      const [item] = normalizeItem(ENCHANTED_BASE_NO_SUFFIX, LOCALIZATIONS)
+      expect(item?.uniqueName).toBe('T4_CLOTH_LEVEL2')
+      expect(item?.enchantmentLevel).toBe(2)
+    })
+
+    it('does not create baseItemUniqueName when enchant exists without @N suffix', () => {
+      const [item] = normalizeItem(ENCHANTED_BASE_NO_SUFFIX, LOCALIZATIONS)
+      expect(item?.baseItemUniqueName).toBeUndefined()
     })
   })
 

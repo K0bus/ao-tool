@@ -116,6 +116,17 @@ export const REFINABLE_METALBAR: RawBaseItem = {
   },
 }
 
+// Item dont le niveau d'enchantement est porté par l'entrée de base
+// (cas observé sur certaines ressources du dump).
+export const ENCHANTED_BASE_NO_SUFFIX: RawBaseItem = {
+  '@uniquename': 'T4_CLOTH_LEVEL2',
+  '@tier': '4',
+  '@enchantmentlevel': '2',
+  '@shopcategory': 'resource',
+  '@shopsubcategory1': 'cloth',
+  LocalizationNameVariable: '@ITEMS_T4_CLOTH_LEVEL2',
+}
+
 export const LOCALIZATIONS: RawLocalizationTable = {
   'EN-US': {
     '@ITEMS_T4_BAG': "Adept's Bag",
@@ -123,6 +134,7 @@ export const LOCALIZATIONS: RawLocalizationTable = {
     '@ITEMS_T4_MAIN_SWORD': "Adept's Broadsword",
     '@ITEMS_T4_ORE': 'Titanium Ore',
     '@ITEMS_T4_METALBAR': 'Titanium Bar',
+    '@ITEMS_T4_CLOTH_LEVEL2': "Adept's Cloth (Level 2)",
   },
   'FR-FR': {
     '@ITEMS_T4_BAG': "Sac de l'Adepte",
