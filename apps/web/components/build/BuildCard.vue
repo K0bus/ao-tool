@@ -1,7 +1,7 @@
 <template>
   <NuxtLink :to="`/builds/b/${build.shareCode}`" class="build-card">
     <div class="bc-header">
-      <span v-if="build.gameMode" class="bc-mode">{{ build.gameMode }}</span>
+      <span v-if="modeLabel" class="bc-mode">{{ modeLabel }}</span>
       <span class="bc-vis" :class="build.visibility.toLowerCase()">
         <svg v-if="build.visibility === 'PUBLIC'" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
         <svg v-else-if="build.visibility === 'UNLISTED'" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 0 1 4 0"/><path d="M4 6c-1.3 1.3-2 3-2 6s3 7 10 7 10-3 10-7-1-5-2-6"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
@@ -11,6 +11,10 @@
     </div>
 
     <h3 class="bc-title">{{ build.title }}</h3>
+
+    <div v-if="secondaryMeta.length" class="bc-tags">
+      <span v-for="tag in secondaryMeta" :key="tag" class="bc-tag">{{ tag }}</span>
+    </div>
 
     <!-- Équipement — petites icônes -->
     <div class="bc-items">
@@ -36,7 +40,9 @@
 </template>
 
 <script setup lang="ts">
+import { buildTagLabel, type BuildContentType, type BuildGroupScale, type BuildPlaystyle, type BuildRole } from '@albion-tool/types'
 import { EQUIPMENT_SLOTS } from '~/composables/useBuildCreator'
+import { labelWeaponSubcategory } from '~/utils/buildTaxonomy'
 
 const props = defineProps<{
   build: {
@@ -45,6 +51,11 @@ const props = defineProps<{
     gameMode?: string | null
     visibility: string
     equipment: Record<string, string | null>
+    primaryContentType?: BuildContentType | null
+    roles: BuildRole[]
+    groupScales: BuildGroupScale[]
+    playstyles: BuildPlaystyle[]
+    weaponSubcategory?: string | null
     viewCount: number
     createdAt: string
   }
@@ -53,6 +64,17 @@ const props = defineProps<{
 const itemSlots = EQUIPMENT_SLOTS.slice(0, 8) // arme, armure, casque, etc. sans food/potion
 
 const equipment = computed(() => props.build.equipment)
+const primaryContentLabel = computed(() => buildTagLabel('contentType', props.build.primaryContentType))
+const modeLabel = computed(() => primaryContentLabel.value ?? props.build.gameMode ?? null)
+const secondaryMeta = computed(() => {
+  const tags = [
+    labelWeaponSubcategory(props.build.weaponSubcategory),
+    props.build.roles[0] ? buildTagLabel('role', props.build.roles[0]) : null,
+    props.build.groupScales[0] ? buildTagLabel('groupScale', props.build.groupScales[0]) : null,
+  ].filter((value): value is string => Boolean(value))
+
+  return tags.slice(0, 2)
+})
 
 const visLabel = computed(() => {
   const map: Record<string, string> = { PUBLIC: 'Public', UNLISTED: 'Non listé', PRIVATE: 'Privé' }
@@ -127,6 +149,21 @@ const relativeDate = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.bc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bc-tag {
+  font-size: 11px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: var(--bg-1);
 }
 
 .bc-items {

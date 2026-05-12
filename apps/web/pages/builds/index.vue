@@ -17,15 +17,22 @@
     <!-- Filtres game mode -->
     <div class="builds-filters">
       <div class="filter-pillbox">
-        <span class="fpl">Mode</span>
+        <span class="fpl">Contenu</span>
         <button
-          v-for="mode in GAME_MODES"
-          :key="mode"
+          v-for="option in BUILD_CONTENT_TYPE_OPTIONS"
+          :key="option.value"
           class="filter-pill"
-          :class="{ active: activeMode === mode }"
-          @click="setMode(mode)"
-        >{{ mode }}</button>
-        <button v-if="activeMode" class="filter-pill" style="color:var(--text-3)" @click="setMode(null)">✕ Tous</button>
+          :class="{ active: activeContentType === option.value }"
+          @click="setContentType(option.value)"
+        >{{ option.label }}</button>
+        <button v-if="activeContentType" class="filter-pill" style="color:var(--text-3)" @click="setContentType(null)">✕ Tous</button>
+      </div>
+      <div class="filter-pillbox">
+        <span class="fpl">Arme</span>
+        <select v-model="activeWeaponFamily" class="family-select">
+          <option value="">Toutes les armes</option>
+          <option v-for="family in weaponFamilies" :key="family.value" :value="family.value">{{ family.label }}</option>
+        </select>
       </div>
     </div>
 
@@ -56,11 +63,13 @@
 </template>
 
 <script setup lang="ts">
-const GAME_MODES = ['Solo PvP', 'ZvZ', 'Ganking', 'HCE', 'Corrupted', 'Gathering']
+import { BUILD_CONTENT_TYPE_OPTIONS, type BuildContentType, type BuildGroupScale, type BuildPlaystyle, type BuildRole } from '@albion-tool/types'
+import type { BuildTaxonomyResponse } from '~/utils/buildTaxonomy'
 
 const route = useRoute()
 const router = useRouter()
-const activeMode = ref<string | null>((route.query.gameMode as string) || null)
+const activeContentType = ref<BuildContentType | null>((route.query.primaryContentType as BuildContentType) || null)
+const activeWeaponFamily = ref<string>((route.query.weaponSubcategory as string) || '')
 
 interface Build {
   shareCode: string
@@ -68,9 +77,20 @@ interface Build {
   gameMode?: string | null
   visibility: string
   equipment: Record<string, string | null>
+  primaryContentType?: BuildContentType | null
+  roles: BuildRole[]
+  groupScales: BuildGroupScale[]
+  playstyles: BuildPlaystyle[]
+  weaponSubcategory?: string | null
   viewCount: number
   createdAt: string
 }
+
+const { data: taxonomyData } = await useFetch<{ data: BuildTaxonomyResponse }>('/api/v1/build-taxonomy', {
+  default: () => ({ data: { slots: { weapon: { families: [] } } as any } }),
+})
+
+const weaponFamilies = computed(() => taxonomyData.value?.data?.slots.weapon.families ?? [])
 
 const builds = ref<Build[]>([])
 const nextCursor = ref<string | undefined>()
@@ -79,7 +99,8 @@ const loadingMore = ref(false)
 const { data, pending, refresh } = await useFetch('/api/v1/builds', {
   query: computed(() => ({
     limit: 24,
-    ...(activeMode.value ? { gameMode: activeMode.value } : {}),
+    ...(activeContentType.value ? { primaryContentType: activeContentType.value } : {}),
+    ...(activeWeaponFamily.value ? { weaponSubcategory: activeWeaponFamily.value } : {}),
   })),
   default: () => ({ data: [], meta: {} }),
 })
@@ -90,10 +111,25 @@ watchEffect(() => {
   nextCursor.value = d?.meta?.nextCursor
 })
 
-function setMode(mode: string | null) {
-  activeMode.value = mode
-  router.replace({ query: mode ? { gameMode: mode } : {} })
+watch(activeWeaponFamily, () => {
+  router.replace({
+    query: {
+      ...(activeContentType.value ? { primaryContentType: activeContentType.value } : {}),
+      ...(activeWeaponFamily.value ? { weaponSubcategory: activeWeaponFamily.value } : {}),
+    },
+  })
   refresh()
+})
+
+function setContentType(contentType: BuildContentType | null) {
+  activeContentType.value = contentType
+  refresh()
+  router.replace({
+    query: {
+      ...(contentType ? { primaryContentType: contentType } : {}),
+      ...(activeWeaponFamily.value ? { weaponSubcategory: activeWeaponFamily.value } : {}),
+    },
+  })
 }
 
 async function loadMore() {
@@ -104,7 +140,8 @@ async function loadMore() {
       query: {
         limit: 24,
         cursor: nextCursor.value,
-        ...(activeMode.value ? { gameMode: activeMode.value } : {}),
+        ...(activeContentType.value ? { primaryContentType: activeContentType.value } : {}),
+        ...(activeWeaponFamily.value ? { weaponSubcategory: activeWeaponFamily.value } : {}),
       },
     })
     builds.value.push(...res.data)
@@ -127,6 +164,18 @@ useSeoMeta({ title: 'Builds — Albion Codex' })
 
 .builds-filters {
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.family-select {
+  min-width: 220px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 8px 10px;
 }
 
 .builds-grid {

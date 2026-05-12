@@ -10,9 +10,12 @@
           </div>
           <h1 style="display:flex;align-items:center;gap:10px">
             {{ payload.title }}
-            <span v-if="payload.gameMode" class="build-mode-badge">{{ payload.gameMode }}</span>
+            <span v-if="modeLabel" class="build-mode-badge">{{ modeLabel }}</span>
           </h1>
           <p class="t-muted" style="font-size:12px;margin-top:6px">Build partagé sans compte · lecture seule</p>
+          <div v-if="payloadMetaTags.length" class="guest-meta-tags">
+            <span v-for="tag in payloadMetaTags" :key="tag" class="guest-meta-tag">{{ tag }}</span>
+          </div>
         </div>
         <div style="display:flex;gap:8px">
           <button class="ds-btn" @click="copyLink">
@@ -53,9 +56,10 @@
         <div class="spells-row">
           <div v-for="s in payload.spells" :key="s.slot" class="spell-cell">
             <div class="spell-cell-icon">
-              <span class="spell-fallback">{{ s.slot }}</span>
+              <span class="spell-fallback">{{ spellShortLabel(s.slot) }}</span>
             </div>
-            <span class="spell-key-badge">{{ s.slot }}</span>
+            <span class="spell-key-badge">{{ spellSlotLabel(s.slot) }}</span>
+            <span class="spell-item-label">{{ equipmentSlotLabel(s.slot) }}</span>
             <span class="spell-cell-name">{{ s.id }}</span>
           </div>
         </div>
@@ -71,8 +75,10 @@
 </template>
 
 <script setup lang="ts">
+import { buildTagLabel } from '@albion-tool/types'
 import { EQUIPMENT_SLOTS } from '~/composables/useBuildCreator'
 import type { GuestBuildPayload } from '@albion-tool/types'
+import { labelWeaponCategory, labelWeaponSubcategory } from '~/utils/buildTaxonomy'
 
 const route = useRoute()
 const encoded = route.params.encoded as string
@@ -89,12 +95,53 @@ function decodeGuestBuild(enc: string): GuestBuildPayload | null {
 }
 
 const payload = computed(() => decodeGuestBuild(encoded))
+const primaryContentLabel = computed(() => buildTagLabel('contentType', payload.value?.primaryContentType))
+const modeLabel = computed(() => primaryContentLabel.value ?? payload.value?.gameMode ?? null)
+const payloadMetaTags = computed(() => {
+  if (!payload.value) return []
+
+  return [
+    labelWeaponSubcategory(payload.value.weaponSubcategory),
+    labelWeaponCategory(payload.value.weaponCategory),
+    ...(payload.value.roles ?? []).map((role) => buildTagLabel('role', role)),
+    ...(payload.value.groupScales ?? []).map((scale) => buildTagLabel('groupScale', scale)),
+    ...(payload.value.playstyles ?? []).map((playstyle) => buildTagLabel('playstyle', playstyle)),
+    buildTagLabel('difficulty', payload.value.difficulty),
+    buildTagLabel('budget', payload.value.budget),
+  ].filter((value): value is string => Boolean(value))
+})
 
 const copied = ref(false)
 function copyLink() {
   navigator.clipboard.writeText(window.location.href)
   copied.value = true
   setTimeout(() => { copied.value = false }, 2000)
+}
+
+function parseSpellSlotKey(slotKey: string) {
+  const [slot, spellSlot] = slotKey.split(':')
+  return { slot, spellSlot }
+}
+
+function spellSlotLabel(slotKey: string) {
+  const { slot, spellSlot } = parseSpellSlotKey(slotKey)
+  if (slot === 'helmet' && spellSlot === 'q') return 'D'
+  return {
+    q: 'Q',
+    w: 'W',
+    e: 'E',
+    passive: 'Passif',
+  }[spellSlot] ?? slotKey
+}
+
+function spellShortLabel(slotKey: string) {
+  const label = spellSlotLabel(slotKey)
+  return label === 'Passif' ? 'P' : label
+}
+
+function equipmentSlotLabel(slotKey: string) {
+  const { slot } = parseSpellSlotKey(slotKey)
+  return EQUIPMENT_SLOTS.find((entry) => entry.key === slot)?.label ?? slotKey
 }
 
 useSeoMeta({
@@ -129,6 +176,22 @@ useSeoMeta({
   padding: 10px 14px;
   background: rgba(201,161,74,0.04);
   border-color: rgba(201,161,74,0.18);
+}
+
+.guest-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.guest-meta-tag {
+  font-size: 12px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: var(--bg-1);
 }
 
 .eq-grid {
@@ -227,5 +290,10 @@ useSeoMeta({
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   font-family: var(--font-mono);
+}
+
+.spell-item-label {
+  font-size: 10px;
+  color: var(--text-4);
 }
 </style>

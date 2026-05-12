@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import { prisma } from '~/server/utils/prisma'
 import { generateShareCode } from '~/server/utils/buildShare'
+import {
+  buildMetadataCreateSchema,
+  normalizeBuildMetadata,
+  resolveWeaponTagsFromEquipment,
+  serializeBuild,
+} from '~/server/utils/builds'
 
 const equipmentSchema = z.object({
   weapon: z.string().nullable().optional(),
@@ -16,7 +22,7 @@ const equipmentSchema = z.object({
 })
 
 const spellSchema = z.object({
-  slotKey: z.string().min(1).max(10),
+  slotKey: z.string().min(1).max(32),
   spellId: z.string().min(1),
 })
 
@@ -26,8 +32,8 @@ const schema = z.object({
   gameMode: z.string().max(60).optional(),
   visibility: z.enum(['PUBLIC', 'UNLISTED', 'PRIVATE']).default('PRIVATE'),
   equipment: equipmentSchema.optional(),
-  spells: z.array(spellSchema).max(10).optional(),
-})
+  spells: z.array(spellSchema).max(20).optional(),
+}).merge(buildMetadataCreateSchema)
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, (b) => schema.safeParse(b))
@@ -36,7 +42,17 @@ export default defineEventHandler(async (event) => {
   }
 
   const user = event.context.user
-  const { title, description, gameMode, visibility, equipment, spells } = body.data
+  const {
+    title,
+    description,
+    gameMode,
+    visibility,
+    equipment,
+    spells,
+    ...metadataInput
+  } = body.data
+  const metadata = normalizeBuildMetadata(metadataInput)
+  const weaponTags = await resolveWeaponTagsFromEquipment((equipment ?? {}) as Record<string, string | null>)
 
   let shareCode = generateShareCode()
   // Collision retry (astronomiquement rare)
@@ -53,6 +69,8 @@ export default defineEventHandler(async (event) => {
       visibility: user ? visibility : 'PRIVATE',
       userId: user?.id ?? null,
       equipment: equipment ?? {},
+      ...metadata,
+      ...weaponTags,
       ...(spells && spells.length > 0
         ? {
             spells: {
@@ -68,13 +86,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     data: {
-      id: build.id,
-      shareCode: build.shareCode,
-      title: build.title,
-      description: build.description,
-      gameMode: build.gameMode,
-      visibility: build.visibility,
-      equipment: (build.equipment ?? {}) as Record<string, string | null>,
+      ...serializeBuild(build),
       spells: build.spells.map((bs) => ({
         slotKey: bs.slotKey,
         spell: {
@@ -84,10 +96,6 @@ export default defineEventHandler(async (event) => {
           name: bs.spell.localizations[0]?.name ?? bs.spell.id,
         },
       })),
-      viewCount: build.viewCount,
-      createdAt: build.createdAt.toISOString(),
-      updatedAt: build.updatedAt.toISOString(),
-      userId: build.userId,
-    },
+    }
   }
 })

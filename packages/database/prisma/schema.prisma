@@ -69,6 +69,76 @@ enum BuildVisibility {
   PRIVATE
 }
 
+enum BuildContentType {
+  OPEN_WORLD
+  MISTS_SOLO
+  MISTS_DUO
+  CORRUPTED_DUNGEON
+  HELLGATE_2V2
+  HELLGATE_5V5
+  SMALL_SCALE
+  ZVZ
+  CRYSTAL_ARENA_1V1
+  CRYSTAL_ARENA_5V5
+  TRACKING_SOLO
+  TRACKING_GROUP
+  FAME_FARM_SOLO
+  FAME_FARM_GROUP
+  FAME_FARM_GROUP_AVALON
+  GANK_SOLO
+  GANK_GROUP
+  ABYSSAL_DEPTHS_2V2
+  ABYSSAL_DEPTHS_3V3
+  GATHERING
+  HCE
+  ROADS
+}
+
+enum BuildRole {
+  DPS
+  BURST_DPS
+  HEALER
+  TANK
+  SUPPORT
+  DISRUPTOR
+  MOBILITY
+  ECONOMY
+}
+
+enum BuildGroupScale {
+  SOLO
+  DUO
+  SMALL_GROUP
+  PARTY
+  RAID
+  MASSIVE
+}
+
+enum BuildPlaystyle {
+  SAFE_PVE
+  PVE_PVP
+  ONE_SHOT
+  KITE
+  BRAWL
+  DIVE
+  SUSTAIN
+  ESCAPE
+  CATCH
+}
+
+enum BuildDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum BuildBudget {
+  LOW
+  MEDIUM
+  HIGH
+  LUXURY
+}
+
 enum ImportStatus {
   PENDING
   RUNNING
@@ -650,6 +720,15 @@ model Build {
   gameMode    String?         // "ZvZ", "Solo PvP", "Ganking", "HCE"...
   visibility  BuildVisibility @default(PRIVATE)
   userId      String?
+  primaryContentType BuildContentType?
+  contentTypes       BuildContentType[] @default([])
+  roles              BuildRole[]        @default([])
+  groupScales        BuildGroupScale[]  @default([])
+  playstyles         BuildPlaystyle[]   @default([])
+  difficulty         BuildDifficulty?
+  budget             BuildBudget?
+  weaponCategory     String?
+  weaponSubcategory  String?
 
   // Équipement stocké en JSON (itemIds). Pas de FK pour éviter
   // la cascade de relations sur Item + supporter les items obsolètes.
@@ -667,6 +746,8 @@ model Build {
   @@index([userId])
   @@index([shareCode])
   @@index([visibility, gameMode])
+  @@index([visibility, primaryContentType])
+  @@index([weaponSubcategory])
   @@index([createdAt])
 }
 

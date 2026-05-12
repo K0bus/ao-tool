@@ -3,6 +3,7 @@ import { buildAoItemImageUrls } from '~/utils/aoRender'
 
 /** Tentatives par URL (CDN parfois lent ou erreur transitoire) avant fallback suivant */
 const MAX_ATTEMPTS_PER_URL = 3
+const PLACEHOLDER_SRC = '/images/placeholder-item.svg'
 
 function urlsEquivalent(a: string, b: string): boolean {
   if (!a || !b) return false
@@ -48,8 +49,10 @@ export function useAoItemImage(
   })
 
   const src = computed(() => {
+    if (failed.value) return PLACEHOLDER_SRC
+
     const base = urls.value[urlIndex.value] ?? urls.value[0] ?? ''
-    if (!base) return ''
+    if (!base) return PLACEHOLDER_SRC
     if (attempt.value <= 1) return base
     const sep = base.includes('?') ? '&' : '?'
     return `${base}${sep}_=${attempt.value}`
@@ -61,6 +64,10 @@ export function useAoItemImage(
 
     const expected = src.value
     const actual = img.currentSrc || img.src
+    if (urlsEquivalent(actual, PLACEHOLDER_SRC)) {
+      failed.value = true
+      return
+    }
     if (actual && expected && !urlsEquivalent(actual, expected)) return
 
     if (attempt.value < MAX_ATTEMPTS_PER_URL) {

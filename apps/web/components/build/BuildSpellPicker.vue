@@ -1,70 +1,126 @@
 <template>
   <div class="spell-picker">
-    <div v-for="slot in SPELL_SLOTS" :key="slot.key" class="spell-slot-section">
+    <div v-for="group in groups" :key="group.key" class="spell-slot-section">
       <div class="sp-header">
-        <span class="sp-key">{{ slot.label }}</span>
-        <span v-if="selectedSpell(slot.key)" class="sp-selected-name">{{ selectedSpell(slot.key)!.name }}</span>
+        <div class="sp-meta">
+          <span class="sp-item">{{ group.slotLabel }}</span>
+          <span class="sp-key">{{ group.spellSlotLabel }}</span>
+        </div>
+        <span v-if="selectedSpell(group.key)" class="sp-selected-name">{{ selectedSpell(group.key)!.name }}</span>
         <span v-else class="sp-none">—</span>
       </div>
       <div class="sp-icons">
-        <template v-if="options(slot.key).length > 0">
+        <template v-if="group.options.length > 0">
           <button
-            v-for="opt in options(slot.key)"
+            v-for="opt in group.options"
             :key="opt.spell.id"
             class="sp-icon-btn"
-            :class="{ active: selected[slot.key]?.id === opt.spell.id }"
-            :title="`${opt.spell.name}${opt.spell.cooldown ? ' — ' + opt.spell.cooldown + 's CD' : ''}`"
-            @click="pick(slot.key, opt.spell)"
+            :class="{ active: selected[group.key]?.id === opt.spell.id }"
+            @mouseenter="showTooltip($event, group.slotLabel, group.spellSlotLabel, opt.spell)"
+            @mousemove="moveTooltip"
+            @mouseleave="hideTooltip"
+            @click="pick(group.key, opt.spell)"
           >
             <img
-              v-if="opt.spell.icon"
-              :src="`https://render.albiononline.com/v1/spell/${opt.spell.icon}.png`"
+              :src="spellIconUrl(opt.spell)"
               :alt="opt.spell.name"
               @error="handleImgError"
             />
-            <span v-else class="sp-fallback">{{ opt.spell.id.charAt(0) }}</span>
+            <span class="sp-fallback">{{ spellFallbackLabel(opt.spell.id) }}</span>
           </button>
         </template>
         <div v-else class="sp-empty">Aucun spell disponible</div>
       </div>
     </div>
+
+    <div
+      v-if="tooltip.visible"
+      class="sp-tooltip"
+      :style="{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }"
+    >
+      <div class="sp-tooltip-title">{{ tooltip.title }}</div>
+      <div v-if="tooltip.badge" class="sp-tooltip-badge">{{ tooltip.badge }}</div>
+      <div v-for="line in tooltip.lines" :key="line" class="sp-tooltip-line">{{ line }}</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { SPELL_SLOTS } from '~/composables/useBuildCreator'
-import type { SpellSlotKey, SpellOption, SelectedSpell } from '~/composables/useBuildCreator'
+import type { SpellGroup, SelectedSpell } from '~/composables/useBuildCreator'
 
 const props = defineProps<{
-  selected: Partial<Record<SpellSlotKey, SelectedSpell>>
-  getOptions: (slot: SpellSlotKey) => SpellOption[]
+  selected: Record<string, SelectedSpell>
+  groups: SpellGroup[]
 }>()
 
 const emit = defineEmits<{
-  pick: [slotKey: SpellSlotKey, spell: SelectedSpell | null]
+  pick: [groupKey: string, spell: SelectedSpell | null]
 }>()
 
-function options(slotKey: SpellSlotKey) {
-  return props.getOptions(slotKey)
+const tooltip = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  title: '',
+  badge: '',
+  lines: [] as string[],
+})
+
+function selectedSpell(groupKey: string) {
+  return props.selected[groupKey] ?? null
 }
 
-function selectedSpell(slotKey: SpellSlotKey) {
-  return props.selected[slotKey] ?? null
-}
-
-function pick(slotKey: SpellSlotKey, spell: SelectedSpell) {
-  if (props.selected[slotKey]?.id === spell.id) {
-    emit('pick', slotKey, null)
+function pick(groupKey: string, spell: SelectedSpell) {
+  if (props.selected[groupKey]?.id === spell.id) {
+    emit('pick', groupKey, null)
   } else {
-    emit('pick', slotKey, spell)
+    emit('pick', groupKey, spell)
   }
+}
+
+function spellIconUrl(spell: SelectedSpell) {
+  return `https://render.albiononline.com/v1/spell/${spell.id}.png`
+}
+
+function spellFallbackLabel(id: string) {
+  return id.charAt(0).toUpperCase()
 }
 
 function handleImgError(e: Event) {
   const img = e.target as HTMLImageElement
   img.style.display = 'none'
-  const fallback = img.nextElementSibling as HTMLElement | null
+  const fallback = img.parentElement?.querySelector('.sp-fallback') as HTMLElement | null
   if (fallback) fallback.style.display = 'flex'
+}
+
+function moveTooltip(event: MouseEvent) {
+  tooltip.x = event.clientX + 14
+  tooltip.y = event.clientY + 18
+}
+
+function hideTooltip() {
+  tooltip.visible = false
+}
+
+function showTooltip(event: MouseEvent, slotLabel: string, spellSlotLabel: string, spell: SelectedSpell) {
+  moveTooltip(event)
+  tooltip.title = spell.name
+  tooltip.badge = `${slotLabel} · ${spellSlotLabel}`
+  tooltip.lines = [
+    spell.cooldown != null ? `Cooldown: ${formatStat(spell.cooldown)}s` : null,
+    spell.energyCost != null ? `Énergie: ${formatStat(spell.energyCost)}` : null,
+    spell.range != null ? `Portée: ${formatStat(spell.range)}m` : null,
+    [
+      spell.spellKind ? `Type: ${spell.spellKind}` : null,
+      spell.uiType ? `UI: ${spell.uiType}` : null,
+      spell.category ? `Catégorie: ${spell.category}` : null,
+    ].filter(Boolean).join(' · ') || null,
+  ].filter((line): line is string => Boolean(line))
+  tooltip.visible = true
+}
+
+function formatStat(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 </script>
 
@@ -73,6 +129,7 @@ function handleImgError(e: Event) {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
 }
 
 .spell-slot-section {
@@ -84,8 +141,21 @@ function handleImgError(e: Event) {
 .sp-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  min-height: 18px;
+  min-height: 24px;
+}
+
+.sp-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-item {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
 }
 
 .sp-key {
@@ -149,6 +219,11 @@ function handleImgError(e: Event) {
 }
 
 .sp-fallback {
+  display: none;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-3);
@@ -158,5 +233,42 @@ function handleImgError(e: Event) {
   font-size: 12px;
   color: var(--text-4);
   padding: 6px 0;
+}
+
+.sp-tooltip {
+  position: fixed;
+  z-index: 1200;
+  min-width: 180px;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: rgba(15, 17, 22, 0.96);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+.sp-tooltip-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.sp-tooltip-badge {
+  display: inline-flex;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--gold);
+  border: 1px solid rgba(201,161,74,0.25);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(201,161,74,0.08);
+}
+
+.sp-tooltip-line {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
 }
 </style>

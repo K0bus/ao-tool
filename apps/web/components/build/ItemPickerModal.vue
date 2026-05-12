@@ -50,7 +50,6 @@
               </div>
               <div class="ipm-item-meta">
                 <div class="ipm-item-name">{{ item.name }}</div>
-                <div class="ipm-item-id">{{ item.uniqueName }}</div>
               </div>
               <span :class="`tier-badge t${item.tier}`">T{{ item.tier }}<template v-if="item.enchantmentLevel > 0">.{{ item.enchantmentLevel }}</template></span>
             </button>
@@ -83,13 +82,17 @@ interface RawItem {
   name: string
   tier: number
   enchantmentLevel: number
+  twoHanded?: boolean | null
+  itemType?: string | null
+  shopCategory?: string | null
+  shopSubcategory?: string | null
   iconUrl?: string | null
 }
 
 const query = ref('')
 const results = ref<RawItem[]>([])
 const loading = ref(false)
-const activeTiers = ref<number[]>([1, 2, 3, 4, 5, 6, 7, 8])
+const activeTiers = ref<number[]>([8])
 const searchEl = ref<HTMLInputElement | null>(null)
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -98,7 +101,7 @@ watch(() => props.open, (v) => {
   if (v) {
     query.value = ''
     results.value = []
-    activeTiers.value = [1, 2, 3, 4, 5, 6, 7, 8]
+    activeTiers.value = [8]
     nextTick(() => searchEl.value?.focus())
     doSearch()
   }
@@ -145,7 +148,11 @@ function select(item: RawItem) {
     name: item.name,
     tier: item.tier,
     enchantmentLevel: item.enchantmentLevel,
+    twoHanded: item.twoHanded,
     iconUrl: item.iconUrl,
+    itemType: item.itemType,
+    shopCategory: item.shopCategory,
+    shopSubcategory: item.shopSubcategory,
   })
   emit('close')
 }
@@ -286,12 +293,6 @@ function select(item: RawItem) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ipm-item-id {
-  font-size: 11px;
-  color: var(--text-3);
-  font-family: var(--font-mono);
-}
-
 .ipm-empty {
   padding: 32px 16px;
   text-align: center;

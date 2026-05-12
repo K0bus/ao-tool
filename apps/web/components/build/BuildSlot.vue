@@ -1,5 +1,5 @@
 <template>
-  <button class="build-slot" :class="{ filled: !!item, active }" @click="$emit('click')">
+  <button class="build-slot" :class="{ filled: !!item, active, disabled }" :disabled="disabled" @click="$emit('click')">
     <div v-if="item" class="slot-tier">T{{ item.tier }}<template v-if="item.enchantmentLevel > 0">.{{ item.enchantmentLevel }}</template></div>
     <div class="slot-icon">
       <AoItemImage v-if="item" :unique-name="item.uniqueName" :display-name="item.name" :alt="item.name" />
@@ -19,6 +19,7 @@ defineProps<{
   label: string
   item: EquippedItem | null
   active?: boolean
+  disabled?: boolean
 }>()
 
 defineEmits<{
@@ -56,6 +57,15 @@ defineEmits<{
 }
 .build-slot.filled {
   border-color: rgba(201,161,74,0.22);
+}
+.build-slot.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--bg-1);
+}
+.build-slot.disabled:hover {
+  border-color: var(--border);
+  background: var(--bg-1);
 }
 
 .slot-icon {
@@ -121,5 +131,6 @@ defineEmits<{
   transition: opacity 0.1s;
 }
 .build-slot:hover .slot-remove { opacity: 1; }
+.build-slot.disabled:hover .slot-remove { opacity: 0; }
 .slot-remove:hover { background: rgba(176,74,50,0.25); color: var(--danger); }
 </style>

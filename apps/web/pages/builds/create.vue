@@ -36,48 +36,92 @@
       {{ copiedMsg }}
     </div>
 
-    <!-- Body -->
-    <div class="creator-body">
-
-      <!-- Col gauche : équipement + métadonnées -->
-      <div class="creator-left">
-        <div class="panel">
-          <div class="panel-header"><h3>Équipement</h3></div>
-          <div class="panel-body">
-            <div class="slots-grid">
-              <BuildSlot
-                v-for="slot in EQUIPMENT_SLOTS"
-                :key="slot.key"
-                :label="slot.label"
-                :item="creator.equipment[slot.key]"
-                :active="creator.activeSlot.value === slot.key"
-                @click="openPicker(slot.key)"
-                @remove="creator.setItem(slot.key, null)"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Métadonnées -->
-        <div class="panel">
-          <div class="panel-header"><h3>Informations</h3></div>
-          <div class="panel-body">
+    <div class="panel info-panel">
+      <div class="panel-header"><h3>Informations</h3></div>
+      <div class="panel-body">
           <div class="form-fields">
             <div class="form-field">
               <label>Nom du build</label>
               <input v-model="creator.title.value" type="text" placeholder="Mon build ZvZ…" maxlength="120" />
             </div>
             <div class="form-field">
-              <label>Mode de jeu</label>
+              <label>Contenus <span class="t-gold">*</span></label>
               <div class="mode-pills">
                 <button
-                  v-for="mode in GAME_MODES"
-                  :key="mode"
+                  v-for="option in BUILD_CONTENT_TYPE_OPTIONS"
+                  :key="option.value"
                   class="filter-pill sm"
-                  :class="{ active: creator.gameMode.value === mode }"
-                  @click="toggleMode(mode)"
-                >{{ mode }}</button>
+                  :class="{ active: creator.contentTypes.value.includes(option.value) }"
+                  @click="toggleContentType(option.value)"
+                >{{ option.label }}</button>
               </div>
+              <div v-if="validationError" class="field-error">{{ validationError }}</div>
+            </div>
+            <div class="form-field">
+              <label>Rôles</label>
+              <div class="mode-pills">
+                <button
+                  v-for="option in BUILD_ROLE_OPTIONS"
+                  :key="option.value"
+                  class="filter-pill sm"
+                  :class="{ active: creator.roles.value.includes(option.value) }"
+                  @click="toggleListValue(creator.roles.value, option.value)"
+                >{{ option.label }}</button>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Taille du groupe</label>
+              <div class="mode-pills">
+                <button
+                  v-for="option in BUILD_GROUP_SCALE_OPTIONS"
+                  :key="option.value"
+                  class="filter-pill sm"
+                  :class="{ active: creator.groupScales.value.includes(option.value) }"
+                  @click="toggleListValue(creator.groupScales.value, option.value)"
+                >{{ option.label }}</button>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Style de jeu</label>
+              <div class="mode-pills">
+                <button
+                  v-for="option in BUILD_PLAYSTYLE_OPTIONS"
+                  :key="option.value"
+                  class="filter-pill sm"
+                  :class="{ active: creator.playstyles.value.includes(option.value) }"
+                  @click="toggleListValue(creator.playstyles.value, option.value)"
+                >{{ option.label }}</button>
+              </div>
+            </div>
+            <div class="tag-grid">
+              <div class="form-field">
+                <label>Difficulté</label>
+                <div class="mode-pills">
+                  <button
+                    v-for="option in BUILD_DIFFICULTY_OPTIONS"
+                    :key="option.value"
+                    class="filter-pill sm"
+                    :class="{ active: creator.difficulty.value === option.value }"
+                    @click="toggleSingleValue('difficulty', option.value)"
+                  >{{ option.label }}</button>
+                </div>
+              </div>
+              <div class="form-field">
+                <label>Budget</label>
+                <div class="mode-pills">
+                  <button
+                    v-for="option in BUILD_BUDGET_OPTIONS"
+                    :key="option.value"
+                    class="filter-pill sm"
+                    :class="{ active: creator.budget.value === option.value }"
+                    @click="toggleSingleValue('budget', option.value)"
+                  >{{ option.label }}</button>
+                </div>
+              </div>
+            </div>
+            <div v-if="derivedWeaponLabel" class="derived-weapon">
+              <span class="derived-weapon-label">Arme détectée</span>
+              <span class="derived-weapon-value">{{ derivedWeaponLabel }}</span>
             </div>
             <div class="form-field">
               <label>Visibilité</label>
@@ -99,6 +143,29 @@
               <textarea v-model="creator.description.value" rows="3" placeholder="Notes, conseils d'utilisation…" maxlength="2000" />
             </div>
           </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="creator-body">
+
+      <!-- Col gauche : équipement -->
+      <div class="creator-left">
+        <div class="panel">
+          <div class="panel-header"><h3>Équipement</h3></div>
+          <div class="panel-body">
+            <div class="slots-grid">
+              <BuildSlot
+                v-for="slot in EQUIPMENT_SLOTS"
+                :key="slot.key"
+                :label="slot.label"
+                :item="creator.equipment[slot.key]"
+                :active="creator.activeSlot.value === slot.key"
+                :disabled="slot.key === 'offhand' && creator.offhandDisabled.value"
+                @click="openPicker(slot.key)"
+                @remove="creator.setItem(slot.key, null)"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -116,7 +183,7 @@
           <BuildSpellPicker
             v-else
             :selected="creator.selectedSpells"
-            :get-options="creator.getSpellOptionsForSlot"
+            :groups="creator.spellGroups.value"
             @pick="creator.setSpell"
           />
           </div>
@@ -136,10 +203,18 @@
 </template>
 
 <script setup lang="ts">
-import { EQUIPMENT_SLOTS, SPELL_SLOTS, useBuildCreator } from '~/composables/useBuildCreator'
+import {
+  BUILD_BUDGET_OPTIONS,
+  BUILD_CONTENT_TYPE_OPTIONS,
+  BUILD_DIFFICULTY_OPTIONS,
+  BUILD_GROUP_SCALE_OPTIONS,
+  BUILD_PLAYSTYLE_OPTIONS,
+  BUILD_ROLE_OPTIONS,
+} from '@albion-tool/types'
+import { EQUIPMENT_SLOTS, useBuildCreator } from '~/composables/useBuildCreator'
 import type { SlotKey, EquippedItem } from '~/composables/useBuildCreator'
+import { labelWeaponCategory, labelWeaponSubcategory } from '~/utils/buildTaxonomy'
 
-const GAME_MODES = ['Solo PvP', 'ZvZ', 'Ganking', 'HCE', 'Corrupted', 'Gathering']
 const VISIBILITIES = [
   { value: 'PRIVATE' as const, label: 'Privé' },
   { value: 'UNLISTED' as const, label: 'Non listé' },
@@ -150,12 +225,22 @@ const creator = useBuildCreator()
 const pickerSlot = ref<SlotKey | null>(null)
 const savedCode = ref<string | null>(null)
 const copiedMsg = ref<string | null>(null)
+const validationError = ref('')
 
 const activeSlotDef = computed(() =>
   pickerSlot.value ? EQUIPMENT_SLOTS.find((s) => s.key === pickerSlot.value) ?? null : null
 )
+const derivedWeaponLabel = computed(() => {
+  const weapon = creator.equipment.weapon
+  if (!weapon) return null
+
+  return [labelWeaponSubcategory(weapon.shopSubcategory), labelWeaponCategory(weapon.shopCategory)]
+    .filter(Boolean)
+    .join(' · ')
+})
 
 function openPicker(slot: SlotKey) {
+  if (slot === 'offhand' && creator.offhandDisabled.value) return
   creator.activeSlot.value = slot
   pickerSlot.value = slot
 }
@@ -167,11 +252,34 @@ async function onItemSelected(item: EquippedItem) {
   pickerSlot.value = null
 }
 
-function toggleMode(mode: string) {
-  creator.gameMode.value = creator.gameMode.value === mode ? '' : mode
+function toggleContentType(value: typeof BUILD_CONTENT_TYPE_OPTIONS[number]['value']) {
+  const idx = creator.contentTypes.value.indexOf(value)
+  if (idx >= 0) creator.contentTypes.value.splice(idx, 1)
+  else creator.contentTypes.value.push(value)
+  validationError.value = ''
+}
+
+function toggleListValue<T extends string>(list: T[], value: T) {
+  const idx = list.indexOf(value)
+  if (idx >= 0) list.splice(idx, 1)
+  else list.push(value)
+}
+
+function toggleSingleValue(field: 'difficulty' | 'budget', value: string) {
+  if (field === 'difficulty') {
+    creator.difficulty.value = creator.difficulty.value === value ? null : value as typeof creator.difficulty.value
+    return
+  }
+
+  creator.budget.value = creator.budget.value === value ? null : value as typeof creator.budget.value
 }
 
 async function save() {
+  if (!creator.primaryContentType.value) {
+    validationError.value = 'Choisissez au moins un contenu avant de sauvegarder le build.'
+    return
+  }
+
   try {
     const result = await creator.saveBuild()
     savedCode.value = result.shareCode
@@ -232,6 +340,10 @@ useSeoMeta({ title: 'Build Creator — Albion Codex' })
   text-decoration: underline;
 }
 
+.info-panel {
+  margin-bottom: 16px;
+}
+
 .creator-body {
   display: grid;
   grid-template-columns: 380px 1fr;
@@ -274,6 +386,39 @@ useSeoMeta({ title: 'Build Creator — Albion Codex' })
 .form-field textarea:focus { border-color: var(--gold-dim); }
 
 .mode-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.derived-weapon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(201,161,74,0.2);
+  background: rgba(201,161,74,0.06);
+}
+
+.derived-weapon-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.derived-weapon-value {
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+}
 
 .vis-select { display: flex; gap: 6px; }
 .vis-opt {
@@ -318,6 +463,9 @@ useSeoMeta({ title: 'Build Creator — Albion Codex' })
 
 @media (max-width: 900px) {
   .creator-body {
+    grid-template-columns: 1fr;
+  }
+  .tag-grid {
     grid-template-columns: 1fr;
   }
 }

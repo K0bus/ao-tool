@@ -26,6 +26,10 @@ const schema = z.object({
 });
 
 const DEFAULT_LOCALE = "FR-FR";
+function toWhereArray(value: Prisma.ItemWhereInput | Prisma.ItemWhereInput[] | undefined) {
+  if (!value) return []
+  return Array.isArray(value) ? value : [value]
+}
 
 export default defineEventHandler(async (event) => {
   const query = await getValidatedQuery(event, (q) => schema.safeParse(q));
@@ -92,8 +96,30 @@ export default defineEventHandler(async (event) => {
     }
     where.categoryId = { in: descendants(categoryId) }
   } else {
-    if (category) where.shopCategory = { equals: category, mode: "insensitive" }
-    if (subcategory) where.shopSubcategory = { equals: subcategory, mode: "insensitive" }
+    if (category) {
+      const categories = category.split(',').map((value) => value.trim()).filter(Boolean)
+      if (categories.length === 1) where.shopCategory = { equals: categories[0], mode: "insensitive" }
+      else if (categories.length > 1) {
+        where.OR = [
+          ...toWhereArray(where.OR),
+          ...categories.map((value) => ({ shopCategory: { equals: value, mode: "insensitive" as const } })),
+        ]
+      }
+    }
+    if (subcategory) {
+      const subcategories = subcategory.split(',').map((value) => value.trim()).filter(Boolean)
+      if (subcategories.length === 1) where.shopSubcategory = { equals: subcategories[0], mode: "insensitive" }
+      else if (subcategories.length > 1) {
+        where.AND = [
+          ...toWhereArray(where.AND),
+          {
+            OR: subcategories.map((value) => ({
+              shopSubcategory: { equals: value, mode: "insensitive" as const },
+            })),
+          },
+        ]
+      }
+    }
   }
 
   // Exclusions
@@ -137,6 +163,7 @@ export default defineEventHandler(async (event) => {
         itemType: true,
         shopCategory: true,
         shopSubcategory: true,
+        stats: true,
         isCraftable: true,
         isRefinable: true,
         iconUrl: true,
@@ -162,6 +189,7 @@ export default defineEventHandler(async (event) => {
     itemType: item.itemType,
     shopCategory: item.shopCategory,
     shopSubcategory: item.shopSubcategory,
+    twoHanded: Boolean((item.stats as Record<string, unknown> | null)?.twoHanded),
     isCraftable: item.isCraftable,
     isRefinable: item.isRefinable,
     iconUrl: item.iconUrl,

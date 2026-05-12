@@ -1,6 +1,33 @@
 import { prisma } from '~/server/utils/prisma'
+import { serializeBuild } from '~/server/utils/builds'
 
 const DEFAULT_LOCALE = 'FR-FR'
+
+function isNonEmpty(value?: string | null): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function resolveSpellLocalization(
+  localizations: Array<{ locale: string; name: string; description: string | null }>,
+  locale: string,
+) {
+  const preferred = localizations.find((entry) => entry.locale === locale && isNonEmpty(entry.name))
+  const enUs = localizations.find((entry) => entry.locale === 'EN-US' && isNonEmpty(entry.name))
+  const anyNamed = localizations.find((entry) => isNonEmpty(entry.name))
+
+  const nameSource = preferred ?? enUs ?? anyNamed ?? null
+
+  const descriptionSource =
+    localizations.find((entry) => entry.locale === locale && isNonEmpty(entry.description))
+    ?? localizations.find((entry) => entry.locale === 'EN-US' && isNonEmpty(entry.description))
+    ?? localizations.find((entry) => isNonEmpty(entry.description))
+    ?? null
+
+  return {
+    name: nameSource?.name?.trim() ?? null,
+    description: descriptionSource?.description?.trim() ?? null,
+  }
+}
 
 export default defineEventHandler(async (event) => {
   const code = getRouterParam(event, 'code')
@@ -14,7 +41,7 @@ export default defineEventHandler(async (event) => {
       spells: {
         include: {
           spell: {
-            include: { localizations: { where: { locale }, take: 1 } },
+            include: { localizations: true },
           },
         },
         orderBy: { slotKey: 'asc' },
@@ -36,31 +63,30 @@ export default defineEventHandler(async (event) => {
 
   return {
     data: {
-      id: build.id,
-      shareCode: build.shareCode,
-      title: build.title,
-      description: build.description,
-      gameMode: build.gameMode,
-      visibility: build.visibility,
-      equipment: (build.equipment ?? {}) as Record<string, string | null>,
+      ...serializeBuild(build),
       spells: build.spells.map((bs) => ({
-        slotKey: bs.slotKey,
-        spell: {
-          id: bs.spell.id,
-          spellKind: bs.spell.spellKind,
-          icon: bs.spell.icon,
-          category: bs.spell.category,
-          uiType: bs.spell.uiType,
-          cooldown: bs.spell.cooldown,
-          energyCost: bs.spell.energyCost,
-          range: bs.spell.range,
-          name: bs.spell.localizations[0]?.name ?? bs.spell.id,
-        },
+        ...(function () {
+          const loc = resolveSpellLocalization(bs.spell.localizations, locale)
+
+          return {
+            slotKey: bs.slotKey,
+            spell: {
+              id: bs.spell.id,
+              spellKind: bs.spell.spellKind,
+              icon: bs.spell.icon,
+              category: bs.spell.category,
+              uiType: bs.spell.uiType,
+              cooldown: bs.spell.cooldown,
+              energyCost: bs.spell.energyCost,
+              castTime: bs.spell.castTime,
+              channelDuration: bs.spell.channelDuration,
+              range: bs.spell.range,
+              description: loc.description,
+              name: loc.name ?? bs.spell.id,
+            },
+          }
+        })(),
       })),
-      viewCount: build.viewCount,
-      userId: build.userId,
-      createdAt: build.createdAt.toISOString(),
-      updatedAt: build.updatedAt.toISOString(),
     },
   }
 })
