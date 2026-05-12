@@ -259,10 +259,21 @@
 
               <div class="param" style="margin-top:10px">
                 <div class="param-head">
-                  <label>Taxe de vente</label>
-                  <span class="t-mono t-gold">{{ params.sellFeePercent.toFixed(1) }}%</span>
+                  <label>Statut premium</label>
+                  <span class="t-mono t-gold">{{ totalSellFeePercent.toFixed(1) }}%</span>
                 </div>
-                <input v-model.number="params.sellFeePercent" type="range" class="range" min="0" max="10" step="0.5" />
+                <div class="toggle-row big" style="margin-top:6px">
+                  <div>
+                    <div class="label">{{ params.isPremium ? 'Premium actif' : 'Non premium' }}</div>
+                    <div class="t-dim" style="font-size:11px;margin-top:2px">
+                      Taxe marché {{ params.isPremium ? '4.0%' : '8.0%' }} + taxe de placement 2.5%
+                    </div>
+                  </div>
+                  <label class="ds-switch">
+                    <input v-model="params.isPremium" type="checkbox" />
+                    <span class="ds-track"><span class="ds-thumb"></span></span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -485,7 +496,7 @@
                 <span class="t-mono">{{ fmt(activeScenario.grossRevenue) }} ◇</span>
               </div>
               <div class="btr return-row">
-                <span>— Taxe marché ({{ params.sellFeePercent.toFixed(1) }}%)</span>
+                <span>— Taxe marché + placement ({{ totalSellFeePercent.toFixed(1) }}%)</span>
                 <span class="t-mono" style="color:var(--danger)">−{{ fmt(activeScenario.sellFee) }} ◇</span>
               </div>
               <div class="btr subtotal-row">
@@ -612,6 +623,8 @@ const STATION_PRESETS: Record<string, number | null> = {
 }
 
 const stationType = ref('public')
+const PLACEMENT_FEE_PERCENT = 2.5
+const totalSellFeePercent = computed(() => (params.value.isPremium ? 4 : 8) + PLACEMENT_FEE_PERCENT)
 
 function onStationTypeChange() {
   const preset = STATION_PRESETS[stationType.value]
@@ -725,14 +738,14 @@ interface NodeStrategy {
   hasRecipe: boolean
 }
 
-function getMarketPrice(marketPrices: any[], targetCity: string): number {
-  if (!marketPrices?.length) return 0
-  const cityPrices = marketPrices.filter((p: any) =>
-    p.location?.name === targetCity && p.quality === 1 && p.sellPriceMin > 0
+function getResolvedPrice(resolvedPrices: any[], targetCity: string): number {
+  if (!resolvedPrices?.length) return 0
+  const cityPrices = resolvedPrices.filter((p: any) =>
+    p.location?.name === targetCity && p.quality === 1 && p.sellPrice > 0
   )
-  if (cityPrices.length) return Math.min(...cityPrices.map((p: any) => p.sellPriceMin))
-  const fallback = marketPrices.filter((p: any) => p.quality === 1 && p.sellPriceMin > 0)
-  return fallback.length ? Math.min(...fallback.map((p: any) => p.sellPriceMin)) : 0
+  if (cityPrices.length) return Math.min(...cityPrices.map((p: any) => p.sellPrice))
+  const fallback = resolvedPrices.filter((p: any) => p.quality === 1 && p.sellPrice > 0)
+  return fallback.length ? Math.min(...fallback.map((p: any) => p.sellPrice)) : 0
 }
 
 // Use actual return rate from simulation if available, else fallback to 0
@@ -744,7 +757,7 @@ const treeReturnRate = computed(() => {
 })
 
 function buildStrategy(apiNode: any, map: Map<string, NodeStrategy>, isRoot = false): number {
-  const buyPrice = getMarketPrice(apiNode.marketPrices, params.value.craftCity)
+  const buyPrice = getResolvedPrice(apiNode.resolvedPrices, params.value.craftCity)
   const hasRecipe = !!(apiNode.recipe?.ingredients?.length)
 
   if (!hasRecipe) {
@@ -858,7 +871,7 @@ function buildDisplayNode(apiNode: any, targetQty: number, depth: number): Displ
     isRoot: depth === 0,
     children,
     x: 0, y: 0, subtreeW: 0,
-    marketPrice: getMarketPrice(apiNode.marketPrices, params.value.craftCity),
+    marketPrice: getResolvedPrice(apiNode.resolvedPrices, params.value.craftCity),
   }
 }
 
@@ -945,7 +958,7 @@ function collectBuyNodes(apiNode: any, acc: Map<string, ShoppingEntry>, qty: num
     else acc.set(apiNode.uniqueName, {
       uniqueName: apiNode.uniqueName,
       name: apiNode.name,
-      unitPrice: getMarketPrice(apiNode.marketPrices, params.value.craftCity),
+      unitPrice: getResolvedPrice(apiNode.resolvedPrices, params.value.craftCity),
       qty,
     })
     return

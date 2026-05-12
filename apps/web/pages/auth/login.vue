@@ -7,14 +7,14 @@
 
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <div>
-        <label class="label" for="email">Email</label>
+        <label class="label" for="email">Email or Username</label>
         <input
           id="email"
           v-model="form.email"
-          type="email"
+          type="text"
           class="input"
-          placeholder="you@example.com"
-          autocomplete="email"
+          placeholder="you@example.com or your username"
+          autocomplete="username"
           required
         />
       </div>

@@ -7,7 +7,7 @@ import {
 } from '~/server/utils/auth'
 
 const schema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   password: z.string().min(1),
 })
 
@@ -19,9 +19,16 @@ export default defineEventHandler(async (event) => {
   }
 
   const { email, password } = body.data
+  const login = email.trim()
+  const loginLower = login.toLowerCase()
 
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: loginLower },
+        { username: { equals: login, mode: 'insensitive' } },
+      ],
+    },
     select: {
       id: true,
       email: true,

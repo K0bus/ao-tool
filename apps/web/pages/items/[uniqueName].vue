@@ -189,10 +189,10 @@
                       </div>
                     </td>
                     <td style="text-align:right;color:var(--gold);font-family:var(--font-mono);font-size:13px">
-                      {{ price.sellPriceMin > 0 ? price.sellPriceMin.toLocaleString('fr-FR') : '—' }}
+                      {{ price.sellPrice > 0 ? price.sellPrice.toLocaleString('fr-FR') : '—' }}
                     </td>
                     <td style="text-align:right;font-family:var(--font-mono);font-size:13px;color:var(--text-2)">
-                      {{ price.buyPriceMax > 0 ? price.buyPriceMax.toLocaleString('fr-FR') : '—' }}
+                      {{ price.buyPrice > 0 ? price.buyPrice.toLocaleString('fr-FR') : '—' }}
                     </td>
                     <td style="text-align:right;font-family:var(--font-mono);font-size:12px" :class="spreadClass(price)">
                       {{ spread(price) }}
@@ -313,9 +313,9 @@ const qualityFrameClass = computed(() => {
 
 // City prices filtered by selectedQuality
 const filteredPrices = computed(() => {
-  if (!item.value?.marketPrices) return []
-  return item.value.marketPrices.filter(
-    (p: any) => p.quality === selectedQuality.value && (p.sellPriceMin > 0 || p.buyPriceMax > 0)
+  if (!item.value?.resolvedPrices) return []
+  return item.value.resolvedPrices.filter(
+    (p: any) => p.quality === selectedQuality.value && (p.sellPrice > 0 || p.buyPrice > 0)
   )
 })
 
@@ -348,14 +348,14 @@ function cityColor(location: any): string {
 
 // Spread calculation
 function spread(price: any): string {
-  if (!price.sellPriceMin || !price.buyPriceMax || price.sellPriceMin <= 0 || price.buyPriceMax <= 0) return '—'
-  const pct = ((price.sellPriceMin - price.buyPriceMax) / price.buyPriceMax) * 100
+  if (!price.sellPrice || !price.buyPrice || price.sellPrice <= 0 || price.buyPrice <= 0) return '—'
+  const pct = ((price.sellPrice - price.buyPrice) / price.buyPrice) * 100
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`
 }
 
 function spreadClass(price: any): string {
-  if (!price.sellPriceMin || !price.buyPriceMax || price.sellPriceMin <= 0 || price.buyPriceMax <= 0) return 't-muted'
-  const pct = ((price.sellPriceMin - price.buyPriceMax) / price.buyPriceMax) * 100
+  if (!price.sellPrice || !price.buyPrice || price.sellPrice <= 0 || price.buyPrice <= 0) return 't-muted'
+  const pct = ((price.sellPrice - price.buyPrice) / price.buyPrice) * 100
   return pct >= 0 ? 't-success' : 't-danger'
 }
 

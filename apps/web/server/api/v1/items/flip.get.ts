@@ -54,8 +54,8 @@ export default defineEventHandler(async (event) => {
   if (!sellLocation) throw createError({ statusCode: 400, statusMessage: `Location "${sellCity}" not found` });
 
   const where: Prisma.ItemWhereInput = {
-    marketPrices: {
-      some: { locationId: buyLocation.id, quality, sellPriceMin: { gt: 0 } },
+    resolvedPrices: {
+      some: { locationId: buyLocation.id, quality, sellPrice: { gt: 0 } },
     },
   };
 
@@ -101,15 +101,15 @@ export default defineEventHandler(async (event) => {
         select: { name: true },
         take: 1,
       },
-      marketPrices: {
+      resolvedPrices: {
         where: {
           locationId: { in: [buyLocation.id, sellLocation.id] },
           quality,
         },
         select: {
           locationId: true,
-          sellPriceMin: true,
-          sellPriceMinDate: true,
+          sellPrice: true,
+          updatedAt: true,
         },
       },
     },
@@ -118,11 +118,11 @@ export default defineEventHandler(async (event) => {
   const computed = rawItems
     .map((item) => {
       const name = item.localizations[0]?.name ?? item.uniqueName;
-      const buyEntry  = item.marketPrices.find((p) => p.locationId === buyLocation.id);
-      const sellEntry = item.marketPrices.find((p) => p.locationId === sellLocation.id);
+      const buyEntry  = item.resolvedPrices.find((p) => p.locationId === buyLocation.id);
+      const sellEntry = item.resolvedPrices.find((p) => p.locationId === sellLocation.id);
 
-      const buyPrice  = buyEntry?.sellPriceMin  && buyEntry.sellPriceMin  > 0 ? buyEntry.sellPriceMin  : null;
-      const sellPrice = sellEntry?.sellPriceMin && sellEntry.sellPriceMin > 0 ? sellEntry.sellPriceMin : null;
+      const buyPrice  = buyEntry?.sellPrice  && buyEntry.sellPrice  > 0 ? buyEntry.sellPrice  : null;
+      const sellPrice = sellEntry?.sellPrice && sellEntry.sellPrice > 0 ? sellEntry.sellPrice : null;
 
       let profit: number | null = null;
       let margin: number | null = null;
@@ -143,8 +143,8 @@ export default defineEventHandler(async (event) => {
         iconUrl: item.iconUrl,
         buyPrice,
         sellPrice,
-        buyPriceDate:  buyEntry?.sellPriceMinDate  ?? null,
-        sellPriceDate: sellEntry?.sellPriceMinDate ?? null,
+        buyPriceDate:  buyEntry?.updatedAt  ?? null,
+        sellPriceDate: sellEntry?.updatedAt ?? null,
         profit,
         margin,
         tax,

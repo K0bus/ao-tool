@@ -114,9 +114,9 @@ export default defineEventHandler(async (event) => {
               item: {
                 select: {
                   uniqueName: true,
-                  marketPrices: {
+                  resolvedPrices: {
                     where: { locationId: location.id, quality: 1 },
-                    select: { sellPriceMin: true },
+                    select: { sellPrice: true },
                   },
                 },
               },
@@ -124,9 +124,9 @@ export default defineEventHandler(async (event) => {
           },
         },
       },
-      marketPrices: {
+      resolvedPrices: {
         where: { locationId: location.id, quality },
-        select: { sellPriceMin: true },
+        select: { sellPrice: true },
       },
       cityBonuses: {
         where: { locationId: location.id },
@@ -159,7 +159,7 @@ export default defineEventHandler(async (event) => {
 
     if (item.craftingRecipe) {
       for (const ing of item.craftingRecipe.ingredients) {
-        const price = ing.item.marketPrices[0]?.sellPriceMin;
+        const price = ing.item.resolvedPrices[0]?.sellPrice;
         if (!price || price === 0) {
           missingPrices = true;
           continue;
@@ -183,7 +183,7 @@ export default defineEventHandler(async (event) => {
         ? (item.craftingRecipe?.resultCount ?? 1) * (1 + cityBonus / 100)
         : (item.craftingRecipe?.resultCount ?? 1);
 
-    const sellPriceRaw = item.marketPrices[0]?.sellPriceMin;
+    const sellPriceRaw = item.resolvedPrices[0]?.sellPrice;
     const sellRevenue = sellPriceRaw && sellPriceRaw > 0 ? sellPriceRaw * effectiveOutput : null;
 
     let profit: number | null = null;

@@ -4,7 +4,7 @@ export interface SimParams {
   quality: number
   useFocus: boolean
   silverPer100Nutrition: number
-  sellFeePercent: number
+  isPremium: boolean
   quantity: number
 }
 
@@ -92,7 +92,7 @@ export function useCraftingSimulator() {
     quality: 1,
     useFocus: false,
     silverPer100Nutrition: 999,
-    sellFeePercent: 4,
+    isPremium: false,
     quantity: 1,
   })
 
@@ -166,7 +166,7 @@ export function useCraftingSimulator() {
       params.value.quality,
       params.value.useFocus,
       params.value.silverPer100Nutrition,
-      params.value.sellFeePercent,
+      params.value.isPremium,
       params.value.quantity,
     ],
     triggerSim,

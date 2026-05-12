@@ -7,7 +7,7 @@ const bodySchema = z.object({
   quality: z.coerce.number().int().min(1).max(5).default(1),
   useFocus: z.boolean().default(false),
   silverPer100Nutrition: z.coerce.number().min(0).max(10000).default(999),
-  sellFeePercent: z.coerce.number().min(0).max(10).default(4),
+  isPremium: z.boolean().default(false),
   quantity: z.coerce.number().int().min(1).max(9999).default(1),
 });
 
@@ -153,10 +153,10 @@ export default defineEventHandler(async (event) => {
   const ingredientItemIds = item.craftingRecipe.ingredients.map((i) => i.itemId);
   const locationIds = [...new Set([craftLocation.id, sellLocation.id])];
 
-  const [marketPrices, cityBonus, returnRate] = await Promise.all([
-    prisma.marketPrice.findMany({
+  const [resolvedPrices, cityBonus, returnRate] = await Promise.all([
+    prisma.resolvedPrice.findMany({
       where: { itemId: { in: [...ingredientItemIds, item.id] }, locationId: { in: locationIds } },
-      select: { itemId: true, locationId: true, quality: true, sellPriceMin: true, buyPriceMax: true },
+      select: { itemId: true, locationId: true, quality: true, sellPrice: true, buyPrice: true },
     }),
     prisma.cityItemBonus.findFirst({
       where: { locationId: craftLocation.id, itemId: item.id },
@@ -169,16 +169,16 @@ export default defineEventHandler(async (event) => {
 
   // Ingredient buy prices: craftCity, quality 1
   const craftPriceMap = new Map<string, number>();
-  for (const p of marketPrices) {
-    if (p.locationId === craftLocation.id && p.quality === 1 && p.sellPriceMin > 0)
-      craftPriceMap.set(p.itemId, p.sellPriceMin);
+  for (const p of resolvedPrices) {
+    if (p.locationId === craftLocation.id && p.quality === 1 && p.sellPrice > 0)
+      craftPriceMap.set(p.itemId, p.sellPrice);
   }
 
-  const sellPriceEntry = marketPrices.find(
+  const sellPriceEntry = resolvedPrices.find(
     (p) => p.itemId === item.id && p.locationId === sellLocation.id && p.quality === params.quality
   );
-  const sellPriceMin = sellPriceEntry?.sellPriceMin ?? null;
-  const buyPriceMax = sellPriceEntry?.buyPriceMax ?? null;
+  const sellPriceMin = sellPriceEntry?.sellPrice ?? null;
+  const buyPriceMax = sellPriceEntry?.buyPrice ?? null;
 
   const cityOutputBonus = cityBonus?.craftingBonus ?? 0;
   const baseRR = returnRate?.baseReturnRate ?? 0;
@@ -197,14 +197,15 @@ export default defineEventHandler(async (event) => {
   };
 
   const sellPrice = sellPriceMin ?? 0;
+  const totalSellFeePercent = (params.isPremium ? 4 : 8) + 2.5;
 
   const noFocusScenario = computeScenario(
-    recipe, sellPrice, params.quantity, params.silverPer100Nutrition, params.sellFeePercent,
+    recipe, sellPrice, params.quantity, params.silverPer100Nutrition, totalSellFeePercent,
     baseRR, cityOutputBonus, craftPriceMap, false
   );
   const focusScenario = isFocusable
     ? computeScenario(
-        recipe, sellPrice, params.quantity, params.silverPer100Nutrition, params.sellFeePercent,
+        recipe, sellPrice, params.quantity, params.silverPer100Nutrition, totalSellFeePercent,
         focusRR, cityOutputBonus, craftPriceMap, true
       )
     : null;

@@ -12,10 +12,10 @@ export interface RecipeNode {
   quantity: number
   maxReturnRate?: number | null
   type: 'craft' | 'refine' | 'raw'
-  marketPrices: Array<{
+  resolvedPrices: Array<{
     locationId: string
-    sellPriceMin: number
-    buyPriceMax: number
+    sellPrice: number
+    buyPrice: number
     quality: number
   }>
   recipe?: {
@@ -39,12 +39,11 @@ export function useCraftingProfitability() {
   }
 
   const getPrice = (node: RecipeNode, type: 'buy' | 'sell' = 'buy') => {
-    if (!node?.marketPrices || !Array.isArray(node.marketPrices)) return 0
-    const priceObj = node.marketPrices.find(p => p.locationId === selectedLocation.value && p.quality === 1)
+    if (!node?.resolvedPrices || !Array.isArray(node.resolvedPrices)) return 0
+    const priceObj = node.resolvedPrices.find(p => p.locationId === selectedLocation.value && p.quality === 1)
     if (!priceObj) return 0
-    // Use sellPriceMin for both buying ingredients and selling crafted items,
-    // consistent with API endpoints (current market listing price)
-    return type === 'buy' ? priceObj.sellPriceMin : priceObj.sellPriceMin
+    // Use resolved sell price for both buying ingredients and selling crafted items.
+    return type === 'buy' ? priceObj.sellPrice : priceObj.sellPrice
   }
 
   const calculateNodeCost = (node: RecipeNode, returnRate: number): number => {

@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
   if (!id)
     throw createError({ statusCode: 400, statusMessage: "Item ID required" });
 
-  const cacheKey = `item:tree:${id}`;
+  const cacheKey = `item:tree:v2:${id}`;
 
   const result = await cached(
     cacheKey,
@@ -88,7 +88,7 @@ export default defineEventHandler(async (event) => {
             select: { name: true },
             take: 1,
           },
-          marketPrices: {
+          resolvedPrices: {
             include: { location: true },
           },
           craftingRecipe: {
@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
         maxReturnRate: number | null,
         depth: number,
         visited: Set<string>,
-      ): TreeNode & { marketPrices: any[] } {
+      ): TreeNode & { resolvedPrices: any[] } {
         const item = itemMap.get(itemId);
 
         // Fallback si item non trouvé ou cycle / profondeur max
@@ -140,7 +140,7 @@ export default defineEventHandler(async (event) => {
             quantity,
             maxReturnRate,
             type: "raw",
-            marketPrices: item?.marketPrices ?? [],
+            resolvedPrices: item?.resolvedPrices ?? [],
             recipe: null,
           };
         }
@@ -167,7 +167,7 @@ export default defineEventHandler(async (event) => {
           quantity,
           maxReturnRate,
           type,
-          marketPrices: item.marketPrices,
+          resolvedPrices: item.resolvedPrices,
           recipe: recipe
             ? {
                 resultCount: recipe.resultCount,
@@ -191,7 +191,7 @@ export default defineEventHandler(async (event) => {
 
       return buildNode(rootItem.id, 1, null, 0, new Set());
     },
-    300, // 5 min — arbre inclut les marketPrices qui doivent rester frais après un sync
+    300, // 5 min — arbre inclut les resolvedPrices qui doivent rester frais après un sync
   );
 
   if (!result)

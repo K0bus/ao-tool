@@ -203,7 +203,7 @@ const legacyNodes = computed<RecipeNode[]>(() =>
     quantity: ing.quantity,
     maxReturnRate: ing.maxReturnRate ?? null,
     type: ing.item.isCraftable ? 'craft' : ing.item.isRefinable ? 'refine' : 'raw',
-    marketPrices: [],
+    resolvedPrices: [],
     recipe: null,
   }))
 )

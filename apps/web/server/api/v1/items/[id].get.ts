@@ -129,18 +129,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "Item not found" });
   }
 
-  // Market prices are fetched live (not cached) so syncs are reflected immediately
-  const marketPrices = await prisma.marketPrice.findMany({
-    where: { item: { uniqueName: id }, sellPriceMin: { not: 999999 } },
-    include: { location: true },
-    orderBy: { quality: "asc" },
-  });
-
+  // Resolved prices are fetched live (not cached) so syncs are reflected immediately.
   const resolvedPrices = await prisma.resolvedPrice.findMany({
     where: { item: { uniqueName: id } },
     include: { location: true },
     orderBy: { quality: "asc" },
   });
 
-  return { data: { ...item, marketPrices, resolvedPrices } };
+  return { data: { ...item, resolvedPrices } };
 });

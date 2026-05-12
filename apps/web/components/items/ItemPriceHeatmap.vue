@@ -3,7 +3,7 @@
     <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:8px">
         <h3>Heatmap des prix</h3>
-        <span v-if="isResolved" class="tag info" title="Prix consolidés via l'historique si nécessaire">Consolidé</span>
+        <span class="tag info" title="Prix consolidés via l'historique si nécessaire">Consolidé</span>
       </div>
       <div style="display:flex;gap:4px">
         <button
@@ -52,8 +52,7 @@
             >
               <template v-if="cellPrice(q.value, city.id) > 0">
                 <span class="hm-price t-mono">{{ cellPrice(q.value, city.id).toLocaleString('fr-FR') }}</span>
-                <span v-if="!isResolved" class="hm-age">{{ cellAgeText(q.value, city.id) }}</span>
-                <span v-else class="hm-source">{{ cellSource(q.value, city.id) }}</span>
+                <span class="hm-age">{{ cellAgeText(q.value, city.id) }}</span>
               </template>
               <span v-else class="hm-empty">—</span>
             </td>
@@ -73,28 +72,22 @@
 </template>
 
 <script setup lang="ts">
-interface AnyPrice {
+interface ResolvedMarketPrice {
   locationId: string
   quality: number
-  sellPriceMin?: number // MarketPrice
-  buyPriceMax?: number  // MarketPrice
-  sellPrice?: number    // ResolvedPrice
-  buyPrice?: number     // ResolvedPrice
+  sellPrice: number
+  buyPrice: number
   updatedAt: string
-  source?: string       // ResolvedPrice
   location?: { name: string; type?: string }
 }
 
 interface Props {
-  prices: AnyPrice[]
+  prices: ResolvedMarketPrice[]
 }
 
 const props = defineProps<Props>()
 
 const mode = ref<'sell' | 'buy'>('sell')
-
-// Determine if we are showing resolved prices based on field presence
-const isResolved = computed(() => props.prices.some(p => p.sellPrice !== undefined))
 
 const qualities = [
   { value: 1, label: 'Normale',     dotClass: 'normal' },
@@ -139,7 +132,7 @@ const activeCities = computed(() => {
 })
 
 const priceIndex = computed(() => {
-  const m = new Map<string, AnyPrice>()
+  const m = new Map<string, ResolvedMarketPrice>()
   for (const p of props.prices) {
     m.set(`${p.quality}:${p.locationId}`, p)
   }
@@ -166,18 +159,10 @@ function cellPrice(quality: number, cityId: string): number {
   const p = priceIndex.value.get(`${quality}:${cityId}`)
   if (!p) return 0
   if (mode.value === 'sell') {
-    return p.sellPrice ?? p.sellPriceMin ?? 0
+    return p.sellPrice
   } else {
-    return p.buyPrice ?? p.buyPriceMax ?? 0
+    return p.buyPrice
   }
-}
-
-function cellSource(quality: number, cityId: string): string {
-  const p = priceIndex.value.get(`${quality}:${cityId}`)
-  if (!p?.source) return ''
-  if (p.source === 'live') return 'Direct'
-  if (p.source === 'history') return 'Historique'
-  return p.source
 }
 
 function cellAgeText(quality: number, cityId: string): string {
@@ -312,7 +297,7 @@ const legendGradStyle = computed(() => {
   line-height: 2;
 }
 
-.hm-age, .hm-source {
+.hm-age {
   display: block;
   font-size: 10px;
   color: var(--text-3);
