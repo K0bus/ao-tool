@@ -5,6 +5,7 @@ import { marketApiClient } from './api-client'
 export interface MarketSyncItem {
   id: string
   uniqueName: string
+  enchantmentLevel?: number
 }
 
 export interface MarketSyncProgress {
@@ -26,6 +27,7 @@ interface MarketPriceRow {
   buyPriceMinDate: Date | null
   buyPriceMax: number
   buyPriceMaxDate: Date | null
+  dataUpdatedAt: Date
 }
 
 interface ResolvedPriceRow {
@@ -36,6 +38,7 @@ interface ResolvedPriceRow {
   buyPrice: number
   confidence: PriceConfidence
   source: string
+  updatedAt: Date
 }
 
 export class MarketPriceService {
@@ -61,12 +64,17 @@ export class MarketPriceService {
   }): Promise<{ itemsUpdated: number; itemsFailed: number }> {
     const { items, locations, qualities, jobId, onProgress } = params
 
-    // API receives uniqueNames (e.g. "T4_SWORD"), not internal CUIDs
-    const uniqueNames = items.map(i => i.uniqueName)
-    const rawPrices = await marketApiClient.getPrices(uniqueNames, locations, qualities)
+    const apiItems = items.map(item => ({
+      id: item.id,
+      apiItemId: this.toMarketApiItemId(item.uniqueName, item.enchantmentLevel),
+    }))
+    const rawPrices = await marketApiClient.getPrices(
+      apiItems.map(item => item.apiItemId),
+      locations,
+      qualities,
+    )
 
-    // Build reverse map uniqueName → DB id for FK writes
-    const uniqueNameToId = new Map(items.map(i => [i.uniqueName, i.id]))
+    const itemIdResolver = this.buildItemIdResolver(items)
 
     const validLocationIds = await this.getValidLocationIds()
 
@@ -76,24 +84,35 @@ export class MarketPriceService {
     const rows: MarketPriceRow[] = []
     for (const raw of rawPrices) {
       const locationId = this.normalizeLocationId(raw.city)
-      const itemId = uniqueNameToId.get(raw.item_id)
+      const itemId = itemIdResolver(raw.item_id)
 
       if (!itemId || !validLocationIds.has(locationId)) {
         continue
       }
+
+      const sellPriceMinDate = this.parseSafeDate(raw.sell_price_min_date)
+      const sellPriceMaxDate = this.parseSafeDate(raw.sell_price_max_date)
+      const buyPriceMinDate = this.parseSafeDate(raw.buy_price_min_date)
+      const buyPriceMaxDate = this.parseSafeDate(raw.buy_price_max_date)
 
       rows.push({
         itemId,
         locationId,
         quality: raw.quality,
         sellPriceMin: raw.sell_price_min,
-        sellPriceMinDate: this.parseSafeDate(raw.sell_price_min_date),
+        sellPriceMinDate,
         sellPriceMax: raw.sell_price_max,
-        sellPriceMaxDate: this.parseSafeDate(raw.sell_price_max_date),
+        sellPriceMaxDate,
         buyPriceMin: raw.buy_price_min,
-        buyPriceMinDate: this.parseSafeDate(raw.buy_price_min_date),
+        buyPriceMinDate,
         buyPriceMax: raw.buy_price_max,
-        buyPriceMaxDate: this.parseSafeDate(raw.buy_price_max_date),
+        buyPriceMaxDate,
+        dataUpdatedAt: this.latestApiDate([
+          sellPriceMinDate,
+          sellPriceMaxDate,
+          buyPriceMinDate,
+          buyPriceMaxDate,
+        ]),
       })
     }
 
@@ -143,7 +162,7 @@ export class MarketPriceService {
         quality: row.quality,
         sellPriceMin: row.sellPriceMin,
         buyPriceMax: row.buyPriceMax,
-        timestamp: row.sellPriceMinDate ?? new Date(),
+        timestamp: row.dataUpdatedAt,
       }))
 
     const [sellFallbacks, buyFallbacks] = await Promise.all([
@@ -212,12 +231,12 @@ export class MarketPriceService {
     )
 
     if (needsFallback.length === 0) {
-      return new Map<string, number>()
+      return new Map<string, { price: number; timestamp: Date }>()
     }
 
     const keys = this.uniquePriceKeys(needsFallback)
     const valueRows = Prisma.join(
-      keys.map(key => Prisma.sql`(${key.itemId}, ${key.locationId}, ${key.quality})`),
+      keys.map(key => Prisma.sql`(${key.itemId}::text, ${key.locationId}::text, ${key.quality}::integer)`),
     )
     const invalidPrices = Prisma.join(this.INCOHERENT_PRICES)
     const priceColumn = side === 'sell' ? Prisma.sql`h."sellPriceMin"` : Prisma.sql`h."buyPriceMax"`
@@ -227,13 +246,15 @@ export class MarketPriceService {
       locationId: string
       quality: number
       price: number
+      timestamp: Date
     }>>(Prisma.sql`
       WITH requested("itemId", "locationId", "quality") AS (VALUES ${valueRows})
       SELECT DISTINCT ON (h."itemId", h."locationId", h."quality")
         h."itemId",
         h."locationId",
         h."quality",
-        ${priceColumn} AS price
+        ${priceColumn} AS price,
+        h."timestamp"
       FROM "MarketPriceHistory" h
       JOIN requested r
         ON r."itemId" = h."itemId"
@@ -244,33 +265,42 @@ export class MarketPriceService {
       ORDER BY h."itemId", h."locationId", h."quality", h."timestamp" DESC
     `)
 
-    return new Map(history.map(row => [this.priceKey(row), row.price]))
+    return new Map(history.map(row => [this.priceKey(row), {
+      price: row.price,
+      timestamp: row.timestamp,
+    }]))
   }
 
   private toResolvedPriceRow(
     row: MarketPriceRow,
-    sellFallbacks: Map<string, number>,
-    buyFallbacks: Map<string, number>,
+    sellFallbacks: Map<string, { price: number; timestamp: Date }>,
+    buyFallbacks: Map<string, { price: number; timestamp: Date }>,
   ): ResolvedPriceRow {
     const key = this.priceKey(row)
     let sellPrice = row.sellPriceMin
     let sellSource = 'live'
     let sellConfidence: PriceConfidence = PriceConfidence.HIGH
+    let sellUpdatedAt = row.sellPriceMinDate ?? row.dataUpdatedAt
 
     if (!this.isPriceValid(sellPrice)) {
-      sellPrice = sellFallbacks.get(key) ?? 0
+      const fallback = sellFallbacks.get(key)
+      sellPrice = fallback?.price ?? 0
       sellSource = sellPrice > 0 ? 'history' : 'none'
       sellConfidence = sellPrice > 0 ? PriceConfidence.MEDIUM : PriceConfidence.LOW
+      sellUpdatedAt = fallback?.timestamp ?? row.dataUpdatedAt
     }
 
     let buyPrice = row.buyPriceMax
     let buySource = 'live'
     let buyConfidence: PriceConfidence = PriceConfidence.HIGH
+    let buyUpdatedAt = row.buyPriceMaxDate ?? row.dataUpdatedAt
 
     if (!this.isPriceValid(buyPrice)) {
-      buyPrice = buyFallbacks.get(key) ?? 0
+      const fallback = buyFallbacks.get(key)
+      buyPrice = fallback?.price ?? 0
       buySource = buyPrice > 0 ? 'history' : 'none'
       buyConfidence = buyPrice > 0 ? PriceConfidence.MEDIUM : PriceConfidence.LOW
+      buyUpdatedAt = fallback?.timestamp ?? row.dataUpdatedAt
     }
 
     return {
@@ -281,6 +311,7 @@ export class MarketPriceService {
       buyPrice,
       confidence: this.getLowerConfidence(sellConfidence, buyConfidence),
       source: sellSource === buySource ? sellSource : `S:${sellSource}/B:${buySource}`,
+      updatedAt: this.latestApiDate([sellUpdatedAt, buyUpdatedAt]),
     }
   }
 
@@ -299,7 +330,8 @@ export class MarketPriceService {
       ${row.buyPriceMin},
       ${row.buyPriceMinDate},
       ${row.buyPriceMax},
-      ${row.buyPriceMaxDate}
+      ${row.buyPriceMaxDate},
+      ${row.dataUpdatedAt}
     )`))
 
     await tx.$executeRaw(Prisma.sql`
@@ -315,7 +347,8 @@ export class MarketPriceService {
         "buyPriceMin",
         "buyPriceMinDate",
         "buyPriceMax",
-        "buyPriceMaxDate"
+        "buyPriceMaxDate",
+        "updatedAt"
       )
       VALUES ${values}
       ON CONFLICT ("itemId", "locationId", "quality")
@@ -328,7 +361,7 @@ export class MarketPriceService {
         "buyPriceMinDate" = EXCLUDED."buyPriceMinDate",
         "buyPriceMax" = EXCLUDED."buyPriceMax",
         "buyPriceMaxDate" = EXCLUDED."buyPriceMaxDate",
-        "updatedAt" = CURRENT_TIMESTAMP
+        "updatedAt" = EXCLUDED."updatedAt"
     `)
   }
 
@@ -380,7 +413,8 @@ export class MarketPriceService {
       ${row.sellPrice},
       ${row.buyPrice},
       ${row.confidence}::"PriceConfidence",
-      ${row.source}
+      ${row.source},
+      ${row.updatedAt}
     )`))
 
     await tx.$executeRaw(Prisma.sql`
@@ -392,7 +426,8 @@ export class MarketPriceService {
         "sellPrice",
         "buyPrice",
         "confidence",
-        "source"
+        "source",
+        "updatedAt"
       )
       VALUES ${values}
       ON CONFLICT ("itemId", "locationId", "quality")
@@ -401,7 +436,7 @@ export class MarketPriceService {
         "buyPrice" = EXCLUDED."buyPrice",
         "confidence" = EXCLUDED."confidence",
         "source" = EXCLUDED."source",
-        "updatedAt" = CURRENT_TIMESTAMP
+        "updatedAt" = EXCLUDED."updatedAt"
     `)
   }
 
@@ -419,6 +454,12 @@ export class MarketPriceService {
         quality: mp.quality,
         sellPriceMin: mp.sellPriceMin,
         buyPriceMax: mp.buyPriceMax,
+        updatedAt: this.latestApiDate([
+          mp.sellPriceMinDate,
+          mp.sellPriceMaxDate,
+          mp.buyPriceMinDate,
+          mp.buyPriceMaxDate,
+        ]),
       })
     }
   }
@@ -434,9 +475,10 @@ export class MarketPriceService {
       quality: number
       sellPriceMin: number
       buyPriceMax: number
+      updatedAt?: Date
     }
   ) {
-    const { itemId, locationId, quality, sellPriceMin, buyPriceMax } = params
+    const { itemId, locationId, quality, sellPriceMin, buyPriceMax, updatedAt = new Date() } = params
     let sellPrice = sellPriceMin
     let sellSource = 'live'
     let sellConfidence: PriceConfidence = PriceConfidence.HIGH
@@ -508,6 +550,7 @@ export class MarketPriceService {
         buyPrice,
         confidence,
         source,
+        updatedAt,
       },
       create: {
         itemId,
@@ -517,6 +560,7 @@ export class MarketPriceService {
         buyPrice,
         confidence,
         source,
+        updatedAt,
       },
     })
   }
@@ -543,8 +587,60 @@ export class MarketPriceService {
     return d
   }
 
+  private latestApiDate(dates: Array<Date | null>): Date {
+    const timestamps = dates
+      .map(date => date?.getTime() ?? 0)
+      .filter(timestamp => timestamp > 0)
+
+    return timestamps.length > 0 ? new Date(Math.max(...timestamps)) : new Date()
+  }
+
   private normalizeLocationId(city: string): string {
     return this.cityNameMap[city] ?? city
+  }
+
+  private baseUniqueName(uniqueName: string): string {
+    return uniqueName.replace(/@\d+$/, '')
+  }
+
+  private toMarketApiItemId(uniqueName: string, enchantmentLevel?: number): string {
+    const baseUniqueName = this.baseUniqueName(uniqueName)
+    const suffixMatch = uniqueName.match(/@(\d+)$/)
+    const suffixEnchant = suffixMatch ? Number.parseInt(suffixMatch[1]!, 10) : 0
+
+    if (enchantmentLevel && enchantmentLevel > 0) {
+      return `${baseUniqueName}@${enchantmentLevel}`
+    }
+
+    if (suffixEnchant > 0) {
+      return uniqueName
+    }
+
+    return baseUniqueName
+  }
+
+  private buildItemIdResolver(items: MarketSyncItem[]) {
+    const byExactUniqueName = new Map<string, string>()
+    const byBaseAndEnchant = new Map<string, string>()
+
+    for (const item of items) {
+      byExactUniqueName.set(item.uniqueName, item.id)
+      const enchant = item.enchantmentLevel ?? 0
+      byBaseAndEnchant.set(`${this.baseUniqueName(item.uniqueName)}@${enchant}`, item.id)
+    }
+
+    return (apiItemId: string): string | undefined => {
+      // 1) Strict DB match first (handles rows that are really stored with @N)
+      const exact = byExactUniqueName.get(apiItemId)
+      if (exact) return exact
+
+      // 2) Fallback by parsed base+enchant to support mixed naming in DB
+      const match = apiItemId.match(/^(.*?)(?:@(\d+))?$/)
+      if (!match) return undefined
+      const base = match[1] ?? apiItemId
+      const enchant = Number.parseInt(match[2] ?? '0', 10)
+      return byBaseAndEnchant.get(`${base}@${Number.isNaN(enchant) ? 0 : enchant}`)
+    }
   }
 
   private async getValidLocationIds(): Promise<Set<string>> {
@@ -577,7 +673,7 @@ export class MarketPriceService {
 
   /**
    * Plans synchronization for all items.
-   * Returns chunks of {id, uniqueName} pairs for correct API + DB usage.
+   * Returns chunks of {id, uniqueName, enchantmentLevel} for correct API + DB usage.
    */
   async planFullSync(options: { triggeredById?: string } = {}) {
     const job = await prisma.marketSyncJob.create({
@@ -588,13 +684,12 @@ export class MarketPriceService {
       },
     })
 
-    // Fetch both id (for FK writes) and uniqueName (for API calls)
+    // Fetch id (FK writes) + uniqueName/enchantmentLevel (API id generation)
     const items = await prisma.item.findMany({
-      select: { id: true, uniqueName: true },
+      select: { id: true, uniqueName: true, enchantmentLevel: true },
     })
 
-    const CHUNK_SIZE = 200
-    const chunks = this.chunkArray(items, CHUNK_SIZE)
+    const chunks = marketApiClient.chunkPriceItems(items)
 
     return { jobId: job.id, chunks, totalItems: items.length }
   }

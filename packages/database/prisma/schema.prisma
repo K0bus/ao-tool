@@ -406,7 +406,7 @@ model MarketPrice {
   item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
 
   @@unique([itemId, locationId, quality])
   @@index([itemId])
@@ -427,7 +427,7 @@ model ResolvedPrice {
   confidence   PriceConfidence @default(LOW)
   source       String?         // e.g. "live", "history_median", "cross_city"
   
-  updatedAt    DateTime        @updatedAt
+  updatedAt    DateTime
 
   item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)

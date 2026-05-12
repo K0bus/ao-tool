@@ -1,8 +1,19 @@
-import { prisma } from './index'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { config } from 'dotenv'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+config({ path: path.join(__dirname, '../../../.env') })
+
 import bcrypt from 'bcryptjs'
 const { hash } = bcrypt
+let prismaClient: Awaited<ReturnType<typeof import('./index')>>['prisma'] | null = null
 
 async function main() {
+  const { prisma } = await import('./index')
+  prismaClient = prisma
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@albion-tool.com'
   const adminUsername = process.env.SEED_ADMIN_USERNAME ?? 'admin'
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'changeme'
@@ -11,7 +22,13 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: {
+      username: adminUsername,
+      passwordHash,
+      role: 'ADMIN',
+      status: 'ACTIVE',
+      emailVerified: true,
+    },
     create: {
       email: adminEmail,
       username: adminUsername,
@@ -112,4 +129,8 @@ async function main() {
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect())
+  .finally(async () => {
+    if (prismaClient) {
+      await prismaClient.$disconnect()
+    }
+  })

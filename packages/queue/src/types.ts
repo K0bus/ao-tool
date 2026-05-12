@@ -37,6 +37,7 @@ export type MarketJobType = 'FULL' | 'BATCH' | 'PRIORITY'
 export interface MarketJobItem {
   id: string
   uniqueName: string
+  enchantmentLevel?: number
 }
 
 export interface MarketJobData {

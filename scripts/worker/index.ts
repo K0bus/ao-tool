@@ -64,8 +64,8 @@ const marketWorker = new Worker<MarketJobData, MarketJobResult>(
     connection: getConnection(),
     concurrency: 10, // Many jobs can be active, but limited by rate limiter
     limiter: {
-      max: 180, // 180 jobs (requests)
-      duration: 60000, // per minute
+      max: 300, // Albion Data Project limit: 300 requests
+      duration: 300000, // per 5 minutes (also stays under 180/min)
     },
   },
 )

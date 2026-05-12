@@ -6,6 +6,7 @@
   "scripts": {
     "import:full": "tsx --env-file=../.env import/full-import.ts",
     "import:market": "tsx --env-file=../.env import/trigger-market-sync.ts",
+    "test:market:item": "tsx --env-file=../.env import/test-market-item.ts",
     "import:icons": "tsx --env-file=../.env import/sync-icons.ts",
     "import:backfill": "tsx --env-file=../.env import/backfill-resolved-prices.ts",
     "worker": "tsx --env-file=../.env worker/index.ts"
