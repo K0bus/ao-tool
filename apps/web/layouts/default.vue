@@ -77,42 +77,7 @@
         </div>
 
         <!-- Search -->
-        <div class="nav-search">
-          <span class="ic-search">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          </span>
-          <input
-            ref="searchInput"
-            v-model="searchQuery"
-            type="text"
-            placeholder="Rechercher un item…"
-            autocomplete="off"
-            @focus="searchFocused = true"
-            @blur="onSearchBlur"
-            @keydown.enter="goSearch"
-            @keydown.escape="searchFocused = false"
-          />
-          <span class="kbd">⌘K</span>
-          <div v-if="searchFocused && searchQuery.length >= 2" class="nav-search-results">
-            <NuxtLink
-              v-for="item in searchResults"
-              :key="item.uniqueName"
-              :to="`/items/${item.uniqueName}`"
-              class="nsr-row"
-              @mousedown.prevent
-            >
-              <div class="item-frame" style="width:32px;height:32px;flex-shrink:0">
-                <AoItemImage :unique-name="item.uniqueName" :display-name="item.name" :alt="item.name" />
-              </div>
-              <div class="nsr-meta">
-                <div class="nsr-name">{{ item.name }}</div>
-                <div class="nsr-id">{{ item.uniqueName }}</div>
-              </div>
-              <span :class="`tier-badge t${item.tier}`">T{{ item.tier }}</span>
-            </NuxtLink>
-            <div v-if="searchResults.length === 0" class="nsr-empty">Aucun résultat</div>
-          </div>
-        </div>
+        <ItemSearchBar ref="searchInput" is-navbar />
 
         <NuxtLink to="/settings" class="nav-icon-btn" aria-label="Paramètres">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
@@ -409,37 +374,8 @@ const topProfit = computed(() => (topProfitRaw.value ?? [])[0] ?? null)
 
 const activeMega = ref<string | null>(null)
 const userMenuOpen = ref(false)
-const searchQuery = ref('')
-const searchFocused = ref(false)
-const searchInput = ref<HTMLInputElement | null>(null)
+const searchInput = ref<any>(null)
 let closeTimer: ReturnType<typeof setTimeout> | null = null
-
-interface SearchItem { uniqueName: string; name: string; tier: number }
-const searchResults = ref<SearchItem[]>([])
-
-watch(searchQuery, async (q) => {
-  if (q.length < 2) { searchResults.value = []; return }
-  try {
-    const res = await $fetch<{ data: SearchItem[] }>('/api/v1/items', { query: { q, limit: 6 } })
-    searchResults.value = res.data.map((i: any) => ({
-      uniqueName: i.uniqueName,
-      name: i.name ?? i.uniqueName,
-      tier: i.tier,
-    }))
-  } catch {
-    searchResults.value = []
-  }
-})
-
-function goSearch() {
-  if (!searchQuery.value.trim()) return
-  router.push({ path: '/items', query: { q: searchQuery.value.trim() } })
-  searchFocused.value = false
-}
-
-function onSearchBlur() {
-  setTimeout(() => { searchFocused.value = false }, 150)
-}
 
 function openMega(key: string) {
   cancelClose()
@@ -493,7 +429,6 @@ onMounted(() => {
     }
     if (e.key === 'Escape') {
       activeMega.value = null
-      searchFocused.value = false
       userMenuOpen.value = false
     }
   })

@@ -7,17 +7,9 @@
       <p class="hero-sub">Base de données complète, calculateur de craft, suivi de marché. Construit pour les artisans, marchands et aventuriers.</p>
 
       <!-- Search -->
-      <form class="hero-search" @submit.prevent="goSearch">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gold);flex-shrink:0"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input
-          v-model="query"
-          class="hero-search-input"
-          type="text"
-          placeholder="Rechercher un item, une ressource, une recette…"
-          autocomplete="off"
-        />
-        <kbd style="font-family:var(--font-mono);font-size:11px;color:var(--gold);background:rgba(201,161,74,0.1);border:1px solid var(--gold-deep);padding:4px 10px;border-radius:4px">↵</kbd>
-      </form>
+      <div class="hero-search-wrapper">
+        <ItemSearchBar placeholder="Rechercher un item, une ressource, une recette…" />
+      </div>
 
       <!-- Trending chips -->
       <div class="hero-suggest">
@@ -157,12 +149,6 @@
 definePageMeta({ layout: 'default' })
 
 const router = useRouter()
-const query = ref('')
-
-function goSearch() {
-  if (!query.value.trim()) return
-  router.push({ path: '/items', query: { q: query.value.trim() } })
-}
 
 const tools = [
   {
