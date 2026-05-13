@@ -6,9 +6,9 @@
         <div class="crumbs">
           <NuxtLink to="/">Accueil</NuxtLink><span class="sep">/</span>
           <NuxtLink to="/builds">Builds</NuxtLink><span class="sep">/</span>
-          Créer
+          {{ editCode ? 'Modifier' : 'Créer' }}
         </div>
-        <h1>Build Creator</h1>
+        <h1>{{ editCode ? 'Modifier le build' : 'Build Creator' }}</h1>
       </div>
       <!-- Actions -->
       <div class="creator-actions">
@@ -18,7 +18,7 @@
         </button>
         <button class="ds-btn primary" :disabled="creator.isSaving.value" @click="save">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          {{ creator.isSaving.value ? 'Sauvegarde…' : 'Sauvegarder' }}
+          {{ creator.isSaving.value ? 'Sauvegarde…' : (editCode ? 'Mettre à jour' : 'Sauvegarder') }}
         </button>
       </div>
     </div>
@@ -154,17 +154,28 @@
         <div class="panel">
           <div class="panel-header"><h3>Équipement</h3></div>
           <div class="panel-body">
-            <div class="slots-grid">
-              <BuildSlot
-                v-for="slot in EQUIPMENT_SLOTS"
-                :key="slot.key"
-                :label="slot.label"
-                :item="creator.equipment[slot.key]"
-                :active="creator.activeSlot.value === slot.key"
-                :disabled="slot.key === 'offhand' && creator.offhandDisabled.value"
-                @click="openPicker(slot.key)"
-                @remove="creator.setItem(slot.key, null)"
-              />
+            <div class="slots-layout">
+              <div
+                v-for="(column, columnIndex) in SLOT_COLUMNS"
+                :key="`col-${columnIndex}`"
+                class="slots-column"
+                :class="{ center: columnIndex === 1 }"
+              >
+                <BuildSlot
+                  v-for="slotKey in column"
+                  :key="slotKey"
+                  :label="slotDef(slotKey)?.label ?? slotKey"
+                  :item="creator.equipment[slotKey]"
+                  :active="creator.activeSlot.value === slotKey"
+                  :disabled="slotDisabled(slotKey)"
+                  @click="openPicker(slotKey)"
+                  @remove="creator.setItem(slotKey, null)"
+                />
+              </div>
+            </div>
+            <div v-if="creator.baseIp.value !== null" class="base-ip-panel">
+              <span class="base-ip-label">IP de base</span>
+              <span class="base-ip-value">{{ creator.baseIp.value }}</span>
             </div>
           </div>
         </div>
@@ -215,17 +226,29 @@ import { EQUIPMENT_SLOTS, useBuildCreator } from '~/composables/useBuildCreator'
 import type { SlotKey, EquippedItem } from '~/composables/useBuildCreator'
 import { labelWeaponCategory, labelWeaponSubcategory } from '~/utils/buildTaxonomy'
 
+const route = useRoute()
 const VISIBILITIES = [
   { value: 'PRIVATE' as const, label: 'Privé' },
   { value: 'UNLISTED' as const, label: 'Non listé' },
   { value: 'PUBLIC' as const, label: 'Public' },
 ]
+const SLOT_COLUMNS: SlotKey[][] = [
+  ['bag', 'weapon', 'potion'],
+  ['helmet', 'armor', 'shoes', 'mount'],
+  ['cape', 'offhand', 'food'],
+]
 
 const creator = useBuildCreator()
+const auth = useAuth()
 const pickerSlot = ref<SlotKey | null>(null)
 const savedCode = ref<string | null>(null)
 const copiedMsg = ref<string | null>(null)
 const validationError = ref('')
+const loadingEdit = ref(false)
+const editCode = computed(() => {
+  const value = route.query.edit
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+})
 
 const activeSlotDef = computed(() =>
   pickerSlot.value ? EQUIPMENT_SLOTS.find((s) => s.key === pickerSlot.value) ?? null : null
@@ -243,6 +266,14 @@ function openPicker(slot: SlotKey) {
   if (slot === 'offhand' && creator.offhandDisabled.value) return
   creator.activeSlot.value = slot
   pickerSlot.value = slot
+}
+
+function slotDef(slot: SlotKey) {
+  return EQUIPMENT_SLOTS.find((entry) => entry.key === slot) ?? null
+}
+
+function slotDisabled(slot: SlotKey) {
+  return slot === 'offhand' && creator.offhandDisabled.value
 }
 
 async function onItemSelected(item: EquippedItem) {
@@ -281,12 +312,68 @@ async function save() {
   }
 
   try {
-    const result = await creator.saveBuild()
+    const result = editCode.value
+      ? await creator.updateBuild(editCode.value)
+      : await creator.saveBuild()
     savedCode.value = result.shareCode
   } catch (e: any) {
     alert(e?.data?.message ?? 'Erreur lors de la sauvegarde')
   }
 }
+
+watch(editCode, async (code) => {
+  if (!code || loadingEdit.value) return
+
+  loadingEdit.value = true
+  try {
+    if (!auth.user.value && process.client) {
+      await auth.fetchUser().catch(() => {})
+    }
+
+    const res = await $fetch<{ data: any }>(`/api/v1/builds/${code}`)
+    const build = res.data
+
+    creator.reset()
+    creator.title.value = build.title ?? 'Mon build'
+    creator.description.value = build.description ?? ''
+    creator.contentTypes.value = [...(build.contentTypes ?? [])]
+    creator.roles.value = [...(build.roles ?? [])]
+    creator.groupScales.value = [...(build.groupScales ?? [])]
+    creator.playstyles.value = [...(build.playstyles ?? [])]
+    creator.difficulty.value = build.difficulty ?? null
+    creator.budget.value = build.budget ?? null
+    creator.visibility.value = build.visibility ?? 'PRIVATE'
+
+    const equipmentEntries = Object.entries(build.equipment ?? {}) as Array<[SlotKey, string | null]>
+    for (const [slot, uniqueName] of equipmentEntries) {
+      if (!uniqueName) continue
+      try {
+        const itemRes = await $fetch<{ data: any }>(`/api/v1/items/${uniqueName}`)
+        const item = itemRes.data
+        await creator.setItem(slot, {
+          uniqueName: item.uniqueName,
+          name: item.name,
+          tier: item.tier,
+          enchantmentLevel: item.enchantmentLevel,
+          itemPower: typeof item.itemPower === 'number' ? item.itemPower : null,
+          twoHanded: Boolean(item.twoHanded),
+          iconUrl: item.iconUrl,
+          itemType: item.itemType,
+          shopCategory: item.shopCategory,
+          shopSubcategory: item.shopSubcategory,
+        })
+      } catch {}
+    }
+
+    for (const selected of build.spells ?? []) {
+      creator.setSpell(selected.slotKey, selected.spell)
+    }
+  } catch (e: any) {
+    alert(e?.data?.message ?? 'Impossible de charger le build à modifier')
+  } finally {
+    loadingEdit.value = false
+  }
+}, { immediate: true })
 
 function copyGuestLink() {
   const url = creator.buildGuestUrl()
@@ -357,10 +444,48 @@ useSeoMeta({ title: 'Build Creator — Albion Codex' })
   gap: 16px;
 }
 
-.slots-grid {
+.slots-layout {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+  margin-top: 6px;
+}
+
+.slots-column {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.slots-column.center {
+  transform: translateY(calc(-108px / 8));
+}
+
+.base-ip-panel {
+  margin-top: 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-divider);
+}
+
+.base-ip-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-family: var(--font-display);
+}
+
+.base-ip-value {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--gold);
+  font-family: var(--font-mono);
 }
 
 .form-fields { display: flex; flex-direction: column; gap: 14px; }
@@ -464,6 +589,12 @@ useSeoMeta({ title: 'Build Creator — Albion Codex' })
 @media (max-width: 900px) {
   .creator-body {
     grid-template-columns: 1fr;
+  }
+  .slots-layout {
+    grid-template-columns: 1fr;
+  }
+  .slots-column.center {
+    transform: none;
   }
   .tag-grid {
     grid-template-columns: 1fr;

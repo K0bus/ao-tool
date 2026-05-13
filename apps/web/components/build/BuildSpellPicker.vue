@@ -54,7 +54,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  pick: [groupKey: string, spell: SelectedSpell | null]
+  pick: [groupKey: string, spell: SelectedSpell]
 }>()
 
 const tooltip = reactive({
@@ -71,11 +71,7 @@ function selectedSpell(groupKey: string) {
 }
 
 function pick(groupKey: string, spell: SelectedSpell) {
-  if (props.selected[groupKey]?.id === spell.id) {
-    emit('pick', groupKey, null)
-  } else {
-    emit('pick', groupKey, spell)
-  }
+  emit('pick', groupKey, spell)
 }
 
 function spellIconUrl(spell: SelectedSpell) {

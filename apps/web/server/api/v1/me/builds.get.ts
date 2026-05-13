@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { prisma } from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/guards'
+import { serializeBuild } from '~/server/utils/builds'
 
 const schema = z.object({
   cursor: z.string().optional(),
@@ -29,6 +30,15 @@ export default defineEventHandler(async (event) => {
       gameMode: true,
       visibility: true,
       equipment: true,
+      primaryContentType: true,
+      contentTypes: true,
+      roles: true,
+      groupScales: true,
+      playstyles: true,
+      difficulty: true,
+      budget: true,
+      weaponCategory: true,
+      weaponSubcategory: true,
       viewCount: true,
       createdAt: true,
       updatedAt: true,
@@ -40,12 +50,7 @@ export default defineEventHandler(async (event) => {
   const page = hasMore ? builds.slice(0, limit) : builds
 
   return {
-    data: page.map((b) => ({
-      ...b,
-      equipment: (b.equipment ?? {}) as Record<string, string | null>,
-      createdAt: b.createdAt.toISOString(),
-      updatedAt: b.updatedAt.toISOString(),
-    })),
+    data: page.map((b) => serializeBuild(b)),
     meta: { nextCursor: hasMore ? page[page.length - 1]?.id : undefined },
   }
 })

@@ -328,6 +328,29 @@ async function loadLogs() {
   }
 }
 
+async function refreshLiveJobs() {
+  try {
+    const [importRes, marketRes] = await Promise.all([
+      $fetch<{ data: ImportJob[] }>('/api/v1/admin/import/jobs'),
+      $fetch<{ data: MarketJob[] }>('/api/v1/admin/market/jobs'),
+    ])
+
+    recentJobs.value = importRes.data.slice(0, 8)
+    marketJobs.value = marketRes.data
+
+    if (importLogs.value.length > 0 || activeJobsCount.value > 0) {
+      const logsRes = await $fetch<{ data: ImportLog[] }>('/api/v1/admin/logs')
+      importLogs.value = logsRes.data
+    }
+
+    if (activeJobsCount.value === 0) {
+      await loadStats()
+    }
+  } catch {
+    // ignore transient polling errors
+  }
+}
+
 async function triggerImport() {
   importing.value = true; importMessage.value = null; importError.value = false
   try {
@@ -397,4 +420,9 @@ onMounted(() => {
   loadMarketJobs()
   loadLogs()
 })
+
+const { pause: pausePolling, resume: resumePolling } = useIntervalFn(refreshLiveJobs, 3000, { immediate: false })
+watch(activeJobsCount, (count) => {
+  count > 0 ? resumePolling() : pausePolling()
+}, { immediate: true })
 </script>

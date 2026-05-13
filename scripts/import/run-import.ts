@@ -1,6 +1,6 @@
 import { prisma, type ItemType } from '@albion-tool/database'
 import { fetchAoData, fetchLatestCommit, normalizeItem, fetchSpells } from '@albion-tool/ao-parser'
-import type { NormalizedItem } from '@albion-tool/ao-parser'
+import type { NormalizedCraftSpell, NormalizedItem, NormalizedSpell } from '@albion-tool/ao-parser'
 import type { ImportJobProgress, ImportJobResult, ImportJobType } from '@albion-tool/queue'
 
 const BATCH_SIZE = 500
@@ -11,6 +11,38 @@ function chunk<T>(arr: T[], size: number): T[][] {
     chunks.push(arr.slice(i, i + size))
   }
   return chunks
+}
+
+function inferItemSpellLinks(
+  itemId: string,
+  craftSpells: NormalizedCraftSpell[],
+  spellKindById: Map<string, NormalizedSpell['spellKind']>,
+) {
+  let nextActiveSlot = 1
+
+  return craftSpells
+    .filter((cs) => cs.uniqueName)
+    .map((cs) => {
+      const explicitSlot = cs.slots ? parseInt(cs.slots, 10) : null
+      const spellKind = spellKindById.get(cs.uniqueName)
+
+      let slotNumber: number | null = null
+      if (explicitSlot !== null && !isNaN(explicitSlot)) {
+        slotNumber = explicitSlot
+      } else if (spellKind === 'passive') {
+        slotNumber = null
+      } else if (nextActiveSlot <= 3) {
+        slotNumber = nextActiveSlot++
+      }
+
+      return {
+        itemId,
+        spellId: cs.uniqueName,
+        slotNumber,
+        tag: cs.tag,
+      }
+    })
+    .filter((link) => link.slotNumber === null || !isNaN(link.slotNumber))
 }
 
 // Déduit un nom lisible depuis l'ID de station (ex: ARMORSMITH_LEVEL1_BUILDING → "Armorsmith")
@@ -85,10 +117,11 @@ export async function runImport(
     // On aplatit tous les items (variants enchantés inclus) en un seul tableau.
     await report('normalizing', 0, rawItems.length)
 
+    const itemIndex = new Map(rawItems.map((item) => [item['@uniquename'], item]))
     const normalized: NormalizedItem[] = []
     for (const raw of rawItems) {
       try {
-        normalized.push(...normalizeItem(raw, localizations))
+        normalized.push(...normalizeItem(raw, localizations, itemIndex))
       } catch {
         itemsFailed++
       }
@@ -389,8 +422,9 @@ export async function runImport(
     await logInfo('Fetching and importing spells...')
 
     let spellsCreated = 0, spellsUpdated = 0
+    let normalizedSpells: NormalizedSpell[] = []
     try {
-      const normalizedSpells = await fetchSpells(localizations)
+      normalizedSpells = await fetchSpells(localizations)
       const spellBatches = chunk(normalizedSpells, BATCH_SIZE)
 
       for (const batch of spellBatches) {
@@ -464,6 +498,7 @@ export async function runImport(
     await report('item_spells', 0, normalized.length)
     await logInfo('Linking items to their spells (craftingspelllist)...')
 
+    const spellKindById = new Map(normalizedSpells.map((spell) => [spell.uniqueName, spell.spellKind]))
     let linksDone = 0
     for (const item of normalized) {
       linksDone++
@@ -473,15 +508,7 @@ export async function runImport(
         // Supprimer les anciens liens pour cet item puis recréer
         await prisma.itemSpell.deleteMany({ where: { itemId: item.uniqueName } })
 
-        const links = item.craftSpells
-          .filter((cs) => cs.uniqueName)
-          .map((cs) => ({
-            itemId: item.uniqueName,
-            spellId: cs.uniqueName,
-            slotNumber: cs.slots ? parseInt(cs.slots, 10) : null,
-            tag: cs.tag,
-          }))
-          .filter((l) => !isNaN(l.slotNumber as number) || l.slotNumber === null)
+        const links = inferItemSpellLinks(item.uniqueName, item.craftSpells, spellKindById)
 
         if (links.length > 0) {
           // createMany + skipDuplicates en cas de doublon @uniquename dans craftSpells

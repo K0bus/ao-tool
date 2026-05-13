@@ -282,26 +282,150 @@ SaaS Expansion
 
 ---
 
-# Local Development
+# Lancer le serveur
 
-## Docker Setup
+## Prérequis
+
+- Node.js >= 22
+- pnpm >= 9
+- Docker + Docker Compose
+
+## Variables d'environnement
+
+Créer le fichier `.env` à partir de l'exemple :
+
+```bash
+cp .env.example .env
+```
+
+Variables minimales à vérifier :
+
+- `POSTGRES_PASSWORD`
+- `REDIS_PASSWORD`
+- `NUXT_SESSION_SECRET`
+- `APP_URL`
+- `DATABASE_URL`
+- `REDIS_URL`
+
+Pour générer un secret de session :
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+## Développement
+
+### Option 1: lancer l'app en local
+
+Installer les dépendances :
+
+```bash
+pnpm install
+```
+
+Démarrer PostgreSQL et Redis :
+
+```bash
+docker-compose up -d postgres redis
+```
+
+Appliquer les migrations et générer Prisma :
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+```
+
+Lancer le serveur de développement Nuxt :
+
+```bash
+pnpm dev
+```
+
+Application disponible sur `http://localhost:3000`.
+
+### Option 2: lancer tout l'environnement via Docker
 
 ```bash
 docker-compose up --build
 ```
 
-## Prisma
+Cette commande démarre :
+
+- `postgres`
+- `redis`
+- `app` en mode développement
+- `worker`
+
+L'application est exposée sur `http://localhost:3000`.
+
+## Production
+
+Le mode production s'appuie sur `docker-compose.prod.yml` avec :
+
+- `postgres`
+- `pgbouncer`
+- `redis`
+- `app` buildée en mode production
+- `nginx`
+
+### 1. Préparer l'environnement
+
+Mettre à jour `.env` avec des valeurs de production :
+
+- `POSTGRES_PASSWORD`
+- `REDIS_PASSWORD`
+- `NUXT_SESSION_SECRET`
+- `APP_URL`
+
+Important :
+
+- `APP_URL` doit pointer vers l'URL publique du site
+- dans `docker-compose.prod.yml`, l'application utilise `pgbouncer` via `DATABASE_URL`
+
+### 2. Construire et démarrer
 
 ```bash
-npx prisma generate
-npx prisma migrate dev
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-## Development Server
+Au démarrage, le conteneur `app` exécute automatiquement `prisma migrate deploy` avant de lancer Nuxt.
+
+### 3. Vérifier les logs
 
 ```bash
-npm install
-npm run dev
+docker-compose -f docker-compose.prod.yml logs -f app
+```
+
+### 4. Arrêter la stack
+
+```bash
+docker-compose -f docker-compose.prod.yml down
+```
+
+### Ports exposés
+
+- `80` pour HTTP
+- `443` pour HTTPS
+
+## Commandes utiles
+
+Build du monorepo :
+
+```bash
+pnpm build
+```
+
+Vérification de types :
+
+```bash
+pnpm typecheck
+```
+
+Tests :
+
+```bash
+pnpm test
 ```
 
 ---

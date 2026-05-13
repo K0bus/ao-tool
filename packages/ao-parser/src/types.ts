@@ -23,7 +23,13 @@ export interface RawCraftSpell {
   '@tag'?: string
 }
 
+export interface RawRemoveSpell {
+  '@uniquename': string
+}
+
 export interface RawCraftingSpellList {
+  '@reference'?: string
+  removespell?: RawRemoveSpell | RawRemoveSpell[]
   craftspell?: RawCraftSpell | RawCraftSpell[]
 }
 

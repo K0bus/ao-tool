@@ -8,6 +8,7 @@ export interface EquippedItem {
   name: string
   tier: number
   enchantmentLevel: number
+  itemPower?: number | null
   twoHanded?: boolean | null
   iconUrl?: string | null
   itemType?: string | null
@@ -75,6 +76,20 @@ const SPELL_SLOT_BY_NUMBER: Record<number, SpellSlotKey> = {
   3: 'E',
 }
 
+function isSingleActiveSpellSlot(slot: SlotKey) {
+  return slot === 'helmet' || slot === 'armor' || slot === 'shoes'
+}
+
+function activeSpellSlotLabel(slot: SlotKey, spellSlot: SpellSlotKey) {
+  if (spellSlot === 'PASSIVE') return 'Passif'
+
+  if (slot === 'helmet') return 'D'
+  if (slot === 'armor') return 'R'
+  if (slot === 'shoes') return 'F'
+
+  return spellSlot
+}
+
 export function useBuildCreator() {
   const equipment = reactive<Record<SlotKey, EquippedItem | null>>({
     weapon: null, offhand: null, helmet: null, armor: null, shoes: null,
@@ -134,12 +149,13 @@ export function useBuildCreator() {
   }
 
   function setSpell(groupKey: string, spell: SelectedSpell | null) {
-    if (spell) selectedSpells[groupKey] = spell
-    else delete selectedSpells[groupKey]
+    if (!spell) return
+    selectedSpells[groupKey] = spell
   }
 
-  function spellSlotFromNumber(slotNumber: number | null): SpellSlotKey {
+  function spellSlotFromNumber(slot: SlotKey, slotNumber: number | null): SpellSlotKey {
     if (slotNumber === null) return 'PASSIVE'
+    if (isSingleActiveSpellSlot(slot)) return 'Q'
     return SPELL_SLOT_BY_NUMBER[slotNumber] ?? 'E'
   }
 
@@ -158,7 +174,7 @@ export function useBuildCreator() {
       const grouped = new Map<SpellSlotKey, SpellOption[]>()
 
       for (const opt of opts) {
-        const spellSlot = spellSlotFromNumber(opt.slotNumber)
+        const spellSlot = spellSlotFromNumber(slotDef.key, opt.slotNumber)
         const list = grouped.get(spellSlot) ?? []
         list.push(opt)
         grouped.set(spellSlot, list)
@@ -168,17 +184,13 @@ export function useBuildCreator() {
         const options = grouped.get(spellSlotDef.key)
         if (!options?.length) continue
 
-        const spellSlotLabel = slotDef.key === 'helmet' && spellSlotDef.key === 'Q'
-          ? 'D'
-          : spellSlotDef.label
-
         groups.push({
           key: buildSpellGroupKey(slotDef.key, spellSlotDef.key),
           slot: slotDef.key,
           slotLabel: slotDef.label,
           item,
           spellSlot: spellSlotDef.key,
-          spellSlotLabel,
+          spellSlotLabel: activeSpellSlotLabel(slotDef.key, spellSlotDef.key),
           options,
         })
       }
@@ -187,11 +199,70 @@ export function useBuildCreator() {
     return groups
   })
 
+  watchEffect(() => {
+    const groups = spellGroups.value
+    const activeGroupKeys = new Set(groups.map((group) => group.key))
+
+    for (const key of Object.keys(selectedSpells)) {
+      if (!activeGroupKeys.has(key)) delete selectedSpells[key]
+    }
+
+    for (const group of groups) {
+      const current = selectedSpells[group.key]
+      const hasCurrentOption = current
+        ? group.options.some((option) => option.spell.id === current.id)
+        : false
+
+      if (!hasCurrentOption && group.options.length > 0) {
+        selectedSpells[group.key] = group.options[0]!.spell
+      }
+    }
+  })
+
   const hasEquipment = computed(() => Object.values(equipment).some(Boolean))
   const hasSpells = computed(() => Object.keys(selectedSpells).length > 0)
   const offhandDisabled = computed(() => Boolean(equipment.weapon?.twoHanded))
+  const baseIp = computed(() => {
+    const weaponIp = equipment.weapon?.itemPower ?? null
+    const offhandIp = equipment.offhand?.itemPower ?? null
+    const headIp = equipment.helmet?.itemPower ?? null
+    const armorIp = equipment.armor?.itemPower ?? null
+    const shoesIp = equipment.shoes?.itemPower ?? null
+    const capeIp = equipment.cape?.itemPower ?? null
+
+    if (!weaponIp && !offhandIp && !headIp && !armorIp && !shoesIp && !capeIp) {
+      return null
+    }
+
+    const values: number[] = []
+
+    if (weaponIp != null) {
+      values.push(weaponIp)
+      if (equipment.weapon?.twoHanded) values.push(weaponIp)
+    }
+
+    if (!equipment.weapon?.twoHanded && offhandIp != null) {
+      values.push(offhandIp)
+    }
+
+    if (headIp != null) values.push(headIp)
+    if (armorIp != null) values.push(armorIp)
+    if (shoesIp != null) values.push(shoesIp)
+    if (capeIp != null) values.push(capeIp)
+
+    if (values.length === 0) return null
+    return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+  })
 
   async function saveBuild() {
+    return persistBuild()
+  }
+
+  async function updateBuild(code: string) {
+    return persistBuild(code)
+  }
+
+  async function persistBuild(code?: string) {
     isSaving.value = true
     try {
       const body = {
@@ -214,8 +285,8 @@ export function useBuildCreator() {
           spellId: spell.id,
         })),
       }
-      const res = await $fetch<{ data: { shareCode: string } }>('/api/v1/builds', {
-        method: 'POST',
+      const res = await $fetch<{ data: { shareCode: string } }>(code ? `/api/v1/builds/${code}` : '/api/v1/builds', {
+        method: code ? 'PUT' : 'POST',
         body,
       })
       shareCode.value = res.data.shareCode
@@ -292,10 +363,12 @@ export function useBuildCreator() {
     hasEquipment,
     hasSpells,
     offhandDisabled,
+    baseIp,
     spellGroups,
     setItem,
     setSpell,
     saveBuild,
+    updateBuild,
     buildGuestUrl,
     reset,
   }

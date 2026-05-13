@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { normalizeItem } from '../normalizers/item'
+import { normalizeSpell } from '../normalizers/spell'
 import {
   BAG_ITEM,
   CRAFTABLE_SWORD,
@@ -7,7 +8,10 @@ import {
   RAW_ORE,
   REFINABLE_METALBAR,
   ENCHANTED_BASE_NO_SUFFIX,
+  REFERENCED_SPELL_BASE,
+  REFERENCING_SPELL_ITEM,
   LOCALIZATIONS,
+  SPELL_WITH_DERIVED_LOCALIZATION,
 } from './fixtures'
 
 // normalizeItem retourne NormalizedItem[] — 1 entrée par niveau d'enchantement
@@ -214,6 +218,22 @@ describe('normalizeItem', () => {
     })
   })
 
+  describe('crafting spells', () => {
+    it('resolves referenced spell lists and applies removals and overrides', () => {
+      const itemIndex = new Map([
+        [REFERENCED_SPELL_BASE['@uniquename'], REFERENCED_SPELL_BASE],
+        [REFERENCING_SPELL_ITEM['@uniquename'], REFERENCING_SPELL_ITEM],
+      ])
+
+      const [item] = normalizeItem(REFERENCING_SPELL_ITEM, {}, itemIndex)
+
+      expect(item?.craftSpells).toEqual([
+        { uniqueName: 'ARMORPIERCE', slots: '2', tag: 'B' },
+        { uniqueName: 'DYNAMIC_CURSE', slots: '3', tag: 'A' },
+      ])
+    })
+  })
+
   describe('refining recipes', () => {
     it('marks refinable resource correctly', () => {
       const [item] = normalizeItem(REFINABLE_METALBAR, {})
@@ -278,5 +298,17 @@ describe('normalizeItem', () => {
       const [item] = normalizeItem(CRAFTABLE_SWORD, {})
       expect(item?.shopSubcategory).toBe('sword')
     })
+  })
+})
+
+describe('normalizeSpell', () => {
+  it('derives localization keys from uniqueName when spell loca tags are missing', () => {
+    const spell = normalizeSpell(SPELL_WITH_DERIVED_LOCALIZATION, 'active', LOCALIZATIONS)
+
+    expect(spell.nameLocaTag).toBe('@SPELLS_SACRIFICE_HEAL')
+    expect(spell.descriptionLocaTag).toBe('@SPELLS_SACRIFICE_HEAL_DESC')
+    expect(spell.localizations.find((l) => l.locale === 'FR-FR')?.name).toBe('Sacrifice')
+    expect(spell.localizations.find((l) => l.locale === 'FR-FR')?.description)
+      .toBe('Sacrifie votre santé pour soigner un allié.')
   })
 })

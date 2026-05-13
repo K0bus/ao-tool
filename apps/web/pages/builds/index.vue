@@ -14,18 +14,20 @@
       </NuxtLink>
     </div>
 
-    <!-- Filtres game mode -->
+    <BuildContentFilterModal
+      :open="contentModalOpen"
+      :selected="activeContentType"
+      :options="BUILD_CONTENT_TYPE_OPTIONS"
+      @close="contentModalOpen = false"
+      @apply="applyContentFilter"
+    />
+
     <div class="builds-filters">
       <div class="filter-pillbox">
         <span class="fpl">Contenu</span>
-        <button
-          v-for="option in BUILD_CONTENT_TYPE_OPTIONS"
-          :key="option.value"
-          class="filter-pill"
-          :class="{ active: activeContentType === option.value }"
-          @click="setContentType(option.value)"
-        >{{ option.label }}</button>
-        <button v-if="activeContentType" class="filter-pill" style="color:var(--text-3)" @click="setContentType(null)">✕ Tous</button>
+        <button class="ds-btn" type="button" @click="contentModalOpen = true">
+          Gérer les contenus
+        </button>
       </div>
       <div class="filter-pillbox">
         <span class="fpl">Arme</span>
@@ -33,6 +35,25 @@
           <option value="">Toutes les armes</option>
           <option v-for="family in weaponFamilies" :key="family.value" :value="family.value">{{ family.label }}</option>
         </select>
+      </div>
+      <div class="filter-summary">
+        <span class="fpl">Récap</span>
+        <div class="filter-summary-tags">
+          <span class="summary-tag" :class="{ muted: !activeContentTypeLabel }">
+            {{ activeContentTypeLabel ?? 'Tous les contenus' }}
+          </span>
+          <span class="summary-tag" :class="{ muted: !activeWeaponFamilyLabel }">
+            {{ activeWeaponFamilyLabel ?? 'Toutes les armes' }}
+          </span>
+          <button
+            v-if="activeContentType || activeWeaponFamily"
+            type="button"
+            class="summary-reset"
+            @click="resetFilters"
+          >
+            Réinitialiser
+          </button>
+        </div>
       </div>
     </div>
 
@@ -68,6 +89,7 @@ import type { BuildTaxonomyResponse } from '~/utils/buildTaxonomy'
 
 const route = useRoute()
 const router = useRouter()
+const contentModalOpen = ref(false)
 const activeContentType = ref<BuildContentType | null>((route.query.primaryContentType as BuildContentType) || null)
 const activeWeaponFamily = ref<string>((route.query.weaponSubcategory as string) || '')
 
@@ -91,6 +113,12 @@ const { data: taxonomyData } = await useFetch<{ data: BuildTaxonomyResponse }>('
 })
 
 const weaponFamilies = computed(() => taxonomyData.value?.data?.slots.weapon.families ?? [])
+const activeContentTypeLabel = computed(() =>
+  BUILD_CONTENT_TYPE_OPTIONS.find((option) => option.value === activeContentType.value)?.label ?? null
+)
+const activeWeaponFamilyLabel = computed(() =>
+  weaponFamilies.value.find((family) => family.value === activeWeaponFamily.value)?.label ?? null
+)
 
 const builds = ref<Build[]>([])
 const nextCursor = ref<string | undefined>()
@@ -132,6 +160,18 @@ function setContentType(contentType: BuildContentType | null) {
   })
 }
 
+function applyContentFilter(contentType: BuildContentType | null) {
+  contentModalOpen.value = false
+  setContentType(contentType)
+}
+
+function resetFilters() {
+  activeContentType.value = null
+  activeWeaponFamily.value = ''
+  router.replace({ query: {} })
+  refresh()
+}
+
 async function loadMore() {
   if (!nextCursor.value || loadingMore.value) return
   loadingMore.value = true
@@ -167,6 +207,43 @@ useSeoMeta({ title: 'Builds — Albion Codex' })
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.filter-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-summary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.summary-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(201,161,74,0.22);
+  background: rgba(201,161,74,0.08);
+  color: var(--text-1);
+  font-size: 13px;
+}
+
+.summary-tag.muted {
+  border-color: var(--border);
+  background: var(--bg-1);
+  color: var(--text-3);
+}
+
+.summary-reset {
+  font-size: 12px;
+  color: var(--gold);
+  text-decoration: underline;
 }
 
 .family-select {

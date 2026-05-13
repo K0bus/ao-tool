@@ -189,6 +189,7 @@ export default defineEventHandler(async (event) => {
     itemType: item.itemType,
     shopCategory: item.shopCategory,
     shopSubcategory: item.shopSubcategory,
+    itemPower: Number((item.stats as Record<string, unknown> | null)?.itemPower ?? 0) || null,
     twoHanded: Boolean((item.stats as Record<string, unknown> | null)?.twoHanded),
     isCraftable: item.isCraftable,
     isRefinable: item.isRefinable,

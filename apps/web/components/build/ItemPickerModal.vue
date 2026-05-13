@@ -82,6 +82,7 @@ interface RawItem {
   name: string
   tier: number
   enchantmentLevel: number
+  itemPower?: number | null
   twoHanded?: boolean | null
   itemType?: string | null
   shopCategory?: string | null
@@ -148,6 +149,7 @@ function select(item: RawItem) {
     name: item.name,
     tier: item.tier,
     enchantmentLevel: item.enchantmentLevel,
+    itemPower: item.itemPower,
     twoHanded: item.twoHanded,
     iconUrl: item.iconUrl,
     itemType: item.itemType,

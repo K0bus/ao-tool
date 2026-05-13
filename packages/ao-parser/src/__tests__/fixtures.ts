@@ -1,4 +1,4 @@
-import type { RawBaseItem, RawLocalizationTable } from '../types'
+import type { RawActiveSpell, RawBaseItem, RawLocalizationTable } from '../types'
 
 // Item simple sans recipe (sac)
 export const BAG_ITEM: RawBaseItem = {
@@ -127,6 +127,37 @@ export const ENCHANTED_BASE_NO_SUFFIX: RawBaseItem = {
   LocalizationNameVariable: '@ITEMS_T4_CLOTH_LEVEL2',
 }
 
+export const REFERENCED_SPELL_BASE: RawBaseItem = {
+  '@uniquename': 'T4_MAIN_CURSEDSTAFF',
+  '@tier': '4',
+  '@shopcategory': 'magic',
+  '@shopsubcategory1': 'cursedstaff',
+  craftingspelllist: {
+    craftspell: [
+      { '@uniquename': 'DEATHCURSE2', '@slots': '3', '@tag': 'A' },
+      { '@uniquename': 'ARMORPIERCE', '@slots': '2', '@tag': 'B' },
+    ],
+  },
+}
+
+export const REFERENCING_SPELL_ITEM: RawBaseItem = {
+  '@uniquename': 'T5_MAIN_CURSEDSTAFF_CRYSTAL',
+  '@tier': '5',
+  '@shopcategory': 'magic',
+  '@shopsubcategory1': 'cursedstaff',
+  craftingspelllist: {
+    '@reference': 'T4_MAIN_CURSEDSTAFF',
+    removespell: {
+      '@uniquename': 'DEATHCURSE2',
+    },
+    craftspell: {
+      '@uniquename': 'DYNAMIC_CURSE',
+      '@slots': '3',
+      '@tag': 'A',
+    },
+  },
+}
+
 export const LOCALIZATIONS: RawLocalizationTable = {
   'EN-US': {
     '@ITEMS_T4_BAG': "Adept's Bag",
@@ -141,5 +172,16 @@ export const LOCALIZATIONS: RawLocalizationTable = {
     '@ITEMS_T4_MAIN_SWORD': "Grande épée de l'Adepte",
     '@ITEMS_T4_ORE': 'Minerai de titane',
     '@ITEMS_T4_METALBAR': 'Lingot de titane',
+    '@SPELLS_SACRIFICE_HEAL': 'Sacrifice',
+    '@SPELLS_SACRIFICE_HEAL_DESC': 'Sacrifie votre santé pour soigner un allié.',
   },
+}
+
+export const SPELL_WITH_DERIVED_LOCALIZATION: RawActiveSpell = {
+  '@uniquename': 'SACRIFICE_HEAL',
+  '@recastdelay': '50',
+  '@energyusage': '0',
+  '@castrange': '9',
+  '@category': 'damage',
+  '@uitype': 'damage',
 }

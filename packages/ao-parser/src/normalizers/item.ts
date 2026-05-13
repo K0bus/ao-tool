@@ -129,6 +129,50 @@ function normalizeCraftSpells(spellList?: RawCraftingSpellList): NormalizedCraft
   }))
 }
 
+function mergeCraftSpells(
+  baseSpells: NormalizedCraftSpell[],
+  overrideSpells: NormalizedCraftSpell[],
+): NormalizedCraftSpell[] {
+  const merged = new Map(baseSpells.map((spell) => [spell.uniqueName, spell]))
+
+  for (const spell of overrideSpells) {
+    merged.set(spell.uniqueName, spell)
+  }
+
+  return [...merged.values()]
+}
+
+function normalizeRemovedSpells(spellList?: RawCraftingSpellList): string[] {
+  if (!spellList?.removespell) return []
+  const arr = Array.isArray(spellList.removespell) ? spellList.removespell : [spellList.removespell]
+  return arr
+    .map((spell) => spell['@uniquename'])
+    .filter((uniqueName): uniqueName is string => !!uniqueName)
+}
+
+function resolveCraftSpells(
+  spellList: RawCraftingSpellList | undefined,
+  itemIndex: Map<string, RawBaseItem>,
+  visitedReferences = new Set<string>(),
+): NormalizedCraftSpell[] {
+  if (!spellList) return []
+
+  const reference = spellList['@reference']
+  const inheritedSpells =
+    reference && !visitedReferences.has(reference)
+      ? resolveCraftSpells(
+          itemIndex.get(reference)?.craftingspelllist,
+          itemIndex,
+          new Set([...visitedReferences, reference]),
+        )
+      : []
+
+  const removed = new Set(normalizeRemovedSpells(spellList))
+  const filteredInherited = inheritedSpells.filter((spell) => !removed.has(spell.uniqueName))
+
+  return mergeCraftSpells(filteredInherited, normalizeCraftSpells(spellList))
+}
+
 // ─── Stats extraction ─────────────────────────────────────────────────────
 function extractStats(base: RawBaseItem, override?: RawEnchantment): ItemStats {
   const get = (key: string): string | undefined => {
@@ -178,6 +222,7 @@ function buildVariant(
   base: RawBaseItem,
   override: RawEnchantment | undefined,
   localizations: RawLocalizationTable,
+  itemIndex: Map<string, RawBaseItem>,
 ): NormalizedItem {
   const get = (key: string): string | undefined => {
     const fk = `@${key}`
@@ -203,7 +248,7 @@ function buildVariant(
   const { crafting, refining } = resolveRecipes(uniqueName, craftingReqs)
 
   const spellList = override?.craftingspelllist ?? base.craftingspelllist
-  const craftSpells = normalizeCraftSpells(spellList)
+  const craftSpells = resolveCraftSpells(spellList, itemIndex)
 
   // Localizations : on lit les variables depuis l'item de base (elles ne changent pas par enchantement)
   const nameVar = base.LocalizationNameVariable ?? `@ITEMS_${base['@uniquename']}`
@@ -227,7 +272,7 @@ function buildVariant(
   const baseItemUniqueName =
     enchantmentLevel > 0 && hasEnchantSuffix ? uniqueName.replace(/@\d+$/, '') : undefined
 
-  const hashSource = { uniqueName, tier, enchantmentLevel, craftingReqs, stats }
+  const hashSource = { uniqueName, tier, enchantmentLevel, craftingReqs, craftSpells, stats }
 
   return {
     uniqueName,
@@ -259,6 +304,7 @@ function buildVariant(
 export function normalizeItem(
   raw: RawBaseItem,
   localizations: RawLocalizationTable,
+  itemIndex: Map<string, RawBaseItem> = new Map([[raw['@uniquename'], raw]]),
 ): NormalizedItem[] {
   if (!raw['@uniquename']) return []
 
@@ -271,7 +317,7 @@ export function normalizeItem(
 
   const results: NormalizedItem[] = []
 
-  results.push(buildVariant(baseUniqueName, baseTier, baseEnchantLevel, raw, undefined, localizations))
+  results.push(buildVariant(baseUniqueName, baseTier, baseEnchantLevel, raw, undefined, localizations, itemIndex))
 
   const enchantments = raw.enchantments?.enchantment
   if (enchantments) {
@@ -284,7 +330,7 @@ export function normalizeItem(
       const enchUniqueName = ench['@uniquename'] ?? `${baseUniqueName}@${enchLevel}`
       const enchTier = ench['@tier'] ? parseInt(ench['@tier'], 10) : baseTier
 
-      results.push(buildVariant(enchUniqueName, enchTier, enchLevel, raw, ench, localizations))
+      results.push(buildVariant(enchUniqueName, enchTier, enchLevel, raw, ench, localizations, itemIndex))
     }
   }
 

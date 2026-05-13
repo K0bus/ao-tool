@@ -25,6 +25,12 @@
           </div>
         </div>
         <div style="display:flex;gap:8px">
+          <NuxtLink v-if="canManageBuild" :to="`/builds/create?edit=${build.shareCode}`" class="ds-btn">
+            Modifier
+          </NuxtLink>
+          <button v-if="canManageBuild" class="ds-btn danger-btn" :disabled="deleting" @click="deleteBuild">
+            {{ deleting ? 'Suppression…' : 'Supprimer' }}
+          </button>
           <button class="ds-btn" @click="copyLink">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             {{ copied ? 'Copié !' : 'Partager' }}
@@ -33,64 +39,101 @@
         </div>
       </div>
 
+      <ConfirmationModal
+        :open="showDeleteConfirm"
+        eyebrow="Suppression"
+        title="Supprimer ce build ?"
+        :message="deleteMessage"
+        confirm-label="Supprimer"
+        cancel-label="Annuler"
+        loading-label="Suppression…"
+        :loading="deleting"
+        variant="danger"
+        @cancel="showDeleteConfirm = false"
+        @confirm="confirmDeleteBuild"
+      />
+
       <div class="build-detail-body">
-        <!-- Équipement -->
-        <div v-if="build.spells.length > 0" class="panel">
-          <div class="panel-header"><h3>Équipement</h3></div>
+        <div v-if="equippedItems.length > 0" class="panel">
+          <div class="panel-header"><h3>Équipement & sorts</h3></div>
           <div class="panel-body">
-          <div class="spell-lines">
-            <div v-for="row in spellRows" :key="row.slot.key" class="spell-line">
-              <div
-                class="spell-line-item"
-                @mouseenter="showItemTooltip($event, row)"
-                @mousemove="moveTooltip"
-                @mouseleave="hideTooltip"
-              >
-                <NuxtLink :to="`/items/${row.item}`" class="spell-line-item-icon">
-                  <AoItemImage
-                    :unique-name="row.item"
-                    :alt="row.slot.label"
-                  />
-                </NuxtLink>
-                <div class="spell-line-item-meta">
-                  <div class="spell-line-item-title-row">
-                    <span class="spell-line-item-name">{{ row.name }}</span>
-                    <span :class="['tier-badge', `t${row.tier}`]">
-                      {{ row.tierLabel }}
-                    </span>
+            <div class="detail-layout">
+              <div class="detail-col equipment-col">
+                <div class="detail-col-title">Équipement</div>
+                <div class="detail-slot-grid">
+                  <div
+                    v-for="(column, columnIndex) in SLOT_COLUMNS"
+                    :key="`slot-col-${columnIndex}`"
+                    class="detail-slot-column"
+                    :class="{ center: columnIndex === 1 }"
+                  >
+                    <div
+                      v-for="slotKey in column"
+                      :key="slotKey"
+                      class="detail-slot-wrap"
+                    >
+                      <BuildSlot
+                        :label="slotDef(slotKey)?.label ?? slotKey"
+                        :item="slotItem(slotKey)"
+                      />
+                    </div>
                   </div>
-                  <span class="spell-line-item-label">{{ row.slot.label }}</span>
                 </div>
               </div>
 
-              <div class="spell-line-spells">
-                <div
-                  v-for="bs in row.spells"
-                  :key="bs.slotKey"
-                  class="spell-cell"
-                  @mouseenter="showSpellTooltip($event, row, bs)"
-                  @mousemove="moveTooltip"
-                  @mouseleave="hideTooltip"
-                >
-                  <div class="spell-cell-icon">
-                    <img
-                      :src="spellIconUrl(bs.spell)"
-                      :alt="displaySpellName(bs)"
-                      @error="handleSpellImgError"
-                    />
-                    <span class="spell-fallback">{{ spellShortLabel(bs.slotKey) }}</span>
+              <div class="detail-col">
+                <div class="detail-col-title">Sorts actifs</div>
+                <div class="spell-grid">
+                  <div
+                    v-for="spellEntry in activeSpells"
+                    :key="spellEntry.slotKey"
+                    class="spell-cell"
+                    @mouseenter="showSpellTooltip($event, spellEntry)"
+                    @mousemove="moveTooltip"
+                    @mouseleave="hideTooltip"
+                  >
+                    <div class="spell-cell-icon">
+                      <img
+                        :src="spellIconUrl(spellEntry.spell)"
+                        :alt="displaySpellName(spellEntry)"
+                        @error="handleSpellImgError"
+                      />
+                      <span class="spell-fallback">{{ spellShortLabel(spellEntry.slotKey) }}</span>
+                    </div>
+                    <span class="spell-key-badge">{{ spellSlotLabel(spellEntry.slotKey) }}</span>
                   </div>
-                  <span class="spell-key-badge">{{ spellSlotLabel(bs.slotKey) }}</span>
-                  <span class="spell-cell-name">{{ displaySpellName(bs) }}</span>
-                  <span v-if="bs.spell.cooldown" class="spell-cell-cd">{{ bs.spell.cooldown }}s</span>
                 </div>
+                <div v-if="activeSpells.length === 0" class="spell-empty-state">Aucun sort actif sélectionné</div>
+              </div>
+
+              <div class="detail-col">
+                <div class="detail-col-title">Sorts passifs</div>
+                <div class="spell-grid">
+                  <div
+                    v-for="spellEntry in passiveSpells"
+                    :key="spellEntry.slotKey"
+                    class="spell-cell"
+                    @mouseenter="showSpellTooltip($event, spellEntry)"
+                    @mousemove="moveTooltip"
+                    @mouseleave="hideTooltip"
+                  >
+                    <div class="spell-cell-icon">
+                      <img
+                        :src="spellIconUrl(spellEntry.spell)"
+                        :alt="displaySpellName(spellEntry)"
+                        @error="handleSpellImgError"
+                      />
+                      <span class="spell-fallback">{{ spellShortLabel(spellEntry.slotKey) }}</span>
+                    </div>
+                    <span class="spell-key-badge">{{ spellSlotLabel(spellEntry.slotKey) }}</span>
+                  </div>
+                </div>
+                <div v-if="passiveSpells.length === 0" class="spell-empty-state">Aucun sort passif sélectionné</div>
               </div>
             </div>
           </div>
-          </div>
         </div>
 
-        <!-- Description -->
         <div v-if="build.description" class="panel">
           <div class="panel-header"><h3>Description</h3></div>
           <div class="panel-body">
@@ -119,12 +162,19 @@
 
 <script setup lang="ts">
 import { buildTagLabel, type BuildBudget, type BuildContentType, type BuildDifficulty, type BuildGroupScale, type BuildPlaystyle, type BuildRole } from '@albion-tool/types'
-import { EQUIPMENT_SLOTS } from '~/composables/useBuildCreator'
+import { EQUIPMENT_SLOTS, type EquippedItem, type SlotKey } from '~/composables/useBuildCreator'
 import { labelWeaponCategory, labelWeaponSubcategory } from '~/utils/buildTaxonomy'
-import { itemTier, itemTierLabel } from '~/utils/pvp'
 
+const auth = useAuth()
+const router = useRouter()
 const route = useRoute()
 const code = route.params.code as string
+const SLOT_COLUMNS: SlotKey[][] = [
+  ['bag', 'weapon', 'potion'],
+  ['helmet', 'armor', 'shoes', 'mount'],
+  ['cape', 'offhand', 'food'],
+]
+const ACTIVE_ORDER = ['Q', 'W', 'E', 'R', 'D', 'F', '1', '2']
 
 interface BuildDetail {
   id: string
@@ -162,15 +212,7 @@ interface BuildDetail {
   }>
   viewCount: number
   createdAt: string
-}
-
-interface SpellRow {
-  slot: typeof EQUIPMENT_SLOTS[number]
-  item: string
-  spells: BuildDetail['spells']
-  tier: number
-  tierLabel: string
-  name: string
+  userId?: string | null
 }
 
 interface HoverTooltipState {
@@ -199,6 +241,14 @@ interface SpellDetail {
 
 const { data, error } = await useFetch<{ data: BuildDetail }>(`/api/v1/builds/${code}`)
 const build = computed(() => data.value?.data ?? null)
+const deleting = ref(false)
+const showDeleteConfirm = ref(false)
+const canManageBuild = computed(() => Boolean(build.value?.userId && auth.user.value?.id === build.value.userId))
+const deleteMessage = computed(() =>
+  build.value
+    ? `Le build "${build.value.title}" sera supprimé définitivement. Cette action est irréversible.`
+    : 'Ce build sera supprimé définitivement.'
+)
 const primaryContentLabel = computed(() => buildTagLabel('contentType', build.value?.primaryContentType))
 const modeLabel = computed(() => primaryContentLabel.value ?? build.value?.gameMode ?? null)
 const buildMetaTags = computed(() => {
@@ -255,23 +305,29 @@ const { data: spellNames } = await useAsyncData(`build-spell-details:${code}`, a
   return Object.fromEntries(entries.filter((entry): entry is readonly [string, SpellDetail] => entry[1] !== null))
 })
 
-const spellRows = computed<SpellRow[]>(() => {
-  if (!build.value) return []
-
-  return EQUIPMENT_SLOTS
-    .map<SpellRow | null>((slot) => {
-      const item = build.value?.equipment[slot.key]
-      const spells = build.value?.spells.filter(({ slotKey }) => parseSpellSlotKey(slotKey).slot === slot.key) ?? []
-      const tier = item ? itemTier(item) : 0
-      const tierLabel = item ? itemTierLabel(item) : '?'
-      const name = item ? itemNames.value?.[item] ?? item : slot.label
-
-      return item && spells.length > 0
-        ? { slot, item, spells, tier, tierLabel, name }
-        : null
-    })
-    .filter((row): row is SpellRow => row !== null)
+const equippedItems = computed(() =>
+  EQUIPMENT_SLOTS.filter((slot) => Boolean(build.value?.equipment[slot.key]))
+)
+const isTwoHandedWeapon = computed(() => {
+  const weapon = build.value?.equipment.weapon
+  return Boolean(weapon && (weapon.includes('_2H_') || weapon.includes('_MAIN_')))
 })
+const activeSpells = computed(() => {
+  const selectedByHotkey = new Map<string, BuildDetail['spells'][number]>()
+
+  for (const buildSpell of build.value?.spells ?? []) {
+    const hotkey = activeSpellHotkey(buildSpell.slotKey)
+    if (!hotkey || selectedByHotkey.has(hotkey)) continue
+    selectedByHotkey.set(hotkey, buildSpell)
+  }
+
+  return [...selectedByHotkey.values()]
+    .sort((a, b) => activeSpellRank(a.slotKey) - activeSpellRank(b.slotKey))
+})
+const passiveSpells = computed(() =>
+  [...(build.value?.spells ?? [])]
+    .filter(({ slotKey, spell }) => parseSpellSlotKey(slotKey).spellSlot === 'passive' || spell.spellKind === 'passive')
+)
 
 const tooltip = reactive<HoverTooltipState>({
   visible: false,
@@ -298,6 +354,26 @@ function copyLink() {
   setTimeout(() => { copied.value = false }, 2000)
 }
 
+function deleteBuild() {
+  if (!build.value || deleting.value) return
+  showDeleteConfirm.value = true
+}
+
+async function confirmDeleteBuild() {
+  if (!build.value || deleting.value) return
+
+  deleting.value = true
+  try {
+    await $fetch(`/api/v1/builds/${build.value.shareCode}` as any, { method: 'DELETE' })
+    showDeleteConfirm.value = false
+    await router.push('/builds/me')
+  } catch (e: any) {
+    alert(e?.data?.message ?? 'Erreur lors de la suppression')
+  } finally {
+    deleting.value = false
+  }
+}
+
 function visLabel(v: string) {
   return { PUBLIC: 'Public', UNLISTED: 'Non listé', PRIVATE: 'Privé' }[v] ?? v
 }
@@ -306,25 +382,76 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
+function slotDef(slot: SlotKey) {
+  return EQUIPMENT_SLOTS.find((entry) => entry.key === slot) ?? null
+}
+
+function slotItem(slot: SlotKey): EquippedItem | null {
+  const uniqueName = build.value?.equipment[slot]
+  if (!uniqueName) return null
+
+  return {
+    uniqueName,
+    name: itemNames.value?.[uniqueName] ?? uniqueName,
+    tier: extractTier(uniqueName),
+    enchantmentLevel: extractEnchantment(uniqueName),
+    twoHanded: slot === 'weapon' ? isTwoHandedWeapon.value : false,
+  }
+}
+
+function extractTier(uniqueName: string) {
+  const match = uniqueName.match(/^T(\d+)/)
+  return match ? Number(match[1]) : 0
+}
+
+function extractEnchantment(uniqueName: string) {
+  const match = uniqueName.match(/@(\d+)/)
+  return match ? Number(match[1]) : 0
+}
+
 function parseSpellSlotKey(slotKey: string) {
   const [slot, spellSlot] = slotKey.split(':')
   return { slot, spellSlot }
 }
 
 function spellSlotLabel(slotKey: string) {
-  const { slot, spellSlot } = parseSpellSlotKey(slotKey)
-  if (slot === 'helmet' && spellSlot === 'q') return 'D'
-  return {
-    q: 'Q',
-    w: 'W',
-    e: 'E',
-    passive: 'Passif',
-  }[spellSlot] ?? slotKey
+  const { spellSlot } = parseSpellSlotKey(slotKey)
+  if (spellSlot === 'passive') return 'Passif'
+  return activeSpellHotkey(slotKey) ?? slotKey
 }
 
 function spellShortLabel(slotKey: string) {
   const label = spellSlotLabel(slotKey)
   return label === 'Passif' ? 'P' : label
+}
+
+function activeSpellRank(slotKey: string) {
+  const label = activeSpellHotkey(slotKey)
+  const index = label ? ACTIVE_ORDER.indexOf(label) : -1
+  return index >= 0 ? index : ACTIVE_ORDER.length + 1
+}
+
+function activeSpellHotkey(slotKey: string) {
+  const { slot, spellSlot } = parseSpellSlotKey(slotKey)
+  if (spellSlot === 'passive') return null
+
+  if (slot === 'weapon') {
+    return {
+      q: 'Q',
+      w: 'W',
+      e: 'E',
+    }[spellSlot] ?? null
+  }
+
+  if (spellSlot !== 'q') return null
+
+  return {
+    armor: 'R',
+    helmet: 'D',
+    shoes: 'F',
+    potion: '1',
+    food: '2',
+  }[slot] ?? null
 }
 
 function spellIconUrl(spell: { id: string }) {
@@ -348,19 +475,11 @@ function hideTooltip() {
   tooltip.key = ''
 }
 
-function showItemTooltip(event: MouseEvent, row: SpellRow) {
-  moveTooltip(event)
-  tooltip.title = row.name
-  tooltip.badge = row.tierLabel
-  tooltip.lines = [row.slot.label, `${row.spells.length} sort${row.spells.length > 1 ? 's' : ''} sélectionné${row.spells.length > 1 ? 's' : ''}`]
-  tooltip.visible = true
-}
-
-async function showSpellTooltip(event: MouseEvent, row: SpellRow, buildSpell: BuildDetail['spells'][number]) {
+async function showSpellTooltip(event: MouseEvent, buildSpell: BuildDetail['spells'][number]) {
   moveTooltip(event)
   tooltip.key = `spell:${buildSpell.spell.id}`
 
-  applySpellTooltip(row, buildSpell.slotKey, buildSpell.spell)
+  applySpellTooltip(buildSpell.slotKey, buildSpell.spell)
   tooltip.visible = true
 
   if (!spellDetails[buildSpell.spell.id]) {
@@ -375,7 +494,7 @@ async function showSpellTooltip(event: MouseEvent, row: SpellRow, buildSpell: Bu
   }
 
   if (tooltip.visible && tooltip.key === `spell:${buildSpell.spell.id}`) {
-    applySpellTooltip(row, buildSpell.slotKey, spellDetails[buildSpell.spell.id] ?? buildSpell.spell)
+    applySpellTooltip(buildSpell.slotKey, spellDetails[buildSpell.spell.id] ?? buildSpell.spell)
   }
 }
 
@@ -386,11 +505,14 @@ function displaySpellName(buildSpell: BuildDetail['spells'][number]) {
 }
 
 function applySpellTooltip(
-  row: SpellRow,
   slotKey: string,
   spell: SpellDetail | BuildDetail['spells'][number]['spell'],
 ) {
-  const lines = [`${row.name} · ${spellSlotLabel(slotKey)}`]
+  const slot = parseSpellSlotKey(slotKey).slot as SlotKey
+  const slotLabel = slotDef(slot)?.label ?? slot
+  const item = slotItem(slot)
+  const lines = [`${slotLabel} · ${spellSlotLabel(slotKey)}`]
+  if (item?.name) lines.push(item.name)
   const stats = formatSpellStats(spell)
   if (stats.length > 0) lines.push(stats.join(' · '))
   if (spell.description) lines.push(spell.description)
@@ -457,6 +579,13 @@ useSeoMeta({
 }
 .vis-tag.public { color: var(--success); border-color: rgba(125,154,74,0.3); }
 .vis-tag.unlisted { color: var(--warning); }
+.danger-btn {
+  color: var(--danger);
+  border-color: rgba(176,74,50,0.35);
+}
+.danger-btn:hover {
+  background: rgba(176,74,50,0.08);
+}
 
 .build-meta-tags {
   display: flex;
@@ -480,73 +609,84 @@ useSeoMeta({
   gap: 16px;
 }
 
-/* Equipment */
-.spell-lines {
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.85fr 0.85fr;
+  gap: 0;
+  align-items: start;
+}
+
+.detail-col {
+  min-width: 0;
+  padding: 0 18px;
+}
+
+.detail-col:first-child {
+  padding-left: 0;
+}
+
+.detail-col + .detail-col {
+  border-left: 1px solid var(--border);
+}
+
+.detail-col-title {
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-family: var(--font-display);
+}
+
+.detail-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-slot-column {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
 }
 
-.spell-line {
+.detail-slot-column.center {
+  transform: translateY(calc(-92px / 8));
+}
+
+.detail-slot-wrap {
+  width: 100%;
+}
+
+.detail-slot-grid :deep(.build-slot) {
+  min-height: 92px;
+  padding: 10px 7px 8px;
+  gap: 5px;
+}
+
+.detail-slot-grid :deep(.slot-icon) {
+  width: 52px;
+  height: 52px;
+}
+
+.detail-slot-grid :deep(.slot-label) {
+  font-size: 9px;
+  min-height: calc(9px * 1.3 * 2);
+}
+
+.detail-slot-grid :deep(.slot-tier) {
+  top: 4px;
+  left: 4px;
+}
+
+.detail-slot-grid :deep(.slot-remove) {
+  display: none;
+}
+
+.spell-grid {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.spell-line:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.spell-line-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 360px;
-  min-width: 360px;
-}
-
-.spell-line-item-icon {
-  width: 92px;
-  height: 92px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg-1);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.spell-line-item-meta {
-  min-width: 0;
-}
-
-.spell-line-item-title-row {
-  display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-
-.spell-line-item-name {
-  font-size: 22px;
-  color: var(--text-1);
-  line-height: 1.35;
-}
-
-.spell-line-item-label {
-  display: block;
-  font-size: 18px;
-  color: var(--text-4);
-  line-height: 1.3;
-}
-
-.spell-line-spells {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
 }
 
 .spell-cell {
@@ -555,7 +695,7 @@ useSeoMeta({
   align-items: center;
   gap: 6px;
   min-width: 64px;
-  max-width: 80px;
+  max-width: 72px;
   text-align: center;
 }
 
@@ -563,15 +703,19 @@ useSeoMeta({
   width: 64px;
   height: 64px;
   border-radius: var(--radius);
+  overflow: hidden;
   border: 1px solid var(--border);
   background: var(--bg-1);
-  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
-.spell-cell-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+.spell-cell-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 
 .spell-fallback {
   display: none;
@@ -579,104 +723,86 @@ useSeoMeta({
   height: 100%;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-3);
 }
 
 .spell-key-badge {
-  font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 700;
+  font-family: var(--font-mono);
   color: var(--gold);
-  background: rgba(201,161,74,0.1);
-  border: 1px solid rgba(201,161,74,0.2);
-  border-radius: 3px;
-  padding: 1px 6px;
+  border: 1px solid rgba(201,161,74,0.24);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(201,161,74,0.08);
 }
 
-.spell-cell-name {
-  font-size: 10px;
-  color: var(--text-2);
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.spell-cell-cd {
-  font-size: 10px;
+.spell-empty-state {
+  margin-top: 4px;
+  font-size: 12px;
   color: var(--text-4);
-  font-family: var(--font-mono);
 }
 
 .build-hover-tooltip {
   position: fixed;
-  z-index: 50;
-  pointer-events: none;
-  min-width: 200px;
-  max-width: 280px;
+  z-index: 1200;
+  min-width: 180px;
+  max-width: 320px;
   padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(201,161,74,0.24);
-  background:
-    linear-gradient(180deg, rgba(29,24,20,0.98), rgba(17,14,12,0.98));
-  box-shadow:
-    0 18px 40px rgba(0,0,0,0.4),
-    0 0 0 1px rgba(255,255,255,0.03) inset;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: rgba(15, 17, 22, 0.96);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
 }
 
 .build-hover-tooltip-title {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--text-1);
-  line-height: 1.35;
+  font-weight: 600;
+  color: var(--text-0);
 }
 
 .build-hover-tooltip-badge {
   display: inline-flex;
-  align-items: center;
   margin-top: 6px;
-  margin-bottom: 6px;
-  padding: 2px 7px;
-  border-radius: 999px;
   font-size: 10px;
-  font-weight: 700;
   color: var(--gold);
-  background: rgba(201,161,74,0.1);
-  border: 1px solid rgba(201,161,74,0.2);
+  border: 1px solid rgba(201,161,74,0.25);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(201,161,74,0.08);
 }
 
 .build-hover-tooltip-line {
-  font-size: 11px;
+  margin-top: 6px;
+  font-size: 12px;
   line-height: 1.45;
-  color: var(--text-3);
-  white-space: pre-line;
+  color: var(--text-2);
 }
 
-@media (max-width: 640px) {
-  .spell-line {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
+@media (max-width: 900px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
   }
-  .spell-line-item {
-    width: 100%;
-    min-width: 0;
+
+  .detail-col {
+    padding: 0;
   }
-  .spell-line-item-icon {
-    width: 72px;
-    height: 72px;
+
+  .detail-col + .detail-col {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    margin-top: 16px;
   }
-  .spell-line-item-name {
-    font-size: 18px;
+
+  .detail-slot-grid {
+    grid-template-columns: 1fr;
   }
-  .spell-line-item-label {
-    font-size: 14px;
-  }
-  .spell-line-spells {
-    width: 100%;
+
+  .detail-slot-column.center {
+    transform: none;
   }
 }
 </style>
