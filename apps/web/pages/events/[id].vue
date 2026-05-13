@@ -56,34 +56,7 @@
           </div>
 
           <div class="vs-equipment">
-            <div
-              v-for="slot in killerSlots"
-              :key="slot.key"
-              class="eq-row"
-              :class="slot.qualityClass"
-              @mouseenter="showTooltip($event, slot)"
-              @mousemove="moveTooltip"
-              @mouseleave="hideTooltip"
-            >
-              <div class="eq-row-icon">
-                <AoItemImage
-                  v-if="slot.type"
-                  :unique-name="slot.type"
-                  :display-name="slot.displayName"
-                  :alt="slot.displayName || slot.type"
-                />
-                <span v-else class="eq-row-empty">·</span>
-              </div>
-              <div class="eq-row-info">
-                <span class="eq-row-slot t-eyebrow">{{ slot.label }}</span>
-                <span v-if="slot.type" class="eq-row-name">{{ slot.displayName }}</span>
-                <span v-else class="eq-row-none t-dim">—</span>
-              </div>
-              <div v-if="slot.type" class="eq-row-right">
-                <span class="eq-row-ip t-gold t-mono">{{ slot.ip }} IP</span>
-                <span class="eq-row-quality" :style="{ color: slot.qualityColor }">{{ slot.qualityLabel }}</span>
-              </div>
-            </div>
+            <PvpEquipmentBuildGrid :equipment="event.Killer.Equipment" :names="itemNamesMap" />
           </div>
         </div>
 
@@ -128,34 +101,7 @@
           </div>
 
           <div class="vs-equipment loser-eq">
-            <div
-              v-for="slot in victimSlots"
-              :key="slot.key"
-              class="eq-row eq-row--reversed"
-              :class="slot.qualityClass"
-              @mouseenter="showTooltip($event, slot)"
-              @mousemove="moveTooltip"
-              @mouseleave="hideTooltip"
-            >
-              <div v-if="slot.type" class="eq-row-right eq-row-right--left">
-                <span class="eq-row-ip t-gold t-mono">{{ slot.ip }} IP</span>
-                <span class="eq-row-quality" :style="{ color: slot.qualityColor }">{{ slot.qualityLabel }}</span>
-              </div>
-              <div class="eq-row-info loser-info-cell">
-                <span class="eq-row-slot t-eyebrow">{{ slot.label }}</span>
-                <span v-if="slot.type" class="eq-row-name">{{ slot.displayName }}</span>
-                <span v-else class="eq-row-none t-dim">—</span>
-              </div>
-              <div class="eq-row-icon">
-                <AoItemImage
-                  v-if="slot.type"
-                  :unique-name="slot.type"
-                  :display-name="slot.displayName"
-                  :alt="slot.displayName || slot.type"
-                />
-                <span v-else class="eq-row-empty">·</span>
-              </div>
-            </div>
+            <PvpEquipmentBuildGrid :equipment="event.Victim.Equipment" :names="itemNamesMap" />
           </div>
 
           <!-- Inventaire perdu (sous la victime) -->
@@ -244,47 +190,8 @@ useHead(() => ({
   title: event.value ? `Kill #${event.value.EventId} — Albion Tool` : 'Kill Event — Albion Tool',
 }))
 
-const SLOT_LABELS: Record<keyof KillEventEquipment, string> = {
-  MainHand: 'Arme', OffHand: 'Secondaire', Head: 'Casque', Armor: 'Armure',
-  Shoes: 'Bottes', Bag: 'Sac', Cape: 'Cape', Mount: 'Monture', Potion: 'Potion', Food: 'Nourriture',
-}
 const QUALITY_LABELS = ['', 'Normal', 'Good', 'Outstanding', 'Excellent', 'Masterpiece']
-const QUALITY_COLORS_CSS = ['', 'var(--q-normal)', 'var(--q-good)', 'var(--q-outstanding)', 'var(--q-excellent)', 'var(--q-masterpiece)']
 const QUALITY_CLASSES = ['', '', 'q-good', 'q-outstanding', 'q-excellent', 'q-masterpiece']
-const SLOT_ORDER = ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Bag', 'Cape', 'Mount', 'Potion', 'Food'] as const
-
-function buildSlots(equipment: KillEventEquipment) {
-  const names = itemNamesMap.value
-  return SLOT_ORDER.map((key) => {
-    const item = equipment[key]
-    if (!item?.Type) {
-      return { key, label: SLOT_LABELS[key], type: null as string | null, displayName: '', tierLabel: '', ip: 0, qualityClass: '', qualityLabel: '', qualityColor: '', tier: 0, enchantmentLevel: 0, quality: 0 }
-    }
-    const type = item.Type
-    const t = itemTier(type)
-    const e = itemEnchant(type)
-    const tierLabel = e > 0 ? `T${t}.${e}` : `T${t}`
-    const baseName = names[type] ?? ''
-    return {
-      key,
-      label: SLOT_LABELS[key],
-      type,
-      displayName: baseName ? `${baseName} ${tierLabel}` : tierLabel,
-      tierLabel,
-      ip: calcItemPower(type, item.Quality),
-      qualityClass: QUALITY_CLASSES[item.Quality] ?? '',
-      qualityLabel: QUALITY_LABELS[item.Quality] ?? '',
-      qualityColor: QUALITY_COLORS_CSS[item.Quality] ?? '',
-      tier: t,
-      enchantmentLevel: e,
-      quality: item.Quality,
-      name: baseName || type
-    }
-  })
-}
-
-const killerSlots = computed(() => event.value ? buildSlots(event.value.Killer.Equipment) : [])
-const victimSlots = computed(() => event.value ? buildSlots(event.value.Victim.Equipment) : [])
 
 const victimInventory = computed(() => {
   if (!event.value?.Victim.Inventory) return []
@@ -445,58 +352,6 @@ function fullDate(iso: string) {
 
 /* ── Lignes équipement ────────────────────────────────── */
 .vs-equipment { display: flex; flex-direction: column; flex: 1; }
-
-.eq-row {
-  display: grid;
-  grid-template-columns: 44px 1fr auto;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 16px 9px 12px;
-  border-bottom: 1px solid var(--border-divider);
-  border-left: 2px solid transparent;
-  transition: background 0.1s;
-}
-.eq-row:last-child { border-bottom: none; }
-.eq-row:hover { background: var(--bg-3); }
-
-.eq-row--reversed {
-  grid-template-columns: auto 1fr 44px;
-  padding: 9px 12px 9px 16px;
-  border-left: none;
-  border-right: 2px solid transparent;
-}
-
-.eq-row.q-good       { border-color: var(--q-good); }
-.eq-row.q-outstanding { border-color: var(--q-outstanding); }
-.eq-row.q-excellent  { border-color: var(--q-excellent); }
-.eq-row.q-masterpiece { border-color: var(--q-masterpiece); }
-
-.eq-row-icon {
-  width: 44px; height: 44px;
-  background: var(--bg-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.eq-row-icon img { width: 100%; height: 100%; object-fit: cover; }
-.eq-row-empty { font-size: 16px; color: var(--text-4); opacity: 0.25; }
-
-.eq-row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.loser-info-cell { align-items: flex-end; }
-
-.eq-row-slot { font-size: 9px; color: var(--text-4); text-transform: uppercase; letter-spacing: 0.06em; }
-.eq-row-name { font-size: 12px; font-weight: 600; color: var(--text-0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.eq-row-none { font-size: 12px; }
-
-.eq-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
-.eq-row-right--left { align-items: flex-start; }
-
-.eq-row-ip { font-size: 12px; font-weight: 700; }
-.eq-row-quality { font-size: 9px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; }
 
 /* ── Centre VS ────────────────────────────────────────── */
 .vs-center {
@@ -674,8 +529,5 @@ function fullDate(iso: string) {
   .vs-center { flex-direction: row; justify-content: center; border: none; border-top: 1px solid var(--border-divider); border-bottom: 1px solid var(--border-divider); padding: 12px 16px; }
   .loser-header { flex-direction: row; }
   .loser-info { align-items: flex-start; }
-  .eq-row--reversed { grid-template-columns: 44px 1fr auto; padding: 9px 16px 9px 12px; border-left: 2px solid transparent; border-right: none; }
-  .eq-row-right--left { align-items: flex-end; }
-  .loser-info-cell { align-items: flex-start; }
 }
 </style>
