@@ -118,6 +118,14 @@ img { display: block; max-width: 100%; }
 .t-danger { color: var(--danger); }
 .t-warning { color: var(--warning); }
 
+/* Spell tags */
+.spell-buff { color: var(--info); font-weight: 700; }
+.spell-heal { color: var(--success); font-weight: 700; }
+.spell-dmg { color: var(--danger); font-weight: 700; }
+.spell-cc { color: #f2c94c; font-weight: 700; } /* Yellow */
+.spell-debuff { color: #9b51e0; font-weight: 700; } /* Purple */
+.spell-other { font-weight: 700; }
+
 /* ============================================================
    Layout
    ============================================================ */

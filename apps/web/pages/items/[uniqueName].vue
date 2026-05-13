@@ -67,8 +67,7 @@
 
             <h1 style="font-size:28px;margin:4px 0 6px;color:var(--text-0);font-family:var(--font-display)">{{ item.name }}</h1>
 
-            <p v-if="description" class="t-muted" style="max-width:640px;margin-bottom:12px;font-size:13px;line-height:1.6">
-              {{ description }}
+            <p v-if="description" class="t-muted" style="max-width:640px;margin-bottom:12px;font-size:13px;line-height:1.6" v-html="parseAoDescription(description)">
             </p>
 
             <!-- Quality switch -->
@@ -272,6 +271,7 @@
 
 <script setup lang="ts">
 import ItemSvgChart from '~/components/items/ItemSvgChart.vue'
+import { parseAoDescription } from '~/utils/aoRender'
 
 definePageMeta({ layout: 'default' })
 
@@ -395,7 +395,7 @@ const statRows = computed(() => {
   if (item.value?.weight) {
     rows.push({ key: 'weight', label: 'Poids', value: `${item.value.weight} kg` })
   }
-  if (item.value?.maxStackSize > 1) {
+  if (item.value?.maxStackSize > 0) {
     rows.push({ key: 'stack', label: 'Stack max', value: item.value.maxStackSize.toLocaleString('fr-FR') })
   }
   if (item.value?.enchantmentLevel !== undefined) {

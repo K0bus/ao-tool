@@ -40,13 +40,14 @@
     >
       <div class="sp-tooltip-title">{{ tooltip.title }}</div>
       <div v-if="tooltip.badge" class="sp-tooltip-badge">{{ tooltip.badge }}</div>
-      <div v-for="line in tooltip.lines" :key="line" class="sp-tooltip-line">{{ line }}</div>
+      <div v-for="line in tooltip.lines" :key="line" class="sp-tooltip-line" v-html="parseAoDescription(line)"></div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { SpellGroup, SelectedSpell } from '~/composables/useBuildCreator'
+import { parseAoDescription } from '~/utils/aoRender'
 
 const props = defineProps<{
   selected: Record<string, SelectedSpell>
@@ -111,6 +112,7 @@ function showTooltip(event: MouseEvent, slotLabel: string, spellSlotLabel: strin
       spell.uiType ? `UI: ${spell.uiType}` : null,
       spell.category ? `Catégorie: ${spell.category}` : null,
     ].filter(Boolean).join(' · ') || null,
+    spell.description || null,
   ].filter((line): line is string => Boolean(line))
   tooltip.visible = true
 }

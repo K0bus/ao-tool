@@ -32,3 +32,20 @@ export function buildAoItemImageUrls(opts: {
 
   return urls
 }
+
+/**
+ * Parse les tags de mise en forme Albion Online ([buff], [heal], etc.) en HTML stylé.
+ */
+export function parseAoDescription(text: string | null | undefined): string {
+  if (!text) return ''
+
+  return text
+    .replace(/\[buff\](.*?)\[\/buff\]/gi, '<span class="spell-buff">$1</span>')
+    .replace(/\[heal\](.*?)\[\/heal\]/gi, '<span class="spell-heal">$1</span>')
+    .replace(/\[dmg\](.*?)\[\/dmg\]/gi, '<span class="spell-dmg">$1</span>')
+    .replace(/\[cc\](.*?)\[\/cc\]/gi, '<span class="spell-cc">$1</span>')
+    .replace(/\[debuff\](.*?)\[\/debuff\]/gi, '<span class="spell-debuff">$1</span>')
+    .replace(/\[other\](.*?)\[\/other\]/gi, '<span class="spell-other">$1</span>')
+    .replace(/\[tab\/\]/gi, ' ')
+    .replace(/\n/g, '<br>')
+}

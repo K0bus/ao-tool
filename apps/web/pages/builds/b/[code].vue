@@ -149,7 +149,7 @@
       >
         <div class="build-hover-tooltip-title">{{ tooltip.title }}</div>
         <div v-if="tooltip.badge" class="build-hover-tooltip-badge">{{ tooltip.badge }}</div>
-        <div v-for="line in tooltip.lines" :key="line" class="build-hover-tooltip-line">{{ line }}</div>
+        <div v-for="line in tooltip.lines" :key="line" class="build-hover-tooltip-line" v-html="parseAoDescription(line)"></div>
       </div>
     </template>
 
@@ -164,6 +164,7 @@
 import { buildTagLabel, type BuildBudget, type BuildContentType, type BuildDifficulty, type BuildGroupScale, type BuildPlaystyle, type BuildRole } from '@albion-tool/types'
 import { EQUIPMENT_SLOTS, type EquippedItem, type SlotKey } from '~/composables/useBuildCreator'
 import { labelWeaponCategory, labelWeaponSubcategory } from '~/utils/buildTaxonomy'
+import { parseAoDescription } from '~/utils/aoRender'
 
 const auth = useAuth()
 const router = useRouter()
