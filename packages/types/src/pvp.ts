@@ -48,9 +48,12 @@ export interface KillEvent {
 }
 
 export interface GuildMemberLifetimeStats {
-  PvE: { Total: number }
-  Crafting: { Total: number }
+  PvE: { Total: number; Royal?: number; Outlands?: number; Avalon?: number; Hellgate?: number; CorruptedDungeon?: number; Mists?: number }
+  Gathering: { All: GatheringStats; Fiber: GatheringStats; Hide: GatheringStats; Ore: GatheringStats; Rock: GatheringStats; Wood: GatheringStats }
+  Crafting: { Total: number; Royal?: number; Outlands?: number; Avalon?: number }
   CrystalLeague: number
+  FishingFame?: number
+  FarmingFame?: number
   Timestamp: string
 }
 
@@ -58,6 +61,9 @@ export interface GuildMember {
   Id: string
   Name: string
   GuildId: string
+  KillFame: number
+  DeathFame: number
+  FameRatio: number
   LifetimeStatistics?: GuildMemberLifetimeStats
 }
 

@@ -1,24 +1,24 @@
 <template>
-  <NuxtLink :to="`/events/${event.EventId}`" class="kill-row">
+  <NuxtLink :to="`/events/${event.EventId}`" class="kill-row" :class="{ 'no-eq': hideEquipment }">
     <span class="kr-time t-mono t-dim">{{ relativeTime(event.TimeStamp) }}</span>
 
     <div class="kr-actors">
-      <div class="kr-side victim">
-        <span class="kr-name t-danger">{{ event.Victim.Name }}</span>
-        <span v-if="event.Victim.GuildName" class="kr-guild t-dim">{{ event.Victim.GuildName }}</span>
+      <div class="kr-side killer">
+        <span class="kr-name t-success">{{ event.Killer.Name }}</span>
+        <span v-if="!hideEquipment && event.Killer.GuildName" class="kr-guild t-dim">{{ event.Killer.GuildName }}</span>
       </div>
 
       <span class="kr-arrow">→</span>
 
-      <div class="kr-side killer">
-        <span class="kr-name t-success">{{ event.Killer.Name }}</span>
-        <span v-if="event.Killer.GuildName" class="kr-guild t-dim">{{ event.Killer.GuildName }}</span>
+      <div class="kr-side victim">
+        <span class="kr-name t-danger">{{ event.Victim.Name }}</span>
+        <span v-if="!hideEquipment && event.Victim.GuildName" class="kr-guild t-dim">{{ event.Victim.GuildName }}</span>
       </div>
     </div>
 
     <span class="kr-fame t-gold t-mono">{{ formatFame(event.TotalVictimKillFame) }}</span>
 
-    <div class="kr-eq">
+    <div v-if="!hideEquipment" class="kr-eq">
       <KillEventEquipmentGrid :equipment="event.Victim.Equipment" size="sm" />
     </div>
   </NuxtLink>
@@ -27,7 +27,10 @@
 <script setup lang="ts">
 import type { KillEvent } from '@albion-tool/types'
 
-defineProps<{ event: KillEvent }>()
+defineProps<{
+  event: KillEvent
+  hideEquipment?: boolean
+}>()
 </script>
 
 <style scoped>
@@ -41,6 +44,9 @@ defineProps<{ event: KillEvent }>()
   text-decoration: none;
   transition: background 0.12s;
   cursor: pointer;
+}
+.kill-row.no-eq {
+  grid-template-columns: 80px 1fr 72px;
 }
 .kill-row:last-child { border-bottom: none; }
 .kill-row:hover { background: var(--bg-3); }

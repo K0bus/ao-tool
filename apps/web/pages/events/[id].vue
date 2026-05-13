@@ -1,6 +1,17 @@
 <template>
   <div class="page">
     <template v-if="event">
+      <!-- Tooltip -->
+      <div
+        v-if="tooltip.visible"
+        class="slot-tooltip"
+        :style="{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }"
+      >
+        <div class="slot-tooltip-title">{{ tooltip.title }}</div>
+        <div v-if="tooltip.badge" class="slot-tooltip-badge">{{ tooltip.badge }}</div>
+        <div v-for="line in tooltip.lines" :key="line" class="slot-tooltip-line">{{ line }}</div>
+      </div>
+
       <div class="page-header">
         <div class="crumbs">
           <NuxtLink to="/">Accueil</NuxtLink>
@@ -45,7 +56,15 @@
           </div>
 
           <div class="vs-equipment">
-            <div v-for="slot in killerSlots" :key="slot.key" class="eq-row" :class="slot.qualityClass">
+            <div
+              v-for="slot in killerSlots"
+              :key="slot.key"
+              class="eq-row"
+              :class="slot.qualityClass"
+              @mouseenter="showTooltip($event, slot)"
+              @mousemove="moveTooltip"
+              @mouseleave="hideTooltip"
+            >
               <div class="eq-row-icon">
                 <AoItemImage
                   v-if="slot.type"
@@ -70,11 +89,13 @@
 
         <!-- Séparateur central -->
         <div class="vs-center">
+          <div class="vs-badge">
+            <img src="/images/icons/icon_versus.png" alt="VS" class="vs-icon" />
+          </div>
           <div class="vs-fame">
             <span class="fame-label t-eyebrow">Kill Fame</span>
             <span class="fame-value t-gold t-mono">{{ formatFame(event.TotalVictimKillFame) }}</span>
           </div>
-          <div class="vs-badge">VS</div>
           <div v-if="assists.length" class="vs-assists">
             <span class="assists-label t-eyebrow">Assistants</span>
             <NuxtLink v-for="a in assists" :key="a.Id" :to="`/players/${a.Id}`" class="assist-name t-dim">
@@ -107,7 +128,15 @@
           </div>
 
           <div class="vs-equipment loser-eq">
-            <div v-for="slot in victimSlots" :key="slot.key" class="eq-row eq-row--reversed" :class="slot.qualityClass">
+            <div
+              v-for="slot in victimSlots"
+              :key="slot.key"
+              class="eq-row eq-row--reversed"
+              :class="slot.qualityClass"
+              @mouseenter="showTooltip($event, slot)"
+              @mousemove="moveTooltip"
+              @mouseleave="hideTooltip"
+            >
               <div v-if="slot.type" class="eq-row-right eq-row-right--left">
                 <span class="eq-row-ip t-gold t-mono">{{ slot.ip }} IP</span>
                 <span class="eq-row-quality" :style="{ color: slot.qualityColor }">{{ slot.qualityLabel }}</span>
@@ -125,6 +154,30 @@
                   :alt="slot.displayName || slot.type"
                 />
                 <span v-else class="eq-row-empty">·</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inventaire perdu (sous la victime) -->
+          <div v-if="victimInventory.length" class="loser-inventory panel parchment framed">
+            <div class="panel-header">
+              <h3>Inventaire perdu</h3>
+              <span class="t-dim t-mono" style="font-size: 11px">{{ victimInventory.length }} items</span>
+            </div>
+            <div class="panel-body inv-grid">
+              <div
+                v-for="item in victimInventory"
+                :key="item.id"
+                class="inv-item"
+                :class="item.qualityClass"
+                @mouseenter="showTooltip($event, item)"
+                @mousemove="moveTooltip"
+                @mouseleave="hideTooltip"
+              >
+                <div class="inv-img-wrap">
+                  <AoItemImage :unique-name="item.type" :alt="item.displayName" />
+                  <span v-if="item.count > 1" class="inv-count">{{ item.count }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -160,6 +213,15 @@ const { data, status } = useAsyncData(
         if (item?.Type) types.add(item.Type)
       }
     }
+    const inventoryItems: { uniqueName: string; quality: number }[] = []
+    if (event.Victim.Inventory) {
+      for (const item of event.Victim.Inventory) {
+        if (item?.Type) {
+          types.add(item.Type)
+          inventoryItems.push({ uniqueName: item.Type, quality: item.Quality })
+        }
+      }
+    }
     const typeList = [...types]
     let names: Record<string, string> = {}
     if (typeList.length) {
@@ -169,6 +231,7 @@ const { data, status } = useAsyncData(
       })
       names = res.data
     }
+
     return { event, names }
   },
   { watch: [id] }
@@ -195,7 +258,7 @@ function buildSlots(equipment: KillEventEquipment) {
   return SLOT_ORDER.map((key) => {
     const item = equipment[key]
     if (!item?.Type) {
-      return { key, label: SLOT_LABELS[key], type: null as string | null, displayName: '', tierLabel: '', ip: 0, qualityClass: '', qualityLabel: '', qualityColor: '' }
+      return { key, label: SLOT_LABELS[key], type: null as string | null, displayName: '', tierLabel: '', ip: 0, qualityClass: '', qualityLabel: '', qualityColor: '', tier: 0, enchantmentLevel: 0, quality: 0 }
     }
     const type = item.Type
     const t = itemTier(type)
@@ -212,12 +275,77 @@ function buildSlots(equipment: KillEventEquipment) {
       qualityClass: QUALITY_CLASSES[item.Quality] ?? '',
       qualityLabel: QUALITY_LABELS[item.Quality] ?? '',
       qualityColor: QUALITY_COLORS_CSS[item.Quality] ?? '',
+      tier: t,
+      enchantmentLevel: e,
+      quality: item.Quality,
+      name: baseName || type
     }
   })
 }
 
 const killerSlots = computed(() => event.value ? buildSlots(event.value.Killer.Equipment) : [])
 const victimSlots = computed(() => event.value ? buildSlots(event.value.Victim.Equipment) : [])
+
+const victimInventory = computed(() => {
+  if (!event.value?.Victim.Inventory) return []
+  const names = itemNamesMap.value
+  return event.value.Victim.Inventory
+    .filter(item => !!item && !!item.Type)
+    .map((item, idx) => {
+      const type = item.Type
+      const t = itemTier(type)
+      const e = itemEnchant(type)
+      const tierLabel = e > 0 ? `T${t}.${e}` : `T${t}`
+      const baseName = names[type] ?? ''
+      return {
+        id: `${type}-${idx}`,
+        type,
+        count: item.Count,
+        displayName: baseName ? `${baseName} ${tierLabel}` : tierLabel,
+        qualityClass: QUALITY_CLASSES[item.Quality] ?? '',
+        tier: t,
+        enchantmentLevel: e,
+        quality: item.Quality,
+        name: baseName || type
+      }
+    })
+})
+
+// Tooltip logic
+const tooltip = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  title: '',
+  badge: '',
+  lines: [] as string[]
+})
+
+function moveTooltip(event: MouseEvent) {
+  tooltip.x = event.clientX + 14
+  tooltip.y = event.clientY + 18
+}
+
+function hideTooltip() {
+  tooltip.visible = false
+}
+
+function showTooltip(event: MouseEvent, item: any) {
+  if (!item.type) return
+  moveTooltip(event)
+  tooltip.title = item.name
+  tooltip.badge = `T${item.tier}${item.enchantmentLevel > 0 ? `.${item.enchantmentLevel}` : ''}`
+  tooltip.lines = [
+    `Qualité: ${QUALITY_LABELS[item.quality] || 'Normale'}`,
+  ]
+  if (item.ip) {
+    tooltip.lines.push(`Puissance d'objet: ~${item.ip} IP`)
+  }
+  if (item.count > 1) {
+    tooltip.lines.push(`Quantité: ${item.count}`)
+  }
+  tooltip.visible = true
+}
 
 // Les assistants = participants hors killer et victim
 const assists = computed(() => {
@@ -254,7 +382,7 @@ function fullDate(iso: string) {
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Colonne joueur ───────────────────────────────────── */
@@ -376,23 +504,166 @@ function fullDate(iso: string) {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 20px 8px;
+  padding: 20px 0;
   gap: 12px;
   background: var(--bg-2);
   border-left: 1px solid var(--border-divider);
   border-right: 1px solid var(--border-divider);
+  position: relative;
+  z-index: 5;
+  overflow: visible;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
 }
 
 .vs-fame { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .fame-label { font-size: 9px; color: var(--text-4); }
 .fame-value { font-size: 14px; font-weight: 700; text-align: center; }
 
-.vs-badge { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-4); letter-spacing: 0.1em; }
+.vs-badge { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  position: relative;
+  width: 120px;
+  height: 100px;
+  z-index: 10;
+  margin-top: -5px;
+  overflow: visible;
+}
+.vs-icon { 
+  width: 240px; 
+  height: 160px; 
+  max-width: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  object-fit: contain; 
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.7));
+  pointer-events: none;
+}
 
 .vs-assists { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
 .assists-label { font-size: 9px; color: var(--text-4); }
 .assist-name { font-size: 11px; text-decoration: none; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
 .assist-name:hover { color: var(--text-1); }
+
+/* ── Tooltip ─────────────────────────────────────────── */
+.slot-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: rgba(11, 10, 8, 0.95);
+  border: 1px solid var(--gold-deep);
+  border-radius: 4px;
+  padding: 10px 14px;
+  min-width: 180px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.slot-tooltip-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.slot-tooltip-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--gold-deep);
+  color: #000;
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.slot-tooltip-line {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 2px;
+}
+
+/* ── Inventory ────────────────────────────────────────── */
+.loser-inventory {
+  margin-top: 16px;
+  border-right: none;
+  border-left: 2px solid var(--danger-deep);
+}
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 52px);
+  gap: 8px;
+  padding: 12px;
+  justify-content: center;
+}
+
+.inv-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  width: 52px;
+  height: 52px;
+  cursor: help;
+}
+
+.inv-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  background: var(--bg-1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.inv-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inv-count {
+  position: absolute;
+  bottom: 0;
+  right: 1px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  pointer-events: none;
+}
+
+.inv-meta {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.inv-name {
+  display: block;
+  font-size: 11px;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Quality overrides for inventory items */
+.inv-item.q-good        { border-color: var(--q-good); }
+.inv-item.q-outstanding { border-color: var(--q-outstanding); }
+.inv-item.q-excellent   { border-color: var(--q-excellent); }
+.inv-item.q-masterpiece { border-color: var(--q-masterpiece); }
 
 /* ── Error / loading ──────────────────────────────────── */
 .page-error, .page-loading { padding: 48px 0; text-align: center; }
