@@ -16,11 +16,23 @@
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           Lien rapide
         </button>
-        <button class="ds-btn primary" :disabled="creator.isSaving.value" @click="save">
+        <button
+          class="ds-btn primary"
+          :disabled="creator.isSaving.value || !auth.isAuthenticated.value"
+          :title="!auth.isAuthenticated.value ? 'Connectez-vous pour sauvegarder ce build' : ''"
+          @click="save"
+        >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           {{ creator.isSaving.value ? 'Sauvegarde…' : (editCode ? 'Mettre à jour' : 'Sauvegarder') }}
         </button>
       </div>
+    </div>
+
+    <!-- Login reminder banner -->
+    <div v-if="!auth.isAuthenticated.value" class="share-banner warning">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Vous devez être connecté pour sauvegarder et publier ce build.
+      <NuxtLink :to="`/auth/login?redirect=${$route.fullPath}`" class="t-gold" style="margin-left: auto">Se connecter →</NuxtLink>
     </div>
 
     <!-- Share success banner -->
@@ -125,12 +137,13 @@
             </div>
             <div class="form-field">
               <label>Visibilité</label>
-              <div class="vis-select">
+              <div class="vis-select" :class="{ disabled: !auth.isAuthenticated.value }">
                 <button
                   v-for="vis in VISIBILITIES"
                   :key="vis.value"
                   class="vis-opt"
                   :class="{ active: creator.visibility.value === vis.value }"
+                  :disabled="!auth.isAuthenticated.value"
                   @click="creator.visibility.value = vis.value"
                 >
                   <span class="vis-dot" :class="vis.value.toLowerCase()" />
@@ -420,6 +433,11 @@ useSeoMeta({ title: 'Build Creator — Albion Codex' })
   color: var(--text-1);
   margin-bottom: 16px;
 }
+.share-banner.warning {
+  background: rgba(201,74,74,0.08);
+  border-color: rgba(201,74,74,0.2);
+  color: var(--text-1);
+}
 .share-copy {
   margin-left: auto;
   font-size: 12px;
@@ -563,6 +581,10 @@ useSeoMeta({ title: 'Build Creator — Albion Codex' })
   border-color: var(--gold-dim);
   color: var(--text-0);
   background: rgba(201,161,74,0.07);
+}
+.vis-select.disabled {
+  opacity: 0.6;
+  pointer-events: none;
 }
 .vis-dot {
   width: 7px;

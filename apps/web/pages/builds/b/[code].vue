@@ -16,6 +16,9 @@
             <span class="t-muted" style="font-size:13px">
               {{ build.viewCount }} vues · {{ formatDate(build.createdAt) }}
             </span>
+            <span v-if="build.user" class="build-author">
+              par <span class="t-gold">{{ build.user.username }}</span>
+            </span>
             <span class="vis-tag" :class="build.visibility.toLowerCase()">
               {{ visLabel(build.visibility) }}
             </span>
@@ -214,6 +217,10 @@ interface BuildDetail {
   viewCount: number
   createdAt: string
   userId?: string | null
+  user?: {
+    id: string
+    username: string
+  } | null
 }
 
 interface HoverTooltipState {
@@ -241,6 +248,11 @@ interface SpellDetail {
 }
 
 const { data, error } = await useFetch<{ data: BuildDetail }>(`/api/v1/builds/${code}`)
+
+if (error.value?.statusCode === 401 && process.client) {
+  router.push(`/auth/login?redirect=${encodeURIComponent(route.fullPath)}`)
+}
+
 const build = computed(() => data.value?.data ?? null)
 const deleting = ref(false)
 const showDeleteConfirm = ref(false)
@@ -569,6 +581,11 @@ useSeoMeta({
   border-radius: 4px;
   padding: 2px 8px;
   vertical-align: middle;
+}
+
+.build-author {
+  font-size: 13px;
+  color: var(--text-3);
 }
 
 .vis-tag {

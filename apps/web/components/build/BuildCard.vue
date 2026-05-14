@@ -30,10 +30,15 @@
     </div>
 
     <div class="bc-footer">
-      <span class="bc-views">
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-        {{ build.viewCount }}
-      </span>
+      <div class="bc-meta-left">
+        <span class="bc-views">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          {{ build.viewCount }}
+        </span>
+        <span v-if="build.user" class="bc-author">
+          par {{ build.user.username }}
+        </span>
+      </div>
       <span class="bc-date">{{ relativeDate }}</span>
     </div>
   </NuxtLink>
@@ -58,6 +63,9 @@ const props = defineProps<{
     weaponSubcategory?: string | null
     viewCount: number
     createdAt: string
+    user?: {
+      username: string
+    } | null
   }
 }>()
 
@@ -197,12 +205,27 @@ const relativeDate = computed(() => {
   margin-top: auto;
 }
 
+.bc-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .bc-views {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: 12px;
   color: var(--text-3);
+}
+
+.bc-author {
+  font-size: 11px;
+  color: var(--text-4);
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bc-date {

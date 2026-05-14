@@ -42,6 +42,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const user = event.context.user
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
   const {
     title,
     description,
@@ -66,8 +70,8 @@ export default defineEventHandler(async (event) => {
       title,
       description,
       gameMode,
-      visibility: user ? visibility : 'PRIVATE',
-      userId: user?.id ?? null,
+      visibility,
+      userId: user.id,
       equipment: equipment ?? {},
       ...metadata,
       ...weaponTags,

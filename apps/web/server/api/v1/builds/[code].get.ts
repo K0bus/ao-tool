@@ -38,6 +38,12 @@ export default defineEventHandler(async (event) => {
   const build = await prisma.build.findUnique({
     where: { shareCode: code },
     include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+        },
+      },
       spells: {
         include: {
           spell: {
@@ -52,8 +58,13 @@ export default defineEventHandler(async (event) => {
   if (!build) throw createError({ statusCode: 404, statusMessage: 'Build not found' })
 
   const user = event.context.user
-  if (build.visibility === 'PRIVATE' && build.userId !== user?.id) {
-    throw createError({ statusCode: 403, statusMessage: 'Access denied' })
+  if (build.visibility === 'PRIVATE') {
+    if (!user) {
+      throw createError({ statusCode: 401, statusMessage: 'Authentication required' })
+    }
+    if (build.userId !== user.id) {
+      throw createError({ statusCode: 403, statusMessage: 'Access denied' })
+    }
   }
 
   // Incrémente le compteur de vues (fire-and-forget)

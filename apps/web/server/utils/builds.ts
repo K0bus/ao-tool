@@ -132,6 +132,10 @@ export function serializeBuild<T extends {
   budget?: BuildBudget | null
   weaponCategory?: string | null
   weaponSubcategory?: string | null
+  user?: {
+    id?: string
+    username: string
+  } | null
 }>(build: T) {
   return {
     id: build.id,
@@ -154,5 +158,6 @@ export function serializeBuild<T extends {
     createdAt: build.createdAt.toISOString(),
     ...(build.updatedAt ? { updatedAt: build.updatedAt.toISOString() } : {}),
     ...(build.userId !== undefined ? { userId: build.userId } : {}),
+    ...(build.user !== undefined ? { user: build.user } : {}),
   }
 }

@@ -62,6 +62,11 @@ export default defineEventHandler(async (event) => {
       viewCount: true,
       createdAt: true,
       userId: true,
+      user: {
+        select: {
+          username: true,
+        },
+      },
     },
   })
 

@@ -46,6 +46,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // Routes items — accessibles sans compte
   if (to.path.startsWith('/items')) return
 
+  // Routes builds — publiques sauf /builds/me
+  if (to.path.startsWith('/builds')) {
+    if (to.path === '/builds/me' || to.path.startsWith('/builds/me/')) {
+      if (!isAuthenticated.value) {
+        return navigateTo(`/auth/login?redirect=${encodeURIComponent(to.fullPath)}`)
+      }
+    }
+    return
+  }
+
   // Routes admin
   if (to.path.startsWith('/admin')) {
     if (!isAuthenticated.value) {

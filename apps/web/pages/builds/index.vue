@@ -106,6 +106,9 @@ interface Build {
   weaponSubcategory?: string | null
   viewCount: number
   createdAt: string
+  user?: {
+    username: string
+  } | null
 }
 
 const { data: taxonomyData } = await useFetch<{ data: BuildTaxonomyResponse }>('/api/v1/build-taxonomy', {

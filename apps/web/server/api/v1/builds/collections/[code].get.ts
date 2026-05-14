@@ -32,8 +32,13 @@ export default defineEventHandler(async (event) => {
   if (!collection) throw createError({ statusCode: 404, statusMessage: 'Collection not found' })
 
   const user = event.context.user
-  if (collection.visibility === 'PRIVATE' && collection.userId !== user?.id) {
-    throw createError({ statusCode: 403, statusMessage: 'Access denied' })
+  if (collection.visibility === 'PRIVATE') {
+    if (!user) {
+      throw createError({ statusCode: 401, statusMessage: 'Authentication required' })
+    }
+    if (collection.userId !== user.id) {
+      throw createError({ statusCode: 403, statusMessage: 'Access denied' })
+    }
   }
 
   if (collection.userId !== user?.id) {
