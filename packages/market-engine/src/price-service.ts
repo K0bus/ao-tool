@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { prisma, Prisma, PriceConfidence } from '@albion-tool/database'
+import { prisma, Prisma, PriceConfidence, DEFAULT_LOCATIONS } from '@albion-tool/database'
 import { marketApiClient } from './api-client'
 
 export interface MarketSyncItem {
@@ -645,9 +645,21 @@ export class MarketPriceService {
 
   private async getValidLocationIds(): Promise<Set<string>> {
     if (!this.validLocationIds) {
-      this.validLocationIds = new Set(
-        (await prisma.location.findMany({ select: { id: true } })).map(location => location.id),
-      )
+      let locations = await prisma.location.findMany({ select: { id: true } })
+
+      if (locations.length === 0) {
+        console.warn('[MarketPriceService] No locations found in database; bootstrapping default market locations.')
+        for (const loc of DEFAULT_LOCATIONS) {
+          await prisma.location.upsert({
+            where: { id: loc.id },
+            update: {},
+            create: loc,
+          })
+        }
+        locations = await prisma.location.findMany({ select: { id: true } })
+      }
+
+      this.validLocationIds = new Set(locations.map(location => location.id))
     }
 
     return this.validLocationIds

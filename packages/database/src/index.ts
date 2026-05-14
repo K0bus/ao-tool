@@ -40,3 +40,4 @@ function getPrisma(): PrismaClient {
 export const prisma = getPrisma()
 
 export * from '@prisma/client'
+export * from './bootstrap-data'

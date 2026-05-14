@@ -60,6 +60,10 @@ export const useAuth = () => {
     await navigateTo('/auth/login')
   }
 
+  function setUser(nextUser: ApiUser | null) {
+    user.value = nextUser
+  }
+
   return {
     user: readonly(user),
     loading: readonly(loading),
@@ -69,6 +73,7 @@ export const useAuth = () => {
     fetchUser,
     login,
     register,
+    setUser,
     logout,
   }
 }
