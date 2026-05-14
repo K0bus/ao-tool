@@ -25,6 +25,8 @@
         <AdminNavLink to="/admin/data/imports" icon="download" label="Imports" />
         <AdminNavLink to="/admin/data/market" icon="chart" label="Market Prices" />
         <AdminNavLink to="/admin/data/system" icon="settings" label="System Config" />
+        <AdminNavLink to="/admin/data/game-data" icon="database" label="Game Data" />
+        <AdminNavLink to="/admin/data/database" icon="server" label="Database Stats" />
       </nav>
 
       <!-- User info bottom -->
