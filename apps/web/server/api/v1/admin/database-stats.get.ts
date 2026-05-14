@@ -32,6 +32,10 @@ export default defineEventHandler(async (event) => {
       totalMarketPrices,
       totalResolvedPrices,
       totalPriceHistory,
+      itemsWithPrices,
+      itemsWithQuality,
+      itemsWithoutQuality,
+      activeLocationsCount,
 
       // Game Data
       totalSpells,
@@ -66,6 +70,10 @@ export default defineEventHandler(async (event) => {
       prisma.marketPrice.count(),
       prisma.resolvedPrice.count(),
       prisma.marketPriceHistory.count(),
+      prisma.item.count({ where: { marketPrices: { some: {} } } }),
+      prisma.item.count({ where: { itemType: { in: ['WEAPON', 'OFF_HAND', 'ARMOR_HEAD', 'ARMOR_CHEST', 'ARMOR_SHOES', 'BAG', 'CAPE', 'MOUNT'] } } }),
+      prisma.item.count({ where: { NOT: { itemType: { in: ['WEAPON', 'OFF_HAND', 'ARMOR_HEAD', 'ARMOR_CHEST', 'ARMOR_SHOES', 'BAG', 'CAPE', 'MOUNT'] } } } }),
+      prisma.location.count({ where: { isActive: true } }),
 
       // Game Data
       prisma.spell.count(),
@@ -116,6 +124,9 @@ export default defineEventHandler(async (event) => {
           prices: totalMarketPrices,
           resolved: totalResolvedPrices,
           history: totalPriceHistory,
+          itemsWithPrices,
+          activeLocations: activeLocationsCount,
+          totalPossiblePrices: (itemsWithQuality * 5 + itemsWithoutQuality * 1) * activeLocationsCount
         },
         gameData: {
           spells: totalSpells,

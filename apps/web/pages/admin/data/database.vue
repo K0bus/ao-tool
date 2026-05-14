@@ -53,7 +53,7 @@
       <!-- Market Data Section -->
       <section>
         <h2 class="text-sm font-semibold text-white mb-3 uppercase tracking-wider">Market Engine</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div class="panel kpi-card">
             <div class="kc-k">Live Prices Tracked</div>
             <div class="kc-v t-mono">{{ stats.market.prices.toLocaleString('fr-FR') }}</div>
@@ -68,6 +68,20 @@
             <div class="kc-k">Price History Records</div>
             <div class="kc-v t-mono">{{ stats.market.history.toLocaleString('fr-FR') }}</div>
             <div class="kc-d">Time-series data points</div>
+          </div>
+          <div class="panel kpi-card">
+            <div class="kc-k">Item Coverage (Brut)</div>
+            <div class="kc-v t-mono" :style="{ color: (stats.market.itemsWithPrices / (stats.items.total || 1)) > 0.8 ? 'var(--success)' : 'var(--warning)' }">
+              {{ ((stats.market.itemsWithPrices / (stats.items.total || 1)) * 100).toFixed(1) }}%
+            </div>
+            <div class="kc-d">{{ stats.market.itemsWithPrices.toLocaleString('fr-FR') }} / {{ stats.items.total.toLocaleString('fr-FR') }} items</div>
+          </div>
+          <div class="panel kpi-card">
+            <div class="kc-k">Matrix Density (Net)</div>
+            <div class="kc-v t-mono" :style="{ color: (stats.market.prices / (stats.market.totalPossiblePrices || 1)) > 0.3 ? 'var(--success)' : 'var(--warning)' }">
+              {{ ((stats.market.prices / (stats.market.totalPossiblePrices || 1)) * 100).toFixed(2) }}%
+            </div>
+            <div class="kc-d">Across {{ stats.market.activeLocations }} cities & qualities</div>
           </div>
         </div>
       </section>
@@ -172,7 +186,14 @@ interface DbStats {
     withIcon: number
   }
   builds: { total: number; public: number; private: number; collections: number }
-  market: { prices: number; resolved: number; history: number }
+  market: {
+    prices: number
+    resolved: number
+    history: number
+    itemsWithPrices: number
+    activeLocations: number
+    totalPossiblePrices: number
+  }
   gameData: { spells: number; craftingRecipes: number; refiningRecipes: number; locations: number; returnRates: number }
   tables: Array<{ tableName: string; totalBytes: number; tableBytes: number; indexBytes: number }>
 }
