@@ -12,6 +12,7 @@ COPY packages/database/package.json packages/database/
 COPY packages/types/package.json packages/types/
 COPY packages/ao-parser/package.json packages/ao-parser/
 COPY packages/queue/package.json packages/queue/
+COPY packages/market-engine/package.json packages/market-engine/
 COPY apps/web/package.json apps/web/
 COPY scripts/package.json scripts/
 RUN pnpm install --frozen-lockfile
