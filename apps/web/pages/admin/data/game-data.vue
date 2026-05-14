@@ -20,7 +20,7 @@
             <h2 class="text-sm font-semibold text-white">Locations</h2>
             <p class="text-xs text-gray-500 mt-0.5">Manage cities and specific zones</p>
           </div>
-          <button class="px-3 py-1.5 text-xs font-medium bg-surface-700 hover:bg-surface-600 text-white rounded transition-colors disabled:opacity-50" @click="seedLocations" :disabled="seedingLoc">
+          <button class="px-3 py-1.5 text-xs font-medium bg-surface-700 hover:bg-surface-600 text-white rounded transition-colors disabled:opacity-50" @click="showLocConfirm = true" :disabled="seedingLoc">
             {{ seedingLoc ? 'Seeding...' : 'Seed Default Locations' }}
           </button>
         </div>
@@ -68,7 +68,7 @@
             <h2 class="text-sm font-semibold text-white">Return Rates</h2>
             <p class="text-xs text-gray-500 mt-0.5">Manage crafting/refining return rates</p>
           </div>
-          <button class="px-3 py-1.5 text-xs font-medium bg-surface-700 hover:bg-surface-600 text-white rounded transition-colors disabled:opacity-50" @click="seedReturnRates" :disabled="seedingRR">
+          <button class="px-3 py-1.5 text-xs font-medium bg-surface-700 hover:bg-surface-600 text-white rounded transition-colors disabled:opacity-50" @click="showRRConfirm = true" :disabled="seedingRR">
             {{ seedingRR ? 'Seeding...' : 'Seed Default Return Rates' }}
           </button>
         </div>
@@ -258,3 +258,4 @@ onMounted(loadData)
   transform: translateY(10px);
 }
 </style>
+e>
