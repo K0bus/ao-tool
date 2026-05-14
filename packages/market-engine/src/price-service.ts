@@ -172,19 +172,24 @@ export class MarketPriceService {
 
     const resolvedRows = rows.map(row => this.toResolvedPriceRow(row, sellFallbacks, buyFallbacks))
 
-    await prisma.$transaction(async (tx) => {
-      for (const batch of this.chunkArray(rows, this.BULK_WRITE_SIZE)) {
-        await this.bulkUpsertMarketPrices(tx, batch)
-      }
+    const rowBatches = this.chunkArray(rows, this.BULK_WRITE_SIZE)
+    const resolvedBatches = this.chunkArray(resolvedRows, this.BULK_WRITE_SIZE)
 
-      for (const batch of this.chunkArray(historyRows, this.BULK_WRITE_SIZE)) {
-        await this.bulkInsertHistory(tx, batch)
-      }
+    for (let i = 0; i < rowBatches.length; i++) {
+      const batchRows = rowBatches[i]
+      const batchResolvedRows = resolvedBatches[i]
+      const batchKeys = new Set(batchRows.map(r => this.priceKey(r)))
+      const batchHistoryRows = historyRows.filter(r => batchKeys.has(this.priceKey(r)))
 
-      for (const batch of this.chunkArray(resolvedRows, this.BULK_WRITE_SIZE)) {
-        await this.bulkUpsertResolvedPrices(tx, batch)
-      }
-    })
+      await prisma.$transaction(
+        async (tx) => {
+          await this.bulkUpsertMarketPrices(tx, batchRows)
+          await this.bulkInsertHistory(tx, batchHistoryRows)
+          await this.bulkUpsertResolvedPrices(tx, batchResolvedRows)
+        },
+        { timeout: 15000 },
+      )
+    }
   }
 
   private async getExistingPriceMap(rows: MarketPriceRow[]) {
