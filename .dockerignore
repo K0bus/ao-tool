@@ -1,0 +1,15 @@
+.git
+node_modules
+.npm
+.pnpm-store
+.turbo
+apps/**/node_modules
+packages/**/node_modules
+scripts/node_modules
+apps/**/.nuxt
+apps/**/.output
+*.txt
+*.log
+.env
+.env.*
+!.env.example
