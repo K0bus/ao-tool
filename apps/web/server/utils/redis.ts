@@ -5,20 +5,20 @@ const globalForRedis = global as unknown as { redis: Redis }
 
 function createRedisClient() {
   const config = useRuntimeConfig()
-  const connection =
+  const options = {
+    lazyConnect: true,
+    maxRetriesPerRequest: 3,
+    retryStrategy: (times: number) => Math.min(times * 100, 2000),
+  }
+  const client =
     config.redisUrl && config.redisUrl !== 'redis://localhost:6379'
-      ? config.redisUrl
-      : {
+      ? new Redis(config.redisUrl, options)
+      : new Redis({
           host: config.redisHost,
           port: config.redisPort,
           password: config.redisPassword || undefined,
-        }
-
-  const client = new Redis(connection, {
-    lazyConnect: true,
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => Math.min(times * 100, 2000),
-  })
+          ...options,
+        })
 
   client.on('error', (err) => {
     const message =

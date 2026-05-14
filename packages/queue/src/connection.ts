@@ -3,21 +3,22 @@ import { inspect } from 'node:util'
 
 // BullMQ exige maxRetriesPerRequest: null — obligatoire
 function createConnection(): Redis {
-  const connection =
+  const options = {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    retryStrategy: (times: number) => Math.min(times * 200, 5000),
+    lazyConnect: true,
+  }
+
+  const redis =
     process.env.REDIS_URL && process.env.REDIS_URL !== 'redis://localhost:6379'
-      ? process.env.REDIS_URL
-      : {
+      ? new Redis(process.env.REDIS_URL, options)
+      : new Redis({
           host: process.env.REDIS_HOST ?? 'localhost',
           port: Number(process.env.REDIS_PORT ?? 6379),
           password: process.env.REDIS_PASSWORD || undefined,
-        }
-
-  const redis = new Redis(connection, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    retryStrategy: (times) => Math.min(times * 200, 5000),
-    lazyConnect: true,
-  })
+          ...options,
+        })
 
   redis.on('error', (err) => {
     const message =

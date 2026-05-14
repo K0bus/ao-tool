@@ -383,6 +383,8 @@ Important :
 - `APP_URL` doit pointer vers l'URL publique du site
 - en l'état, `docker-compose.prod.yml` connecte l'application directement à `postgres`
 - Redis est configuré via `REDIS_HOST`, `REDIS_PORT` et `REDIS_PASSWORD` pour éviter les problèmes d'encodage dans une URL
+- Redis doit rester en politique `noeviction` pour BullMQ
+- le worker de production utilise `NODE_OPTIONS=--max-old-space-size=768` et une limite mémoire plus haute pour absorber l'import initial `ao-bin-dumps`
 - `pgbouncer` peut être réintroduit plus tard, mais il doit alors être explicitement validé côté image, port d'écoute et healthcheck
 
 ### 2. Construire et démarrer
