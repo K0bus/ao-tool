@@ -125,6 +125,33 @@
           </div>
         </div>
       </section>
+
+      <!-- Database Storage -->
+      <section>
+        <h2 class="text-sm font-semibold text-white mb-3 uppercase tracking-wider">Storage Usage</h2>
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+              <thead class="text-xs text-gray-400 uppercase bg-surface-800 border-b border-surface-700">
+                <tr>
+                  <th class="px-4 py-3 font-semibold">Table Name</th>
+                  <th class="px-4 py-3 font-semibold text-right">Data Size</th>
+                  <th class="px-4 py-3 font-semibold text-right">Index Size</th>
+                  <th class="px-4 py-3 font-semibold text-right text-white">Total Size</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-800">
+                <tr v-for="table in stats.tables" :key="table.tableName" class="hover:bg-surface-800/50">
+                  <td class="px-4 py-2 font-mono text-xs text-gray-300">{{ table.tableName }}</td>
+                  <td class="px-4 py-2 text-right text-gray-400 font-mono text-xs">{{ formatBytes(table.tableBytes) }}</td>
+                  <td class="px-4 py-2 text-right text-gray-400 font-mono text-xs">{{ formatBytes(table.indexBytes) }}</td>
+                  <td class="px-4 py-2 text-right text-white font-mono text-xs font-semibold">{{ formatBytes(table.totalBytes) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -147,10 +174,19 @@ interface DbStats {
   builds: { total: number; public: number; private: number; collections: number }
   market: { prices: number; resolved: number; history: number }
   gameData: { spells: number; craftingRecipes: number; refiningRecipes: number; locations: number; returnRates: number }
+  tables: Array<{ tableName: string; totalBytes: number; tableBytes: number; indexBytes: number }>
 }
 
 const stats = ref<DbStats | null>(null)
 const loading = ref(true)
+
+function formatBytes(bytes: number) {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 
 async function loadStats() {
   loading.value = true

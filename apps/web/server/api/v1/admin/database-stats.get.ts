@@ -39,6 +39,7 @@ export default defineEventHandler(async (event) => {
       totalRefiningRecipes,
       totalLocations,
       totalReturnRates,
+      totalTableSizes,
     ] = await Promise.all([
       // Users
       prisma.user.count(),
@@ -72,7 +73,25 @@ export default defineEventHandler(async (event) => {
       prisma.refiningRecipe.count(),
       prisma.location.count(),
       prisma.returnRate.count(),
+      
+      // Table sizes
+      prisma.$queryRaw`
+        SELECT
+          relname as "tableName",
+          pg_total_relation_size(relid) as "totalBytes",
+          pg_relation_size(relid) as "tableBytes",
+          pg_total_relation_size(relid) - pg_relation_size(relid) as "indexBytes"
+        FROM pg_catalog.pg_statio_user_tables
+        ORDER BY pg_total_relation_size(relid) DESC;
+      ` as Promise<any[]>
     ])
+
+    const tableSizes = (totalTableSizes as any[]).map(row => ({
+      tableName: String(row.tableName),
+      totalBytes: Number(row.totalBytes),
+      tableBytes: Number(row.tableBytes),
+      indexBytes: Number(row.indexBytes)
+    }))
 
     return {
       data: {
@@ -104,7 +123,8 @@ export default defineEventHandler(async (event) => {
           refiningRecipes: totalRefiningRecipes,
           locations: totalLocations,
           returnRates: totalReturnRates,
-        }
+        },
+        tables: tableSizes
       }
     }
   }, 60) // Cache 1 minute
