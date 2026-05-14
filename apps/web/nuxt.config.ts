@@ -77,6 +77,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     sessionSecret: process.env.NUXT_SESSION_SECRET ?? '',
     redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379',
+    redisHost: process.env.REDIS_HOST ?? 'localhost',
+    redisPort: Number(process.env.REDIS_PORT ?? 6379),
+    redisPassword: process.env.REDIS_PASSWORD ?? '',
     public: {
       appName: 'Albion Tool',
       appUrl: process.env.APP_URL ?? 'http://localhost:3000',

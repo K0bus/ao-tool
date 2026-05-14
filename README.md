@@ -381,13 +381,23 @@ Mettre à jour `.env` avec des valeurs de production :
 Important :
 
 - `APP_URL` doit pointer vers l'URL publique du site
-- dans `docker-compose.prod.yml`, l'application utilise `pgbouncer` via `DATABASE_URL`
+- en l'état, `docker-compose.prod.yml` connecte l'application directement à `postgres`
+- Redis est configuré via `REDIS_HOST`, `REDIS_PORT` et `REDIS_PASSWORD` pour éviter les problèmes d'encodage dans une URL
+- `pgbouncer` peut être réintroduit plus tard, mais il doit alors être explicitement validé côté image, port d'écoute et healthcheck
 
 ### 2. Construire et démarrer
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d --build
+export IMAGE_TAG=latest
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d --force-recreate
 ```
+
+Important :
+
+- `docker-compose.prod.yml` consomme des images Docker Hub via `image:`, il ne reconstruit pas localement l'application
+- `docker compose ... up -d --build` ne met donc pas à jour le service `app` si l'image distante n'a pas été rebuild/push auparavant
+- pour publier une nouvelle version, lancer `./scripts/deploy.sh` depuis la machine de build, puis sur le serveur `export IMAGE_TAG=<tag>` suivi de `docker compose ... pull` et `docker compose ... up -d --force-recreate`
 
 Au démarrage, le conteneur `app` exécute automatiquement `prisma migrate deploy` avant de lancer Nuxt.
 

@@ -30,14 +30,20 @@ RUN pnpm --filter web build
 
 # ── Production ────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS production
-RUN npm install -g pnpm@9
 WORKDIR /app
 
-# Copier uniquement le build et les deps nécessaires
+# Copier les fichiers du build
 COPY --from=builder /app/apps/web/.output ./
 COPY --from=builder /app/packages/database/prisma ./prisma
-COPY --from=builder /app/packages/database/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/packages/database/prisma.config.mjs ./
+COPY --from=builder /app/packages/database/package.json ./package.json
 COPY docker/app/entrypoint.sh ./
+
+
+# Installer Prisma et générer le client dans la couche de production
+# On installe aussi @prisma/client pour être sûr qu'il est disponible
+RUN npm install prisma@7 @prisma/client@7
+RUN npx prisma generate --config=./prisma.config.mjs --schema=./prisma/schema.prisma
 
 RUN chmod +x entrypoint.sh
 

@@ -9,7 +9,8 @@
     "test:market:item": "tsx --env-file=../.env import/test-market-item.ts",
     "import:icons": "tsx --env-file=../.env import/sync-icons.ts",
     "import:backfill": "tsx --env-file=../.env import/backfill-resolved-prices.ts",
-    "worker": "tsx --env-file=../.env worker/index.ts"
+    "worker": "tsx --env-file=../.env worker/index.ts",
+    "worker:prod": "tsx worker/index.ts"
   },
   "dependencies": {
     "@albion-tool/ao-parser": "workspace:*",
