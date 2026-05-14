@@ -126,6 +126,28 @@
         </div>
       </Transition>
     </div>
+
+    <ConfirmationModal
+      :open="showLocConfirm"
+      title="Seed Default Locations"
+      message="Are you sure you want to seed default locations? This will overwrite existing locations based on their ID."
+      confirm-label="Seed Locations"
+      variant="danger"
+      :loading="seedingLoc"
+      @confirm="performSeedLocations"
+      @cancel="showLocConfirm = false"
+    />
+
+    <ConfirmationModal
+      :open="showRRConfirm"
+      title="Seed Default Return Rates"
+      message="Are you sure you want to seed default return rates? This will overwrite existing return rates."
+      confirm-label="Seed Return Rates"
+      variant="danger"
+      :loading="seedingRR"
+      @confirm="performSeedReturnRates"
+      @cancel="showRRConfirm = false"
+    />
   </div>
 </template>
 
@@ -138,6 +160,8 @@ const loading = ref(false)
 const saveSuccess = ref(false)
 const seedingLoc = ref(false)
 const seedingRR = ref(false)
+const showLocConfirm = ref(false)
+const showRRConfirm = ref(false)
 
 function showSuccess() {
   saveSuccess.value = true
@@ -194,12 +218,12 @@ async function updateReturnRate(id: string, data: any) {
   }
 }
 
-async function seedLocations() {
-  if (!confirm('Are you sure you want to seed default locations? This will overwrite existing locations based on their ID.')) return
+async function performSeedLocations() {
   seedingLoc.value = true
   try {
     await $fetch('/api/v1/admin/game-data/locations/seed', { method: 'POST' })
     await loadData()
+    showLocConfirm.value = false
     showSuccess()
   } catch (err) {
     console.error('Failed to seed locations:', err)
@@ -208,12 +232,12 @@ async function seedLocations() {
   }
 }
 
-async function seedReturnRates() {
-  if (!confirm('Are you sure you want to seed default return rates? This will overwrite existing return rates.')) return
+async function performSeedReturnRates() {
   seedingRR.value = true
   try {
     await $fetch('/api/v1/admin/game-data/return-rates/seed', { method: 'POST' })
     await loadData()
+    showRRConfirm.value = false
     showSuccess()
   } catch (err) {
     console.error('Failed to seed return rates:', err)
