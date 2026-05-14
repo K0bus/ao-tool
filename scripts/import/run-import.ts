@@ -425,6 +425,7 @@ export async function runImport(
     let normalizedSpells: NormalizedSpell[] = []
     try {
       normalizedSpells = await fetchSpells(localizations)
+      await report('spells', 0, normalizedSpells.length)
       const spellBatches = chunk(normalizedSpells, BATCH_SIZE)
 
       for (const batch of spellBatches) {
@@ -486,13 +487,14 @@ export async function runImport(
             await logError(`Failed to import spell ${spell.uniqueName}`, { error: String(err) })
           }
         }
+        await report('spells', spellsCreated + spellsUpdated, normalizedSpells.length)
       }
 
       await logInfo(`Imported spells: ${spellsCreated} created, ${spellsUpdated} updated`)
     } catch (err) {
       await logError('Spell import failed', { error: String(err) })
     }
-    await report('spells', spellsCreated + spellsUpdated, spellsCreated + spellsUpdated)
+    await report('spells', normalizedSpells.length, normalizedSpells.length)
 
     // ── Phase 10: Item → Spell links ────────────────────────────────────────
     await report('item_spells', 0, normalized.length)

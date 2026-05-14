@@ -36,9 +36,20 @@
         />
       </div>
 
-      <div class="flex justify-between mt-2 text-xs text-gray-500">
-        <span>{{ liveStatus.progress ? `${liveStatus.progress.processed.toLocaleString()} / ${liveStatus.progress.total.toLocaleString()} items` : 'Waiting for worker...' }}</span>
-        <span>{{ progressPercent }}%</span>
+      <div class="flex justify-between mt-2 text-xs">
+        <div class="flex items-center gap-3 text-gray-500">
+          <span>{{ liveStatus.progress ? `${liveStatus.progress.processed.toLocaleString()} / ${liveStatus.progress.total.toLocaleString()} items` : 'Waiting for worker...' }}</span>
+          <span v-if="durationSeconds > 0" class="flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {{ formatDuration(durationSeconds) }}
+          </span>
+          <span v-if="estimatedRemainingSeconds !== null" class="text-blue-400/80">
+            ~{{ formatDuration(estimatedRemainingSeconds) }} left
+          </span>
+        </div>
+        <span class="text-gray-500 font-medium">{{ progressPercent }}%</span>
       </div>
     </div>
 
@@ -131,6 +142,7 @@ interface LiveStatus {
   type: string
   status: string
   itemsProcessed: number
+  startedAt: string | null
   progress: { phase: string; processed: number; total: number; percent: number } | null
 }
 
@@ -139,19 +151,64 @@ const loading = ref(false)
 const triggering = ref(false)
 const activeJobId = ref<string | null>(null)
 const liveStatus = ref<LiveStatus | null>(null)
+const now = ref(Date.now())
+
+useIntervalFn(() => {
+  now.value = Date.now()
+}, 1000)
+
+const durationSeconds = computed(() => {
+  if (!liveStatus.value?.startedAt) return 0
+  const start = new Date(liveStatus.value.startedAt).getTime()
+  return Math.max(0, Math.floor((now.value - start) / 1000))
+})
+
+const estimatedRemainingSeconds = computed(() => {
+  const percent = progressPercent.value
+  if (percent < 5 || percent >= 100) return null
+  
+  const elapsed = durationSeconds.value
+  const totalEstimated = elapsed / (percent / 100)
+  return Math.max(0, Math.floor(totalEstimated - elapsed))
+})
+
+function formatDuration(seconds: number) {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  return [
+    h > 0 ? `${h}h` : '',
+    m > 0 || h > 0 ? `${m}m` : '',
+    `${s}s`,
+  ].filter(Boolean).join(' ')
+}
 
 const progressPercent = computed(() => {
   if (!liveStatus.value?.progress) return 0
   const phaseWeights: Record<string, number> = {
-    fetching: 2, normalizing: 5, importing: 60, localizations: 15, variants: 5, recipes: 12, done: 1,
+    fetching: 1,
+    normalizing: 2,
+    categories: 2,
+    importing: 45,
+    localizations: 15,
+    variants: 5,
+    recipes: 10,
+    refining: 10,
+    spells: 5,
+    item_spells: 4,
+    done: 1,
   }
   const phases = Object.keys(phaseWeights)
   const currentPhase = liveStatus.value.progress.phase
   const phaseIndex = phases.indexOf(currentPhase)
+
+  if (phaseIndex === -1) return 0
+
   const completedWeight = phases.slice(0, phaseIndex).reduce((acc, p) => acc + phaseWeights[p], 0)
   const totalWeight = Object.values(phaseWeights).reduce((a, b) => a + b, 0)
   const phaseProgress = (liveStatus.value.progress.percent / 100) * phaseWeights[currentPhase]
-  return Math.round(((completedWeight + phaseProgress) / totalWeight) * 100)
+
+  return Math.min(100, Math.round(((completedWeight + phaseProgress) / totalWeight) * 100))
 })
 
 async function loadJobs() {
