@@ -240,6 +240,9 @@ function buildVariant(
 
   const weight = weightStr !== undefined ? parseFloat(weightStr) : undefined
   const maxStackSize = stackStr !== undefined ? parseInt(stackStr, 10) : undefined
+  const rawMaxQuality = parseInt(get('maxqualitylevel') ?? '1', 10)
+  const maxQuality = isNaN(rawMaxQuality) || rawMaxQuality <= 0 ? 1 : rawMaxQuality
+
   const canBeOvercharged = get('canbeovercharged') === 'true'
   const itemType = resolveItemType(shopCategory, shopSubcategory, uniqueName)
   const stats = extractStats(base, override)
@@ -272,7 +275,7 @@ function buildVariant(
   const baseItemUniqueName =
     enchantmentLevel > 0 && hasEnchantSuffix ? uniqueName.replace(/@\d+$/, '') : undefined
 
-  const hashSource = { uniqueName, tier, enchantmentLevel, craftingReqs, craftSpells, stats }
+  const hashSource = { uniqueName, tier, enchantmentLevel, maxQuality, craftingReqs, craftSpells, stats }
 
   return {
     uniqueName,
@@ -284,6 +287,7 @@ function buildVariant(
     shopSubcategory2,
     weight,
     maxStackSize,
+    maxQuality,
     canBeOvercharged,
     isCraftable: !!crafting,
     isRefinable: !!refining,

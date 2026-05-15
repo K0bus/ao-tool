@@ -74,7 +74,7 @@
             <div class="qual-switch">
               <span class="t-eyebrow">Qualité</span>
               <button
-                v-for="(label, qi) in qualityLabels"
+                v-for="(label, qi) in qualityLabels.slice(0, item.maxQuality)"
                 :key="qi + 1"
                 :class="['qchip', selectedQuality === qi + 1 && 'active']"
                 @click="selectedQuality = qi + 1"
@@ -124,6 +124,7 @@
       <!-- Price heatmap -->
       <ItemPriceHeatmap
         :prices="item.resolvedPrices ?? []"
+        :max-quality="item.maxQuality"
         style="margin-bottom:24px"
       />
 

@@ -294,6 +294,8 @@ model Item {
   resolvedPrices ResolvedPrice[]
   itemSpells     ItemSpell[]
 
+  maxQuality      Int      @default(1)
+
   dataHash   String?
   importedAt DateTime?
   createdAt  DateTime @default(now())

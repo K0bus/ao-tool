@@ -57,8 +57,14 @@ export class MarketPriceService {
   }
 
   private readonly INCOHERENT_PRICES = [999999, 99999999]
+  private readonly MAX_SPREAD_RATIO = 20.0 // 2000% spread max
+  private readonly MAX_QUALITY_MULTIPLIER = 5.0 // High quality shouldn't be 5x more than Q1
   private readonly BULK_WRITE_SIZE = 1000
   private validLocationIds?: Set<string>
+
+  private readonly FRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000 // 24h
+  private readonly RECENT_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000 // 72h
+  private readonly STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
   /**
    * Syncs market prices for a given list of items.
@@ -162,6 +168,23 @@ export class MarketPriceService {
   }
 
   private async bulkPersistPrices(rows: MarketPriceRow[]) {
+    if (rows.length === 0) return
+
+    const itemIds = [...new Set(rows.map((r) => r.itemId))]
+    const items = await prisma.item.findMany({
+      where: { id: { in: itemIds } },
+      select: { id: true, maxQuality: true },
+    })
+    const maxQualityMap = new Map(items.map((i) => [i.id, i.maxQuality]))
+
+    const filteredRows = rows.filter((row) => {
+      const maxQ = maxQualityMap.get(row.itemId) ?? 1
+      return row.quality <= maxQ
+    })
+
+    if (filteredRows.length === 0) return
+    rows = filteredRows
+
     const existingPrices = await this.getExistingPriceMap(rows)
     const historyRows = rows
       .filter(row => this.shouldWriteHistory(row, existingPrices.get(this.priceKey(row))))
@@ -174,12 +197,14 @@ export class MarketPriceService {
         timestamp: row.dataUpdatedAt,
       }))
 
-    const [sellFallbacks, buyFallbacks] = await Promise.all([
+    const [sellFallbacks, buyFallbacks, globalFallbacks, q1Prices] = await Promise.all([
       this.getLatestHistoryFallbacks(rows, 'sell'),
       this.getLatestHistoryFallbacks(rows, 'buy'),
+      this.getGlobalMedianFallbacks(rows),
+      this.getQuality1Prices(rows),
     ])
 
-    const resolvedRows = rows.map(row => this.toResolvedPriceRow(row, sellFallbacks, buyFallbacks))
+    const resolvedRows = rows.map(row => this.toResolvedPriceRow(row, sellFallbacks, buyFallbacks, globalFallbacks, q1Prices))
 
     const rowBatches = this.chunkArray(rows, this.BULK_WRITE_SIZE)
     const resolvedBatches = this.chunkArray(resolvedRows, this.BULK_WRITE_SIZE)
@@ -289,32 +314,137 @@ export class MarketPriceService {
     row: MarketPriceRow,
     sellFallbacks: Map<string, { price: number; timestamp: Date }>,
     buyFallbacks: Map<string, { price: number; timestamp: Date }>,
+    globalFallbacks: Map<string, { sellPrice: number; buyPrice: number }>,
+    q1Prices: Map<string, { sellPrice: number; buyPrice: number }>,
   ): ResolvedPriceRow {
     const key = this.priceKey(row)
+    const now = new Date()
+
+    // 1. Resolve Sell Price
     let sellPrice = row.sellPriceMin
     let sellSource = 'live'
     let sellConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
     let sellUpdatedAt = row.sellPriceMinDate ?? row.dataUpdatedAt
 
-    if (!this.isPriceValid(sellPrice)) {
-      const fallback = sellFallbacks.get(key)
-      sellPrice = fallback?.price ?? 0
-      sellSource = sellPrice > 0 ? 'history' : 'none'
-      sellConfidence = sellPrice > 0 ? PriceConfidenceValues.MEDIUM : PriceConfidenceValues.LOW
-      sellUpdatedAt = fallback?.timestamp ?? row.dataUpdatedAt
+    // Validation: Freshness & Outliers
+    let isSellLiveValid = this.isPriceValid(sellPrice)
+    
+    // Spread Outlier check
+    if (isSellLiveValid && row.buyPriceMax > 0 && sellPrice / row.buyPriceMax > this.MAX_SPREAD_RATIO) {
+      isSellLiveValid = false
     }
 
+    // Quality Outlier check
+    if (isSellLiveValid && row.quality > 1) {
+      const q1 = q1Prices.get(`${row.itemId}:${row.locationId}`)
+      if (q1 && q1.sellPrice > 0 && sellPrice / q1.sellPrice > this.MAX_QUALITY_MULTIPLIER) {
+        isSellLiveValid = false
+      }
+    }
+
+    const sellAge = now.getTime() - sellUpdatedAt.getTime()
+
+    if (!isSellLiveValid || sellAge > this.FRESH_THRESHOLD_MS) {
+      // Try History fallback
+      const fallback = sellFallbacks.get(key)
+      if (fallback && this.isPriceValid(fallback.price)) {
+        sellPrice = fallback.price
+        sellSource = 'history'
+        sellConfidence = PriceConfidenceValues.MEDIUM
+        sellUpdatedAt = fallback.timestamp
+      } else {
+        // Try Global fallback
+        const global = globalFallbacks.get(row.itemId)
+        if (global && this.isPriceValid(global.sellPrice)) {
+          sellPrice = global.sellPrice
+          sellSource = 'global'
+          sellConfidence = PriceConfidenceValues.ESTIMATED
+          sellUpdatedAt = now // Using current time as it's an estimation
+        } else if (row.quality > 1) {
+          // Try Quality 1 fallback
+          const q1 = q1Prices.get(`${row.itemId}:${row.locationId}`)
+          if (q1 && this.isPriceValid(q1.sellPrice)) {
+            sellPrice = Math.round(q1.sellPrice * 1.05) // 5% markup for higher quality
+            sellSource = 'q1_fallback'
+            sellConfidence = PriceConfidenceValues.ESTIMATED
+            sellUpdatedAt = now
+          } else {
+            sellPrice = 0
+            sellSource = 'none'
+            sellConfidence = PriceConfidenceValues.LOW
+          }
+        } else {
+          sellPrice = 0
+          sellSource = 'none'
+          sellConfidence = PriceConfidenceValues.LOW
+        }
+      }
+    } else if (sellAge > this.RECENT_THRESHOLD_MS) {
+      sellConfidence = PriceConfidenceValues.MEDIUM
+    }
+
+    // 2. Resolve Buy Price
     let buyPrice = row.buyPriceMax
     let buySource = 'live'
     let buyConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
     let buyUpdatedAt = row.buyPriceMaxDate ?? row.dataUpdatedAt
 
-    if (!this.isPriceValid(buyPrice)) {
+    let isBuyLiveValid = this.isPriceValid(buyPrice)
+
+    // Spread Outlier check (buy price shouldn't be 1/20th of sell price if we want to trust the spread, 
+    // but usually we care more about sell price being too high. 
+    // Let's just check if buyPrice is too far from Q1)
+    if (isBuyLiveValid && row.quality > 1) {
+      const q1 = q1Prices.get(`${row.itemId}:${row.locationId}`)
+      if (q1 && q1.buyPrice > 0 && buyPrice / q1.buyPrice > this.MAX_QUALITY_MULTIPLIER) {
+        isBuyLiveValid = false
+      }
+    }
+
+    const buyAge = now.getTime() - buyUpdatedAt.getTime()
+
+    if (!isBuyLiveValid || buyAge > this.FRESH_THRESHOLD_MS) {
       const fallback = buyFallbacks.get(key)
-      buyPrice = fallback?.price ?? 0
-      buySource = buyPrice > 0 ? 'history' : 'none'
-      buyConfidence = buyPrice > 0 ? PriceConfidenceValues.MEDIUM : PriceConfidenceValues.LOW
-      buyUpdatedAt = fallback?.timestamp ?? row.dataUpdatedAt
+      if (fallback && this.isPriceValid(fallback.price)) {
+        buyPrice = fallback.price
+        buySource = 'history'
+        buyConfidence = PriceConfidenceValues.MEDIUM
+        buyUpdatedAt = fallback.timestamp
+      } else {
+        const global = globalFallbacks.get(row.itemId)
+        if (global && this.isPriceValid(global.buyPrice)) {
+          buyPrice = global.buyPrice
+          buySource = 'global'
+          buyConfidence = PriceConfidenceValues.ESTIMATED
+          buyUpdatedAt = now
+        } else if (row.quality > 1) {
+          const q1 = q1Prices.get(`${row.itemId}:${row.locationId}`)
+          if (q1 && this.isPriceValid(q1.buyPrice)) {
+            buyPrice = q1.buyPrice // Buy price usually doesn't have much markup for quality
+            buySource = 'q1_fallback'
+            buyConfidence = PriceConfidenceValues.ESTIMATED
+            buyUpdatedAt = now
+          } else {
+            buyPrice = 0
+            buySource = 'none'
+            buyConfidence = PriceConfidenceValues.LOW
+          }
+        } else {
+          buyPrice = 0
+          buySource = 'none'
+          buyConfidence = PriceConfidenceValues.LOW
+        }
+      }
+    } else if (buyAge > this.RECENT_THRESHOLD_MS) {
+      buyConfidence = PriceConfidenceValues.MEDIUM
+    }
+
+    // 3. Final Coherence Check: If buy > sell (stale data), prefer sell but lower confidence
+    if (sellPrice > 0 && buyPrice > sellPrice) {
+      // This often happens with Black Market or very stale data
+      // For crafting tool, we usually want to be conservative
+      buyConfidence = this.getLowerConfidence(buyConfidence, PriceConfidenceValues.MEDIUM)
+      sellConfidence = this.getLowerConfidence(sellConfidence, PriceConfidenceValues.MEDIUM)
     }
 
     return {
@@ -327,6 +457,67 @@ export class MarketPriceService {
       source: sellSource === buySource ? sellSource : `S:${sellSource}/B:${buySource}`,
       updatedAt: this.latestApiDate([sellUpdatedAt, buyUpdatedAt]),
     }
+  }
+
+  private async getGlobalMedianFallbacks(rows: MarketPriceRow[]) {
+    const itemIds = [...new Set(rows.map(row => row.itemId))]
+    if (itemIds.length === 0) return new Map<string, { sellPrice: number; buyPrice: number }>()
+
+    const valueRows = PrismaRuntime.join(itemIds.map(id => PrismaRuntime.sql`(${id}::text)`))
+    const staleThreshold = new Date(Date.now() - this.STALE_THRESHOLD_MS)
+
+    // Using average as a proxy for median for batch performance, 
+    // or we could use PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ...) in PG
+    const globalPrices = await prisma.$queryRaw<Array<{
+      itemId: string
+      sellPrice: number
+      buyPrice: number
+    }>>(PrismaRuntime.sql`
+      WITH requested("itemId") AS (VALUES ${valueRows})
+      SELECT 
+        h."itemId",
+        CAST(AVG(h."sellPriceMin") AS INTEGER) as "sellPrice",
+        CAST(AVG(h."buyPriceMax") AS INTEGER) as "buyPrice"
+      FROM "MarketPriceHistory" h
+      JOIN requested r ON r."itemId" = h."itemId"
+      WHERE h."timestamp" >= ${staleThreshold}
+        AND h."sellPriceMin" > 0
+        AND h."buyPriceMax" > 0
+        AND h."sellPriceMin" NOT IN (${PrismaRuntime.join(this.INCOHERENT_PRICES)})
+      GROUP BY h."itemId"
+    `)
+
+    return new Map(globalPrices.map(row => [row.itemId, {
+      sellPrice: row.sellPrice,
+      buyPrice: row.buyPrice,
+    }]))
+  }
+
+  private async getQuality1Prices(rows: MarketPriceRow[]) {
+    const needed = rows.filter(r => r.quality > 1)
+    if (needed.length === 0) return new Map<string, { sellPrice: number; buyPrice: number }>()
+
+    const itemIds = [...new Set(needed.map(r => r.itemId))]
+    const locationIds = [...new Set(needed.map(r => r.locationId))]
+
+    const q1Prices = await prisma.marketPrice.findMany({
+      where: {
+        itemId: { in: itemIds },
+        locationId: { in: locationIds },
+        quality: 1,
+      },
+      select: {
+        itemId: true,
+        locationId: true,
+        sellPriceMin: true,
+        buyPriceMax: true,
+      },
+    })
+
+    return new Map(q1Prices.map(p => [`${p.itemId}:${p.locationId}`, {
+      sellPrice: p.sellPriceMin,
+      buyPrice: p.buyPriceMax,
+    }]))
   }
 
   private async bulkUpsertMarketPrices(tx: PrismaType.TransactionClient, rows: MarketPriceRow[]) {
@@ -458,126 +649,36 @@ export class MarketPriceService {
    * Backfill: Resolves all existing MarketPrice records.
    */
   async resolveAllExistingPrices() {
-    const marketPrices = await prisma.marketPrice.findMany()
-    console.log(`[MarketPriceService] Resolving ${marketPrices.length} existing records...`)
+    const totalCount = await prisma.marketPrice.count()
+    console.log(`[MarketPriceService] Resolving ${totalCount} existing records in batches...`)
 
-    for (const mp of marketPrices) {
-      await this.updateResolvedPrice(prisma, {
+    const batchSize = 500
+    for (let skip = 0; skip < totalCount; skip += batchSize) {
+      const marketPrices = await prisma.marketPrice.findMany({
+        skip,
+        take: batchSize,
+      })
+
+      const rows: MarketPriceRow[] = marketPrices.map(mp => ({
         itemId: mp.itemId,
         locationId: mp.locationId,
         quality: mp.quality,
         sellPriceMin: mp.sellPriceMin,
+        sellPriceMinDate: mp.sellPriceMinDate,
+        sellPriceMax: mp.sellPriceMax,
+        sellPriceMaxDate: mp.sellPriceMaxDate,
+        buyPriceMin: mp.buyPriceMin,
+        buyPriceMinDate: mp.buyPriceMinDate,
         buyPriceMax: mp.buyPriceMax,
-        updatedAt: this.latestApiDate([
-          mp.sellPriceMinDate,
-          mp.sellPriceMaxDate,
-          mp.buyPriceMinDate,
-          mp.buyPriceMaxDate,
-        ]),
-      })
+        buyPriceMaxDate: mp.buyPriceMaxDate,
+        dataUpdatedAt: mp.updatedAt,
+      }))
+
+      await this.bulkPersistPrices(rows)
+      console.log(`[MarketPriceService] Resolved ${skip + marketPrices.length}/${totalCount}`)
     }
   }
 
-  /**
-   * Updates ResolvedPrice based on live data or historical fallback.
-   */
-  private async updateResolvedPrice(
-    tx: PrismaType.TransactionClient | typeof prisma,
-    params: {
-      itemId: string
-      locationId: string
-      quality: number
-      sellPriceMin: number
-      buyPriceMax: number
-      updatedAt?: Date
-    }
-  ) {
-    const { itemId, locationId, quality, sellPriceMin, buyPriceMax, updatedAt = new Date() } = params
-    let sellPrice = sellPriceMin
-    let sellSource = 'live'
-    let sellConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
-
-    // 1. Resolve Sell Price
-    if (!this.isPriceValid(sellPrice)) {
-      const history = await tx.marketPriceHistory.findFirst({
-        where: {
-          itemId,
-          locationId,
-          quality,
-          sellPriceMin: { gt: 0, notIn: this.INCOHERENT_PRICES },
-        },
-        orderBy: { timestamp: 'desc' },
-      })
-
-      if (history) {
-        sellPrice = history.sellPriceMin
-        sellSource = 'history'
-        sellConfidence = PriceConfidenceValues.MEDIUM
-      } else {
-        sellPrice = 0
-        sellSource = 'none'
-        sellConfidence = PriceConfidenceValues.LOW
-      }
-    }
-
-    // 2. Resolve Buy Price
-    let buyPrice = buyPriceMax
-    let buySource = 'live'
-    let buyConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
-
-    if (!this.isPriceValid(buyPrice)) {
-      const history = await tx.marketPriceHistory.findFirst({
-        where: {
-          itemId,
-          locationId,
-          quality,
-          buyPriceMax: { gt: 0, notIn: this.INCOHERENT_PRICES },
-        },
-        orderBy: { timestamp: 'desc' },
-      })
-
-      if (history) {
-        buyPrice = history.buyPriceMax
-        buySource = 'history'
-        buyConfidence = PriceConfidenceValues.MEDIUM
-      } else {
-        buyPrice = 0
-        buySource = 'none'
-        buyConfidence = PriceConfidenceValues.LOW
-      }
-    }
-
-    // Determine aggregate source and confidence
-    const source = sellSource === buySource ? sellSource : `S:${sellSource}/B:${buySource}`
-    const confidence = this.getLowerConfidence(sellConfidence, buyConfidence)
-
-    await tx.resolvedPrice.upsert({
-      where: {
-        itemId_locationId_quality: {
-          itemId,
-          locationId,
-          quality,
-        },
-      },
-      update: {
-        sellPrice,
-        buyPrice,
-        confidence,
-        source,
-        updatedAt,
-      },
-      create: {
-        itemId,
-        locationId,
-        quality,
-        sellPrice,
-        buyPrice,
-        confidence,
-        source,
-        updatedAt,
-      },
-    })
-  }
 
   private isPriceValid(price: number): boolean {
     return price > 0 && !this.INCOHERENT_PRICES.includes(price)
@@ -586,6 +687,7 @@ export class MarketPriceService {
   private getLowerConfidence(c1: PriceConfidenceType, c2: PriceConfidenceType): PriceConfidenceType {
     const order: PriceConfidenceType[] = [
       PriceConfidenceValues.LOW,
+      PriceConfidenceValues.ESTIMATED,
       PriceConfidenceValues.MEDIUM,
       PriceConfidenceValues.HIGH,
     ]

@@ -299,6 +299,23 @@ describe('normalizeItem', () => {
       expect(item?.shopSubcategory).toBe('sword')
     })
   })
+  
+  describe('maxQuality extraction', () => {
+    it('extracts maxQuality as number', () => {
+      const [item] = normalizeItem(CRAFTABLE_SWORD, {})
+      expect(item?.maxQuality).toBe(5)
+    })
+
+    it('defaults to 1 if @maxqualitylevel is missing', () => {
+      const [item] = normalizeItem(RAW_ORE, {})
+      expect(item?.maxQuality).toBe(1)
+    })
+
+    it('defaults to 1 if @maxqualitylevel is invalid', () => {
+      const [item] = normalizeItem({ ...CRAFTABLE_SWORD, '@maxqualitylevel': '0' }, {})
+      expect(item?.maxQuality).toBe(1)
+    })
+  })
 })
 
 describe('normalizeSpell', () => {

@@ -83,19 +83,25 @@ interface ResolvedMarketPrice {
 
 interface Props {
   prices: ResolvedMarketPrice[]
+  maxQuality?: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  maxQuality: 5
+})
 
 const mode = ref<'sell' | 'buy'>('sell')
 
-const qualities = [
-  { value: 1, label: 'Normale',     dotClass: 'normal' },
-  { value: 2, label: 'Bonne',       dotClass: 'good' },
-  { value: 3, label: 'Remarquable', dotClass: 'outstanding' },
-  { value: 4, label: 'Excellente',  dotClass: 'excellent' },
-  { value: 5, label: "Chef-d'œuvre", dotClass: 'masterpiece' },
-]
+const qualities = computed(() => {
+  const all = [
+    { value: 1, label: 'Normale',     dotClass: 'normal' },
+    { value: 2, label: 'Bonne',       dotClass: 'good' },
+    { value: 3, label: 'Remarquable', dotClass: 'outstanding' },
+    { value: 4, label: 'Excellente',  dotClass: 'excellent' },
+    { value: 5, label: "Chef-d'œuvre", dotClass: 'masterpiece' },
+  ]
+  return all.filter(q => q.value <= props.maxQuality)
+})
 
 const CITY_ORDER = ['Caerleon', 'Bridgewatch', 'Lymhurst', 'Fort Sterling', 'Martlock', 'Thetford', 'Black Market']
 
@@ -141,7 +147,7 @@ const priceIndex = computed(() => {
 
 const rowRanges = computed(() => {
   const ranges = new Map<number, { min: number; max: number }>()
-  for (const q of qualities) {
+  for (const q of qualities.value) {
     let min = Infinity
     let max = -Infinity
     for (const city of activeCities.value) {

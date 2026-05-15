@@ -83,6 +83,7 @@ export interface RawBaseItem {
   '@slottype'?: string
   '@attacktype'?: string
   '@twohanded'?: string
+  '@maxqualitylevel'?: string
   LocalizationNameVariable?: string
   LocalizationDescriptionVariable?: string
   craftingrequirements?: RawCraftingRequirements | RawCraftingRequirements[]
@@ -228,6 +229,7 @@ export interface NormalizedItem {
   shopSubcategory2?: string
   weight?: number
   maxStackSize?: number
+  maxQuality: number
   canBeOvercharged: boolean
   isCraftable: boolean
   isRefinable: boolean

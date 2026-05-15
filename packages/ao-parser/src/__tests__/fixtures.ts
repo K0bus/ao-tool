@@ -8,6 +8,7 @@ export const BAG_ITEM: RawBaseItem = {
   '@shopsubcategory1': 'bag',
   '@weight': '0',
   '@maxstacksize': '1',
+  '@maxqualitylevel': '1',
   LocalizationNameVariable: '@ITEMS_T4_BAG',
   LocalizationDescriptionVariable: '@ITEMS_T4_BAG_DESC',
 }
@@ -25,6 +26,7 @@ export const CRAFTABLE_SWORD: RawBaseItem = {
   '@attackrange': '2',
   '@twohanded': 'false',
   '@attacktype': 'MELEE',
+  '@maxqualitylevel': '5',
   LocalizationNameVariable: '@ITEMS_T4_MAIN_SWORD',
   craftingrequirements: {
     '@craftingfame': '1200',

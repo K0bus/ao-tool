@@ -71,6 +71,7 @@ export default defineEventHandler(async (event) => {
       shopSubcategory: raw.shopSubcategory,
       weight: raw.weight,
       maxStackSize: raw.maxStackSize,
+      maxQuality: raw.maxQuality,
       stats: raw.stats,
       itemPower: (raw.stats as Record<string, unknown> | null)?.itemPower ?? null,
       twoHanded: Boolean((raw.stats as Record<string, unknown> | null)?.twoHanded),
