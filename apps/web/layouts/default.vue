@@ -20,15 +20,7 @@
         <div class="nav-links">
           <NuxtLink to="/" class="nav-link" :class="{ active: route.path === '/' }">Accueil</NuxtLink>
 
-          <button
-            class="nav-link"
-            :class="{ active: route.path.startsWith('/items'), 'mega-open': activeMega === 'items' }"
-            @mouseenter="openMega('items')"
-            @click="navigate('/items')"
-          >
-            Items
-            <svg class="caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
+          <NuxtLink to="/items" class="nav-link" :class="{ active: route.path.startsWith('/items') }">Items</NuxtLink>
 
           <button
             class="nav-link"
@@ -40,18 +32,20 @@
             <svg class="caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
 
-          <NuxtLink to="/market" class="nav-link" :class="{ active: route.path === '/market' }">Marché</NuxtLink>
-
           <button
             class="nav-link"
-            :class="{ active: route.path.startsWith('/killboard') || route.path.startsWith('/guilds') || route.path.startsWith('/alliances') || route.path.startsWith('/players'), 'mega-open': activeMega === 'pvp' }"
-            @mouseenter="openMega('pvp')"
-            @click="navigate('/killboard')"
+            :class="{ active: route.path.startsWith('/market') || route.path.startsWith('/items/flip'), 'mega-open': activeMega === 'market' }"
+            @mouseenter="openMega('market')"
+            @click="navigate('/market')"
           >
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;color:var(--gold)"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 3.5-3.5"/><path d="m16 16 4 4"/><path d="m9.5 4.5 5 5"/><path d="m4.5 9.5 5 5"/></svg>
-            PvP
+            Marché
             <svg class="caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
+ 
+          <NuxtLink to="/killboard" class="nav-link" :class="{ active: route.path.startsWith('/killboard') || route.path.startsWith('/guilds') || route.path.startsWith('/alliances') || route.path.startsWith('/players') }">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;color:var(--gold)"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 3.5-3.5"/><path d="m16 16 4 4"/><path d="m9.5 4.5 5 5"/><path d="m4.5 9.5 5 5"/></svg>
+            PvP
+          </NuxtLink>
 
           <button
             class="nav-link nav-link--builds"
@@ -115,43 +109,7 @@
       </nav>
 
       <!-- ===== MEGA MENUS ===== -->
-      <div v-if="activeMega === 'items'" class="mega" @mouseenter="cancelClose">
-        <div class="mega-grid">
-          <div class="mega-col">
-            <h4>Par tier</h4>
-            <ul>
-              <li v-for="t in [8,7,6,5,4]" :key="t"><NuxtLink :to="`/items?tier=${t}`"><span :class="`tier-badge t${t}`">T{{ t }}</span><div><div>Tier {{ t }}</div><div class="desc">{{ tierLabel(t) }}</div></div></NuxtLink></li>
-            </ul>
-          </div>
-          <div class="mega-col">
-            <h4>Armes</h4>
-            <ul>
-              <li><NuxtLink to="/items?category=sword">Épées <span class="desc">à 1 et 2 mains</span></NuxtLink></li>
-              <li><NuxtLink to="/items?category=axe">Haches</NuxtLink></li>
-              <li><NuxtLink to="/items?category=hammer">Marteaux</NuxtLink></li>
-              <li><NuxtLink to="/items?category=bow">Arcs & Arbalètes</NuxtLink></li>
-              <li><NuxtLink to="/items?category=staff">Bâtons</NuxtLink></li>
-              <li><NuxtLink to="/items?category=dagger">Dagues, Lances, Massues</NuxtLink></li>
-            </ul>
-          </div>
-          <div class="mega-col">
-            <h4>Armures & utilité</h4>
-            <ul>
-              <li><NuxtLink to="/items?category=cloth">Tissu · Magique</NuxtLink></li>
-              <li><NuxtLink to="/items?category=leather">Cuir · Légère</NuxtLink></li>
-              <li><NuxtLink to="/items?category=plate">Plaque · Lourde</NuxtLink></li>
-              <li><NuxtLink to="/items?category=bag">Sacs & Sacoches</NuxtLink></li>
-              <li><NuxtLink to="/items?category=cape">Capes & Boucliers</NuxtLink></li>
-              <li><NuxtLink to="/items?category=tool">Outils de récolte</NuxtLink></li>
-            </ul>
-          </div>
-          <div class="mega-cta">
-            <span class="label">À l'honneur</span>
-            <p>12 480 items, 3 187 recettes indexées, 21 langues. Le codex le plus complet d'Albion.</p>
-            <NuxtLink to="/items" class="ds-btn primary sm" style="margin-top:auto">Explorer le codex →</NuxtLink>
-          </div>
-        </div>
-      </div>
+
 
       <div v-if="activeMega === 'crafting'" class="mega" @mouseenter="cancelClose">
         <div class="mega-grid">
@@ -160,27 +118,7 @@
             <ul>
               <li><NuxtLink to="/crafting"><div><div>Crafting Tree</div><div class="desc">Arbre vertical complet</div></div></NuxtLink></li>
               <li><NuxtLink to="/items/profit"><div><div>Analyse de profit</div><div class="desc">Profit direct · tous les items</div></div></NuxtLink></li>
-              <li><NuxtLink to="/items/flip"><div><div>Flip inter-cités</div><div class="desc">Acheter bas · revendre haut</div></div></NuxtLink></li>
               <li><NuxtLink to="/crafting"><div><div>Liste de courses</div><div class="desc">Ressources agrégées</div></div></NuxtLink></li>
-            </ul>
-          </div>
-          <div class="mega-col">
-            <h4>Refining</h4>
-            <ul>
-              <li><NuxtLink to="/crafting">Bois → Planches</NuxtLink></li>
-              <li><NuxtLink to="/crafting">Minerai → Lingots</NuxtLink></li>
-              <li><NuxtLink to="/crafting">Fibre → Étoffe</NuxtLink></li>
-              <li><NuxtLink to="/crafting">Cuir brut → Cuir tanné</NuxtLink></li>
-              <li><NuxtLink to="/crafting">Roche → Blocs</NuxtLink></li>
-            </ul>
-          </div>
-          <div class="mega-col">
-            <h4>Stations</h4>
-            <ul>
-              <li><NuxtLink to="/crafting">Forgeron · Caerleon</NuxtLink></li>
-              <li><NuxtLink to="/crafting">Atelier de cuir · Lymhurst</NuxtLink></li>
-              <li><NuxtLink to="/crafting">Apothicaire · Bridgewatch</NuxtLink></li>
-              <li><NuxtLink to="/crafting">Cuisine · Thetford</NuxtLink></li>
             </ul>
           </div>
           <div class="mega-cta">
@@ -204,6 +142,18 @@
               <p>Calcul de la meilleure opportunité craft en cours…</p>
               <NuxtLink to="/items/profit" class="ds-btn primary sm" style="margin-top:auto">Analyse de profit →</NuxtLink>
             </template>
+          </div>
+        </div>
+      </div>
+ 
+      <div v-if="activeMega === 'market'" class="mega" @mouseenter="cancelClose">
+        <div class="mega-grid" style="grid-template-columns: 1fr;">
+          <div class="mega-col">
+            <h4>Outils de marché</h4>
+            <ul>
+              <li><NuxtLink to="/market"><div><div>Détails du marché</div><div class="desc">Prix en temps réel par cité</div></div></NuxtLink></li>
+              <li><NuxtLink to="/items/flip"><div><div>Flip inter-cités</div><div class="desc">Acheter bas · revendre haut</div></div></NuxtLink></li>
+            </ul>
           </div>
         </div>
       </div>
@@ -259,54 +209,7 @@
         </div>
       </div>
 
-      <div v-if="activeMega === 'pvp'" class="mega" @mouseenter="cancelClose">
-        <div class="mega-grid">
-          <div class="mega-col">
-            <h4>Killboard</h4>
-            <ul>
-              <li>
-                <NuxtLink to="/killboard">
-                  <div>
-                    <div>Kills récents</div>
-                    <div class="desc">Flux PvP Europe en temps réel</div>
-                  </div>
-                </NuxtLink>
-              </li>
-            </ul>
-          </div>
-          <div class="mega-col">
-            <h4>Guildes</h4>
-            <ul>
-              <li>
-                <NuxtLink to="/killboard">
-                  <div>
-                    <div>Rechercher une guilde</div>
-                    <div class="desc">Stats, membres, top kills</div>
-                  </div>
-                </NuxtLink>
-              </li>
-            </ul>
-          </div>
-          <div class="mega-col">
-            <h4>Joueurs</h4>
-            <ul>
-              <li>
-                <NuxtLink to="/killboard">
-                  <div>
-                    <div>Rechercher un joueur</div>
-                    <div class="desc">Stats PvP, équipement récent</div>
-                  </div>
-                </NuxtLink>
-              </li>
-            </ul>
-          </div>
-          <div class="mega-cta">
-            <span class="label">Killboard</span>
-            <p>Suivez les batailles en temps réel. Recherchez un joueur ou une guilde pour voir leurs stats PvP complètes.</p>
-            <NuxtLink to="/killboard" class="ds-btn primary sm" style="margin-top:auto">Ouvrir le Killboard →</NuxtLink>
-          </div>
-        </div>
-      </div>
+
 
       <div v-if="activeMega === 'admin'" class="mega" @mouseenter="cancelClose">
         <div class="mega-grid">
