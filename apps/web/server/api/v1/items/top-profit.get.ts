@@ -25,7 +25,7 @@ async function computeTopProfit() {
   const locationIds = validLocations.map((l) => l.id);
 
   const rawItems = await prisma.item.findMany({
-    where: { isCraftable: true, craftingRecipe: { isNot: null } },
+    where: { isCraftable: true, craftingRecipe: { isNot: null }, shopCategory: { not: "artefacts" } },
     take: 1000,
     orderBy: [{ tier: "desc" }, { enchantmentLevel: "asc" }, { id: "asc" }],
     select: {
