@@ -1,490 +1,97 @@
+<div align="center">
+
+![Albion Tool Banner](file:///home/k0bus/.gemini/antigravity/brain/60aef483-8fe9-4ec7-8081-57b7f005b8f2/albion_tool_banner_1778864662337.png)
+
 # Albion Tool
+### Advanced Data Platform for Albion Online Economy
 
-> Advanced Albion Online Data Platform
-> Crafting • Market Prices • Profitability • Economy Tools • Admin System
-
-Albion Tool est une plateforme complète de gestion de données pour Albion Online, pensée comme un véritable outil professionnel orienté économie, crafting et optimisation.
-
-Le projet centralise :
-
-- la base complète des items
-- les recettes de craft
-- les refining chains
-- les arbres de crafting
-- les prix live du marché
-- l’historique des prix
-- les calculateurs de rentabilité
-- les outils d’optimisation économique
-- l’administration des données
-- la gestion des utilisateurs
-
-L’objectif est de proposer une architecture scalable, modulaire et production-ready, pensée pour évoluer vers une vraie plateforme SaaS premium.
+[![Node.js](https://img.shields.io/badge/Node.js-22+-68a063?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9+-f69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Nuxt 3](https://img.shields.io/badge/Nuxt_3-00DC82?style=for-the-badge&logo=nuxt.js&logoColor=white)](https://nuxt.com/)
+[![Prisma](https://img.shields.io/badge/Prisma_7-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://prisma.io/)
+[![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)](LICENSE)
 
 ---
 
-# Stack Technique
+**Albion Tool** is a professional-grade data platform dedicated to the Albion Online economy. Designed for serious players, crafters, and market analysts, it provides deep insights into item profitability, crafting chains, and live market fluctuations.
 
-## Frontend
+[Explore Architecture](file:///home/k0bus/projects/albion-tool/docs/architecture.md) • [Setup Guide](file:///home/k0bus/projects/albion-tool/docs/setup.md) • [Development](file:///home/k0bus/projects/albion-tool/docs/development.md)
 
-- Nuxt 3
-- Vue 3
-- TypeScript
-- Tailwind CSS
-- UI Dark Mode
-- Dashboard UX moderne
-
-## Backend
-
-- Nuxt Server Routes (API REST)
-- Architecture modulaire backend
-- Services métier découplés
-- Import engine
-- Pricing engine
-- Admin engine
-
-## Database
-
-- PostgreSQL
-- Prisma ORM v7
-- Historisation complète
-- Optimisation gros volumes
-
-## Infrastructure
-
-- Docker
-- Docker Compose
-- Dev / Staging / Production Ready
+</div>
 
 ---
 
-# Core Features
+## ✨ Key Features
 
-## Smart Item Search
+### 🔍 Smart Intelligence
+- **Deep Item Analytics**: Real-time stats, tier/enchantment tracking, and progression paths.
+- **Dynamic Search**: Advanced filtering by category, tier, city, and weapon family.
+- **Crafting Tree Engine**: Recursive dependency tracking with multi-step recipe visualization.
 
-Recherche avancée avec filtres dynamiques :
+### 💹 Market Mastery
+- **Live Price Sync**: Real-time integration with Albion Online Data Project.
+- **Profitability Simulation**: Advanced calculators for crafting, refining, and city arbitrage.
+- **Historical Tracking**: Comprehensive price history and trend analysis.
 
-- item search
-- category filters
-- tier filters
-- enchantment filters
-- city filters
-- refining filters
-- craftability filters
-- weapon family filters
-- specialization filters
-
----
-
-## Item Detail Page
-
-Chaque item dispose d’une page complète avec :
-
-- stats complètes
-- tier réel
-- enchantement réel
-- crafting requirements
-- recipe complète
-- crafting spells
-- related resources
-- item progression
-- dependencies
-- refining chain
-- crafting tree
-- city bonuses
-- return rates
-- taxes
-- profitability estimation
-- station requirements
-- related items
+### 🛠️ Admin Infrastructure
+- **Full Data Management**: Automated sync for items, icons, and market prices.
+- **User Moderation**: Granular roles and permissions with full audit logging.
+- **Job Monitoring**: Background task tracking via BullMQ and Redis.
 
 ---
 
-## Crafting Tree Engine
+## 🚀 Tech Stack
 
-Système avancé de génération :
-
-- recursive dependencies
-- parent / child resources
-- refining chains
-- multi-step recipes
-- profitability simulation
-
----
-
-## Live Market Prices
-
-Intégration de l’Albion Online Data Project API :
-
-- live prices
-- buy / sell spread
-- best buy city
-- best sell city
-- historical prices
-- charts
-- gold prices
-- city arbitrage
-- profitability engine
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | Nuxt 3, Vue 3, Tailwind CSS, Pinia |
+| **Backend** | Nitro (Nuxt Server), BullMQ, TypeScript |
+| **Database** | PostgreSQL, Prisma ORM v7 |
+| **Infrastructure** | Redis, Docker, Nginx, PGBouncer |
 
 ---
 
-## Profitability Tools
+## 🛠️ Quick Start
 
-Prévu pour :
+### 1. Prerequisites
+Ensure you have **Node.js 22**, **pnpm 9**, and **Docker** installed.
 
-- craft calculator
-- refining calculator
-- transport calculator
-- flip calculator
-- economy analytics
-- black market tools
-- premium optimization tools
-
----
-
-## Admin Panel
-
-Administration complète :
-
-### User Management
-
-- create users
-- roles & permissions
-- moderation
-- suspension
-- audit logs
-
-### Data Management
-
-- full DB update
-- partial sync
-- market sync
-- icon sync
-- cache refresh
-- reindex
-- retry failed jobs
-- monitoring
-- import logs
-- API health checks
-
----
-
-# Data Sources
-
-## Static Game Data
-
-Official dump source :
-
-https://github.com/ao-data/ao-bin-dumps
-
-Used for :
-
-- items
-- crafting
-- resources
-- equipment
-- enchantments
-- cities
-- categories
-- crafting stations
-- refining chains
-- filters structure
-
----
-
-## Market Prices API
-
-Albion Online Data Project API :
-
-- West (Americas)
-- East (Asia)
-- Europe
-
-Used for :
-
-- current prices
-- historical prices
-- gold prices
-- price analytics
-
-Supports :
-
-- batching
-- rate limit safe sync
-- GZIP optimization
-- retry logic
-- queue system
-
----
-
-# Project Philosophy
-
-Ce projet n’est pas pensé comme un simple fan tool.
-
-L’objectif est :
-
-## SaaS-ready Architecture
-
-- scalable
-- maintainable
-- modular
-- profitable
-- extensible
-
-Avec possibilité future :
-
-- subscriptions
-- premium features
-- public API
-- guild tools
-- economy intelligence
-- advanced market analytics
-
----
-
-# Development Priorities
-
-## Phase 1
-
-Core Database Engine
-
-- parser refactor
-- item normalization
-- crafting system
-- filters system
-- crafting tree foundations
-
-## Phase 2
-
-Pricing Engine
-
-- live prices
-- history sync
-- profitability calculations
-- market dashboards
-
-## Phase 3
-
-Advanced Economy Tools
-
-- flip tools
-- transport optimization
-- black market
-- advanced analytics
-
-## Phase 4
-
-SaaS Expansion
-
-- subscriptions
-- premium tools
-- API public access
-- guild ecosystem tools
-
----
-
-# Lancer le serveur
-
-## Prérequis
-
-- Node.js >= 22
-- pnpm >= 9
-- Docker + Docker Compose
-
-## Variables d'environnement
-
-Créer le fichier `.env` à partir de l'exemple :
-
+### 2. Installation
 ```bash
-cp .env.example .env
-```
-
-Variables minimales à vérifier :
-
-- `POSTGRES_PASSWORD`
-- `REDIS_PASSWORD`
-- `NUXT_SESSION_SECRET`
-- `APP_URL`
-- `DATABASE_URL`
-- `REDIS_URL`
-
-Pour générer un secret de session :
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-## Développement
-
-### Option 1: lancer l'app en local
-
-Installer les dépendances :
-
-```bash
+# Install dependencies
 pnpm install
-```
 
-Démarrer PostgreSQL et Redis :
-
-```bash
+# Start core services (PostgreSQL & Redis)
 docker-compose up -d postgres redis
-```
 
-Appliquer les migrations et générer Prisma :
-
-```bash
-pnpm db:generate
+# Setup database
 pnpm db:migrate
+pnpm db:generate
 ```
 
-Lancer le serveur de développement Nuxt :
-
+### 3. Run Development
 ```bash
 pnpm dev
 ```
-
-Application disponible sur `http://localhost:3000`.
-
-### Option 2: lancer tout l'environnement via Docker
-
-```bash
-docker-compose up --build
-```
-
-Cette commande démarre :
-
-- `postgres`
-- `redis`
-- `app` en mode développement
-- `worker`
-
-L'application est exposée sur `http://localhost:3000`.
-
-## Production
-
-Le mode production s'appuie sur `docker-compose.prod.yml` avec :
-
-- `postgres`
-- `pgbouncer`
-- `redis`
-- `app` buildée en mode production
-- `nginx`
-
-### 1. Préparer l'environnement
-
-Mettre à jour `.env` avec des valeurs de production :
-
-- `POSTGRES_PASSWORD`
-- `REDIS_PASSWORD`
-- `NUXT_SESSION_SECRET`
-- `APP_URL`
-
-Important :
-
-- `APP_URL` doit pointer vers l'URL publique du site
-- en l'état, `docker-compose.prod.yml` connecte l'application directement à `postgres`
-- Redis est configuré via `REDIS_HOST`, `REDIS_PORT` et `REDIS_PASSWORD` pour éviter les problèmes d'encodage dans une URL
-- Redis doit rester en politique `noeviction` pour BullMQ
-- le worker de production utilise `NODE_OPTIONS=--max-old-space-size=768` et une limite mémoire plus haute pour absorber l'import initial `ao-bin-dumps`
-- `pgbouncer` peut être réintroduit plus tard, mais il doit alors être explicitement validé côté image, port d'écoute et healthcheck
-
-### 2. Construire et démarrer
-
-```bash
-export IMAGE_TAG=latest
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d --force-recreate
-```
-
-Important :
-
-- `docker-compose.prod.yml` consomme des images Docker Hub via `image:`, il ne reconstruit pas localement l'application
-- `docker compose ... up -d --build` ne met donc pas à jour le service `app` si l'image distante n'a pas été rebuild/push auparavant
-- pour publier une nouvelle version, lancer `./scripts/deploy.sh` depuis la machine de build, puis sur le serveur `export IMAGE_TAG=<tag>` suivi de `docker compose ... pull` et `docker compose ... up -d --force-recreate`
-
-Au démarrage, le conteneur `app` exécute automatiquement `prisma migrate deploy` avant de lancer Nuxt.
-
-### 3. Vérifier les logs
-
-```bash
-docker-compose -f docker-compose.prod.yml logs -f app
-```
-
-### 4. Arrêter la stack
-
-```bash
-docker-compose -f docker-compose.prod.yml down
-```
-
-### Ports exposés
-
-- `80` pour HTTP
-- `443` pour HTTPS
-
-## Commandes utiles
-
-Build du monorepo :
-
-```bash
-pnpm build
-```
-
-Vérification de types :
-
-```bash
-pnpm typecheck
-```
-
-Tests :
-
-```bash
-pnpm test
-```
+Visit `http://localhost:3000` to access the dashboard.
 
 ---
 
-# Important Notes
+## 🗺️ Roadmap
 
-Le projet respecte :
-
-- clean architecture
-- modular domain logic
-- scalable import systems
-- safe pricing synchronization
-- rate limit compliance
-- production-grade observability
-
-Aucune logique quick fix.
-
-Aucune architecture jetable.
-
-Objectif : long terme.
+- [x] **Phase 1: Core Engine** - Database normalization, Item parser, Crafting foundations.
+- [x] **Phase 2: Pricing Engine** - Live market sync, Profitability logic, Dashboards.
+- [ ] **Phase 3: Economy Intelligence** - Transport optimization, Black market tools, Flip analysis.
+- [ ] **Phase 4: SaaS Expansion** - Premium access, Public API, Guild ecosystem tools.
 
 ---
 
-# Roadmap
+## 👥 Authors & License
 
-- [x] Core architecture
-- [x] Parser foundations
-- [x] Item detail system
-- [ ] Crafting Tree Engine
-- [ ] Pricing Engine
-- [ ] Profitability Calculators
-- [ ] Advanced Admin Panel
-- [ ] Premium Economy Tools
-- [ ] Public API
-- [ ] SaaS Monetization Layer
+- **Status**: Internal Private Development
+- **Purpose**: Built for high-scale Albion Online economy optimization.
 
 ---
-
-# License
-
-Private Project — Internal Development
-
----
-
-# Author
-
-Built for serious Albion Online economy players.
-
-Designed for scale.
-Built for the long game.
+<div align="center">
+Built with ❤️ for the Albion Community.
+</div>
