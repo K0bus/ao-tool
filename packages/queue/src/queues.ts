@@ -4,9 +4,11 @@ import type { ImportJobData, ImportJobResult, MarketJobData, MarketJobResult } f
 
 export const IMPORT_QUEUE_NAME = 'albion-import'
 export const MARKET_QUEUE_NAME = 'albion-market'
+export const SCHEDULER_QUEUE_NAME = 'scheduler'
 
 let _importQueue: Queue<ImportJobData, ImportJobResult> | null = null
 let _marketQueue: Queue<MarketJobData, MarketJobResult> | null = null
+let _schedulerQueue: Queue<any, any> | null = null
 
 export function getImportQueue(): Queue<ImportJobData, ImportJobResult> {
   if (!_importQueue) {
@@ -36,4 +38,17 @@ export function getMarketQueue(): Queue<MarketJobData, MarketJobResult> {
     })
   }
   return _marketQueue
+}
+
+export function getSchedulerQueue(): Queue<any, any> {
+  if (!_schedulerQueue) {
+    _schedulerQueue = new Queue(SCHEDULER_QUEUE_NAME, {
+      connection: getConnection(),
+      defaultJobOptions: {
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    })
+  }
+  return _schedulerQueue
 }

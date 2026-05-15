@@ -1,8 +1,19 @@
 import { prisma } from '@albion-tool/database'
-import { Worker, getConnection, closeAllConnections, IMPORT_QUEUE_NAME, MARKET_QUEUE_NAME } from '@albion-tool/queue'
+import { 
+  Worker, 
+  IMPORT_QUEUE_NAME, 
+  MARKET_QUEUE_NAME, 
+  SCHEDULER_QUEUE_NAME, 
+  getConnection,
+  closeAllConnections, 
+  getImportQueue, 
+  schedulerService,
+  sendDiscordNotification
+} from '@albion-tool/queue'
 import type { ImportJobData, ImportJobProgress, ImportJobResult, MarketJobData, MarketJobResult, MarketJobItem, MarketJobProgress } from '@albion-tool/queue'
 import { runImport } from '../import/run-import.js'
-import { marketPriceService } from '@albion-tool/market-engine'
+import { runMarketSync } from '../import/run-market-sync.js'
+import { marketPriceService, getTopProfitHighlight } from '@albion-tool/market-engine'
 
 // ══════════════════════════════════════════════════════════════
 // IMPORT WORKER
@@ -71,11 +82,60 @@ const marketWorker = new Worker<MarketJobData, MarketJobResult>(
 )
 
 // ══════════════════════════════════════════════════════════════
+// SCHEDULER WORKER
+// ══════════════════════════════════════════════════════════════
+
+const schedulerWorker = new Worker(
+  SCHEDULER_QUEUE_NAME,
+  async (job) => {
+    const { target, options = {} } = (job.data as any) || {}
+    const name = job.name
+
+    console.log(`[scheduler-worker] Triggering scheduled job: ${name} (target: ${target})`, options)
+
+    if (target === 'albion-import') {
+      const type = options.type || 'FULL'
+      const dbJob = await prisma.importJob.create({
+        data: {
+          type,
+          status: 'PENDING',
+        }
+      })
+      await getImportQueue().add(`import-${dbJob.id}`, { jobId: dbJob.id, type })
+    } 
+    else if (target === 'albion-market') {
+      await runMarketSync()
+    }
+
+    // Update last run in DB
+    await prisma.jobSchedule.updateMany({
+      where: { name },
+      data: { lastRunAt: new Date() }
+    })
+  },
+  {
+    connection: getConnection(),
+    concurrency: 1,
+  }
+)
+
+// ══════════════════════════════════════════════════════════════
 // EVENT HANDLERS
 // ══════════════════════════════════════════════════════════════
 
-importWorker.on('completed', (job, result) => {
+importWorker.on('completed', async (job, result) => {
   console.log(`[import-worker] Job ${job.id} completed — ${result.itemsProcessed} items in ${(result.durationMs / 1000).toFixed(1)}s`)
+
+  await sendDiscordNotification({
+    title: `✅ Import completed: ${job.data.type}`,
+    color: 0x22c55e, // Green
+    fields: [
+      { name: 'Items Processed', value: result.itemsProcessed.toLocaleString(), inline: true },
+      { name: 'Created', value: result.itemsCreated.toLocaleString(), inline: true },
+      { name: 'Updated', value: result.itemsUpdated.toLocaleString(), inline: true },
+      { name: 'Duration', value: `${(result.durationMs / 1000).toFixed(1)}s`, inline: true },
+    ]
+  })
 })
 
 importWorker.on('failed', (job, err) => {
@@ -113,7 +173,42 @@ marketWorker.on('completed', async (job, result) => {
       },
     })
     if (updated.count === 1) {
+      const duration = dbJob.startedAt ? Date.now() - dbJob.startedAt.getTime() : 0
       console.log(`[market-worker] Sync job ${jobId} finished (${dbJob.itemsUpdated} updated, ${dbJob.itemsFailed} failed)`)
+
+      await sendDiscordNotification({
+        title: '📊 Market Sync Completed',
+        color: 0x3b82f6, // Blue
+        fields: [
+          { name: 'Total Requested', value: dbJob.itemsRequested.toLocaleString(), inline: true },
+          { name: 'Updated', value: dbJob.itemsUpdated.toLocaleString(), inline: true },
+          { name: 'Failed', value: dbJob.itemsFailed.toLocaleString(), inline: true },
+          { name: 'Duration', value: `${(duration / 1000).toFixed(0)}s`, inline: true },
+        ]
+      })
+
+      // Send Highlight Notification if a second URL is defined
+      const highlight = await getTopProfitHighlight()
+      if (highlight) {
+        const publicUrlConfig = await prisma.systemConfig.findUnique({
+          where: { key: 'public_app_url' }
+        })
+        const publicUrl = publicUrlConfig?.value as string | undefined
+        const itemUrl = publicUrl ? `${publicUrl}/items/${highlight.uniqueName}` : undefined
+
+        await sendDiscordNotification({
+          title: `💎 Opportunity of the Moment: ${highlight.name}`,
+          description: `An exceptional opportunity was detected in **${highlight.city}**!${itemUrl ? `\n\n[🔗 View Item on Albion Tool](${itemUrl})` : ''}`,
+          url: itemUrl,
+          color: 0xf59e0b, // Gold/Amber
+          thumbnail: highlight.iconUrl ? { url: highlight.iconUrl } : undefined,
+          fields: [
+            { name: 'Estimated Profit', value: `${Math.round(highlight.profit).toLocaleString()} silver`, inline: true },
+            { name: 'Profit Margin', value: `${highlight.margin.toFixed(1)}%`, inline: true },
+            { name: 'Production Cost', value: `${Math.round(highlight.cost).toLocaleString()} silver`, inline: true },
+          ]
+        }, 'discord_market_highlight_webhook_url')
+      }
     }
   }
 })
@@ -126,6 +221,7 @@ async function shutdown() {
   console.log('[worker] Shutting down gracefully...')
   await importWorker.close()
   await marketWorker.close()
+  await schedulerWorker.close()
   await closeAllConnections()
   await prisma.$disconnect()
   process.exit(0)
@@ -136,3 +232,11 @@ process.on('SIGINT', shutdown)
 
 console.log(`[worker] Listening on queue "${IMPORT_QUEUE_NAME}"`)
 console.log(`[worker] Listening on queue "${MARKET_QUEUE_NAME}"`)
+console.log(`[worker] Listening on queue "${SCHEDULER_QUEUE_NAME}"`)
+
+// Initialize schedules on start
+schedulerService.syncSchedules().then(() => {
+  console.log('[worker] Schedules synchronized with BullMQ')
+}).catch(err => {
+  console.error('[worker] Failed to sync schedules:', err)
+})

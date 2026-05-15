@@ -23,10 +23,14 @@
 
         <p class="px-3 py-2 mt-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Data</p>
         <AdminNavLink to="/admin/data/imports" icon="download" label="Imports" />
+        <AdminNavLink to="/admin/data/scheduler" icon="clock" label="Scheduler" />
         <AdminNavLink to="/admin/data/market" icon="chart" label="Market Prices" />
         <AdminNavLink to="/admin/data/system" icon="settings" label="System Config" />
         <AdminNavLink to="/admin/data/game-data" icon="database" label="Game Data" />
         <AdminNavLink to="/admin/data/database" icon="server" label="Database Stats" />
+
+        <p class="px-3 py-2 mt-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">System</p>
+        <AdminNavLink to="/admin/settings" icon="settings" label="Global Settings" />
       </nav>
 
       <!-- User info bottom -->
@@ -100,9 +104,11 @@ const breadcrumb = computed<Crumb[]>(() => {
   }
   if (p === '/admin/users') return [{ label: 'Utilisateurs' }]
   if (p === '/admin/data/imports') return [{ label: 'Data' }, { label: 'Imports' }]
+  if (p === '/admin/data/scheduler') return [{ label: 'Data' }, { label: 'Scheduler' }]
   if (p === '/admin/data/market') return [{ label: 'Data' }, { label: 'Market Prices' }]
   if (p === '/admin/data/system') return [{ label: 'Data' }, { label: 'System Config' }]
   if (p === '/admin/data/icons') return [{ label: 'Data' }, { label: 'Icons Sync' }]
+  if (p === '/admin/settings') return [{ label: 'System' }, { label: 'Settings' }]
   return [{ label: p.split('/').pop() ?? '' }]
 })
 </script>

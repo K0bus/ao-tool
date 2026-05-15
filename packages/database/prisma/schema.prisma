@@ -645,6 +645,28 @@ model SystemConfig {
 }
 
 // ══════════════════════════════════════════════════════════════
+// SCHEDULER
+// ══════════════════════════════════════════════════════════════
+
+model JobSchedule {
+  id          String   @id @default(cuid())
+  name        String   @unique // Internal ID like "market_full_sync"
+  label       String   // Human readable name like "Market Full Sync"
+  cron        String   // Cron expression
+  enabled     Boolean  @default(true)
+  
+  target      String   // "albion-import" or "albion-market"
+  options     Json?    // Specific options for the job (e.g. { "type": "FULL" })
+  
+  lastRunAt   DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled])
+}
+
+// ══════════════════════════════════════════════════════════════
 // SPELLS
 // ══════════════════════════════════════════════════════════════
 
