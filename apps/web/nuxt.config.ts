@@ -1,5 +1,15 @@
+import { fileURLToPath } from 'node:url'
+
 export default defineNuxtConfig({
   devtools: { enabled: true },
+
+  experimental: {
+    appManifest: false,
+  },
+
+  alias: {
+    '#app-manifest': fileURLToPath(new URL('./app-manifest-stub.json', import.meta.url)),
+  },
 
   components: {
     dirs: [
@@ -49,7 +59,7 @@ export default defineNuxtConfig({
       installPrompt: true,
     },
     devOptions: {
-      enabled: true,
+      enabled: false,
     },
     workbox: {
       navigateFallbackDenylist: [/^\/api\//],

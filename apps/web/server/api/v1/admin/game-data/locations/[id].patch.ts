@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { requireAdmin } from '~/server/utils/guards'
-import { prisma, Prisma } from '~/server/utils/prisma'
+import { prisma } from '~/server/utils/prisma'
 
 const schema = z.object({
   name: z.string().optional(),

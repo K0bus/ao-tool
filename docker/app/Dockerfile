@@ -20,8 +20,9 @@ RUN pnpm install --frozen-lockfile
 # ── Development ───────────────────────────────────────────────
 FROM deps AS development
 COPY . .
+RUN chmod +x docker/app/dev-entrypoint.sh
 EXPOSE 3000
-CMD ["pnpm", "--filter", "web", "dev", "--host", "0.0.0.0"]
+CMD ["sh", "/app/docker/app/dev-entrypoint.sh"]
 
 # ── Builder ───────────────────────────────────────────────────
 FROM deps AS builder

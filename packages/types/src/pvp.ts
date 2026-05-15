@@ -29,6 +29,7 @@ export interface KillEventParticipant {
   AllianceName?: string
   AverageItemPower: number
   Equipment: KillEventEquipment
+  Inventory?: readonly (KillEventItem | null)[] | null
   DamageDone?: number
   SupportHealingDone?: number
 }

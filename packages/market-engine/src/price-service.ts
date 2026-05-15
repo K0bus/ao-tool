@@ -1,5 +1,14 @@
 import { randomUUID } from 'node:crypto'
-import { prisma, Prisma, PriceConfidence, DEFAULT_LOCATIONS } from '@albion-tool/database'
+import {
+  prisma,
+  DEFAULT_LOCATIONS,
+  PrismaRuntime,
+  PriceConfidenceValues,
+} from '@albion-tool/database'
+import type {
+  Prisma as PrismaType,
+  PriceConfidence as PriceConfidenceType,
+} from '@albion-tool/database'
 import { marketApiClient } from './api-client'
 
 export interface MarketSyncItem {
@@ -36,7 +45,7 @@ interface ResolvedPriceRow {
   quality: number
   sellPrice: number
   buyPrice: number
-  confidence: PriceConfidence
+  confidence: PriceConfidenceType
   source: string
   updatedAt: Date
 }
@@ -240,11 +249,11 @@ export class MarketPriceService {
     }
 
     const keys = this.uniquePriceKeys(needsFallback)
-    const valueRows = Prisma.join(
-      keys.map(key => Prisma.sql`(${key.itemId}::text, ${key.locationId}::text, ${key.quality}::integer)`),
+    const valueRows = PrismaRuntime.join(
+      keys.map(key => PrismaRuntime.sql`(${key.itemId}::text, ${key.locationId}::text, ${key.quality}::integer)`),
     )
-    const invalidPrices = Prisma.join(this.INCOHERENT_PRICES)
-    const priceColumn = side === 'sell' ? Prisma.sql`h."sellPriceMin"` : Prisma.sql`h."buyPriceMax"`
+    const invalidPrices = PrismaRuntime.join(this.INCOHERENT_PRICES)
+    const priceColumn = side === 'sell' ? PrismaRuntime.sql`h."sellPriceMin"` : PrismaRuntime.sql`h."buyPriceMax"`
 
     const history = await prisma.$queryRaw<Array<{
       itemId: string
@@ -252,7 +261,7 @@ export class MarketPriceService {
       quality: number
       price: number
       timestamp: Date
-    }>>(Prisma.sql`
+    }>>(PrismaRuntime.sql`
       WITH requested("itemId", "locationId", "quality") AS (VALUES ${valueRows})
       SELECT DISTINCT ON (h."itemId", h."locationId", h."quality")
         h."itemId",
@@ -284,27 +293,27 @@ export class MarketPriceService {
     const key = this.priceKey(row)
     let sellPrice = row.sellPriceMin
     let sellSource = 'live'
-    let sellConfidence: PriceConfidence = PriceConfidence.HIGH
+    let sellConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
     let sellUpdatedAt = row.sellPriceMinDate ?? row.dataUpdatedAt
 
     if (!this.isPriceValid(sellPrice)) {
       const fallback = sellFallbacks.get(key)
       sellPrice = fallback?.price ?? 0
       sellSource = sellPrice > 0 ? 'history' : 'none'
-      sellConfidence = sellPrice > 0 ? PriceConfidence.MEDIUM : PriceConfidence.LOW
+      sellConfidence = sellPrice > 0 ? PriceConfidenceValues.MEDIUM : PriceConfidenceValues.LOW
       sellUpdatedAt = fallback?.timestamp ?? row.dataUpdatedAt
     }
 
     let buyPrice = row.buyPriceMax
     let buySource = 'live'
-    let buyConfidence: PriceConfidence = PriceConfidence.HIGH
+    let buyConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
     let buyUpdatedAt = row.buyPriceMaxDate ?? row.dataUpdatedAt
 
     if (!this.isPriceValid(buyPrice)) {
       const fallback = buyFallbacks.get(key)
       buyPrice = fallback?.price ?? 0
       buySource = buyPrice > 0 ? 'history' : 'none'
-      buyConfidence = buyPrice > 0 ? PriceConfidence.MEDIUM : PriceConfidence.LOW
+      buyConfidence = buyPrice > 0 ? PriceConfidenceValues.MEDIUM : PriceConfidenceValues.LOW
       buyUpdatedAt = fallback?.timestamp ?? row.dataUpdatedAt
     }
 
@@ -320,10 +329,10 @@ export class MarketPriceService {
     }
   }
 
-  private async bulkUpsertMarketPrices(tx: Prisma.TransactionClient, rows: MarketPriceRow[]) {
+  private async bulkUpsertMarketPrices(tx: PrismaType.TransactionClient, rows: MarketPriceRow[]) {
     if (rows.length === 0) return
 
-    const values = Prisma.join(rows.map(row => Prisma.sql`(
+    const values = PrismaRuntime.join(rows.map(row => PrismaRuntime.sql`(
       ${randomUUID()},
       ${row.itemId},
       ${row.locationId},
@@ -339,7 +348,7 @@ export class MarketPriceService {
       ${row.dataUpdatedAt}
     )`))
 
-    await tx.$executeRaw(Prisma.sql`
+    await tx.$executeRaw(PrismaRuntime.sql`
       INSERT INTO "MarketPrice" (
         "id",
         "itemId",
@@ -371,7 +380,7 @@ export class MarketPriceService {
   }
 
   private async bulkInsertHistory(
-    tx: Prisma.TransactionClient,
+    tx: PrismaType.TransactionClient,
     rows: Array<{
       itemId: string
       locationId: string
@@ -383,7 +392,7 @@ export class MarketPriceService {
   ) {
     if (rows.length === 0) return
 
-    const values = Prisma.join(rows.map(row => Prisma.sql`(
+    const values = PrismaRuntime.join(rows.map(row => PrismaRuntime.sql`(
       ${randomUUID()},
       ${row.itemId},
       ${row.locationId},
@@ -393,7 +402,7 @@ export class MarketPriceService {
       ${row.timestamp}
     )`))
 
-    await tx.$executeRaw(Prisma.sql`
+    await tx.$executeRaw(PrismaRuntime.sql`
       INSERT INTO "MarketPriceHistory" (
         "id",
         "itemId",
@@ -407,10 +416,10 @@ export class MarketPriceService {
     `)
   }
 
-  private async bulkUpsertResolvedPrices(tx: Prisma.TransactionClient, rows: ResolvedPriceRow[]) {
+  private async bulkUpsertResolvedPrices(tx: PrismaType.TransactionClient, rows: ResolvedPriceRow[]) {
     if (rows.length === 0) return
 
-    const values = Prisma.join(rows.map(row => Prisma.sql`(
+    const values = PrismaRuntime.join(rows.map(row => PrismaRuntime.sql`(
       ${randomUUID()},
       ${row.itemId},
       ${row.locationId},
@@ -422,7 +431,7 @@ export class MarketPriceService {
       ${row.updatedAt}
     )`))
 
-    await tx.$executeRaw(Prisma.sql`
+    await tx.$executeRaw(PrismaRuntime.sql`
       INSERT INTO "ResolvedPrice" (
         "id",
         "itemId",
@@ -473,7 +482,7 @@ export class MarketPriceService {
    * Updates ResolvedPrice based on live data or historical fallback.
    */
   private async updateResolvedPrice(
-    tx: Prisma.TransactionClient | typeof prisma,
+    tx: PrismaType.TransactionClient | typeof prisma,
     params: {
       itemId: string
       locationId: string
@@ -486,7 +495,7 @@ export class MarketPriceService {
     const { itemId, locationId, quality, sellPriceMin, buyPriceMax, updatedAt = new Date() } = params
     let sellPrice = sellPriceMin
     let sellSource = 'live'
-    let sellConfidence: PriceConfidence = PriceConfidence.HIGH
+    let sellConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
 
     // 1. Resolve Sell Price
     if (!this.isPriceValid(sellPrice)) {
@@ -503,18 +512,18 @@ export class MarketPriceService {
       if (history) {
         sellPrice = history.sellPriceMin
         sellSource = 'history'
-        sellConfidence = PriceConfidence.MEDIUM
+        sellConfidence = PriceConfidenceValues.MEDIUM
       } else {
         sellPrice = 0
         sellSource = 'none'
-        sellConfidence = PriceConfidence.LOW
+        sellConfidence = PriceConfidenceValues.LOW
       }
     }
 
     // 2. Resolve Buy Price
     let buyPrice = buyPriceMax
     let buySource = 'live'
-    let buyConfidence: PriceConfidence = PriceConfidence.HIGH
+    let buyConfidence: PriceConfidenceType = PriceConfidenceValues.HIGH
 
     if (!this.isPriceValid(buyPrice)) {
       const history = await tx.marketPriceHistory.findFirst({
@@ -530,11 +539,11 @@ export class MarketPriceService {
       if (history) {
         buyPrice = history.buyPriceMax
         buySource = 'history'
-        buyConfidence = PriceConfidence.MEDIUM
+        buyConfidence = PriceConfidenceValues.MEDIUM
       } else {
         buyPrice = 0
         buySource = 'none'
-        buyConfidence = PriceConfidence.LOW
+        buyConfidence = PriceConfidenceValues.LOW
       }
     }
 
@@ -574,11 +583,15 @@ export class MarketPriceService {
     return price > 0 && !this.INCOHERENT_PRICES.includes(price)
   }
 
-  private getLowerConfidence(c1: PriceConfidence, c2: PriceConfidence): PriceConfidence {
-    const order: PriceConfidence[] = [PriceConfidence.LOW, PriceConfidence.MEDIUM, PriceConfidence.HIGH]
+  private getLowerConfidence(c1: PriceConfidenceType, c2: PriceConfidenceType): PriceConfidenceType {
+    const order: PriceConfidenceType[] = [
+      PriceConfidenceValues.LOW,
+      PriceConfidenceValues.MEDIUM,
+      PriceConfidenceValues.HIGH,
+    ]
     const i1 = order.indexOf(c1)
     const i2 = order.indexOf(c2)
-    return order[Math.min(i1, i2)] as PriceConfidence
+    return order[Math.min(i1, i2)] as PriceConfidenceType
   }
 
   private parseSafeDate(dateStr: string | null | undefined): Date | null {

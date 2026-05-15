@@ -1,6 +1,13 @@
-import { PrismaClient } from '@prisma/client'
+import prismaClient from '@prisma/client'
+import type { PrismaClient as PrismaClientInstance } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
+
+const {
+  PrismaClient,
+  Prisma: PrismaRuntime,
+  PriceConfidence: PriceConfidenceValues,
+} = prismaClient
 
 function createPrismaClient() {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
@@ -9,13 +16,13 @@ function createPrismaClient() {
 }
 
 /** True when the client matches the generated schema (Build feature, etc.). */
-function prismaClientHasExpectedDelegates(client: PrismaClient): boolean {
-  return typeof (client as PrismaClient & { build?: { findUnique: unknown } }).build?.findUnique === 'function'
+function prismaClientHasExpectedDelegates(client: PrismaClientInstance): boolean {
+  return typeof (client as PrismaClientInstance & { build?: { findUnique: unknown } }).build?.findUnique === 'function'
 }
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClientInstance }
 
-function getPrisma(): PrismaClient {
+function getPrisma(): PrismaClientInstance {
   const cached = globalForPrisma.prisma
   // Dev HMR / prisma generate without restart can leave a stale singleton without newer delegates.
   if (process.env.NODE_ENV !== 'production' && cached && !prismaClientHasExpectedDelegates(cached)) {
@@ -39,5 +46,12 @@ function getPrisma(): PrismaClient {
 
 export const prisma = getPrisma()
 
-export * from '@prisma/client'
-export * from './bootstrap-data'
+export { PrismaRuntime, PriceConfidenceValues }
+export type * from '@prisma/client'
+export type { Prisma, PrismaClient, PriceConfidence } from '@prisma/client'
+export {
+  DEFAULT_LOCATIONS,
+  DEFAULT_RETURN_RATES,
+  DEFAULT_SYSTEM_CONFIGS,
+  ensureBootstrapData,
+} from './bootstrap-data'

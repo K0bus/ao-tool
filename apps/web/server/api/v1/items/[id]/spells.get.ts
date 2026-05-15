@@ -75,6 +75,7 @@ export default defineEventHandler(async (event) => {
         energyCost: is.spell.energyCost,
         range: is.spell.range,
         name: is.spell.localizations[0]?.name ?? is.spell.id,
+        description: is.spell.localizations[0]?.description ?? null,
       },
     })),
   }

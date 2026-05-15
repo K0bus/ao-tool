@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { requireAdmin } from '~/server/utils/guards'
-import { prisma, Prisma } from '~/server/utils/prisma'
+import { prisma, PrismaRuntime } from '~/server/utils/prisma'
 import { cacheInvalidate } from '~/server/utils/cache'
 
 const schema = z.object({
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
       action: 'system.config.update',
       targetType: 'SystemConfig',
       targetId: body.data.key,
-      before: existing.value === null ? Prisma.JsonNull : existing.value,
+      before: existing.value === null ? PrismaRuntime.JsonNull : existing.value,
       after: body.data.value,
     },
   })

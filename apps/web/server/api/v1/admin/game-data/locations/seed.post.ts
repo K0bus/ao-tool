@@ -1,6 +1,6 @@
 import { requireAdmin } from '~/server/utils/guards'
 import { prisma } from '~/server/utils/prisma'
-import { DEFAULT_LOCATIONS } from '@albion-tool/database/src/bootstrap-data'
+import { DEFAULT_LOCATIONS } from '@albion-tool/database'
 
 export default defineEventHandler(async (event) => {
   const admin = requireAdmin(event)

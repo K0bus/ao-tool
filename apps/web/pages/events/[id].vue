@@ -197,7 +197,7 @@ const victimInventory = computed(() => {
   if (!event.value?.Victim.Inventory) return []
   const names = itemNamesMap.value
   return event.value.Victim.Inventory
-    .filter(item => !!item && !!item.Type)
+    .filter((item): item is NonNullable<typeof item> => !!item && !!item.Type)
     .map((item, idx) => {
       const type = item.Type
       const t = itemTier(type)

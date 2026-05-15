@@ -26,6 +26,7 @@ export interface SelectedSpell {
   category?: string | null
   uiType?: string | null
   spellKind: string
+  description?: string | null
 }
 
 export interface SpellOption {
