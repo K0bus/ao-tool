@@ -5,6 +5,9 @@ import { defineConfig } from 'prisma/config'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+import dotenv from 'dotenv'
+dotenv.config({ path: path.join(__dirname, '../../.env') })
+
 // En Prisma 7, la CLI exige une URL dans le config.
 // Pas de fallback ici pour forcer Prisma à utiliser DATABASE_URL de l'environnement.
 const DATABASE_URL = process.env.DATABASE_URL
