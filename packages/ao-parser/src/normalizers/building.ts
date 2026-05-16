@@ -37,7 +37,7 @@ export function normalizeBuilding(
   const description = localizations['EN-US']?.[descTag] || (raw['@descriptionlocatag'] ? localizations['EN-US']?.[raw['@descriptionlocatag']] : undefined)
   const capability = localizations['EN-US']?.[capTag] || undefined
   
-  const requirements = []
+  const requirements: Array<{ uniqueName: string; count: number }> = []
   if (raw.craftingrequirements?.craftresource) {
     const resources = Array.isArray(raw.craftingrequirements.craftresource) 
       ? raw.craftingrequirements.craftresource 
@@ -51,6 +51,33 @@ export function normalizeBuilding(
     }
   }
 
+  const permittedItemIds: string[] = []
+  
+  // 1. Extract from farmableitems (Farming buildings)
+  if (raw.farmableitems?.farmableitem) {
+    const items = Array.isArray(raw.farmableitems.farmableitem)
+      ? raw.farmableitems.farmableitem
+      : [raw.farmableitems.farmableitem]
+    
+    for (const item of items) {
+      if (item['@uniquename']) {
+        permittedItemIds.push(item['@uniquename'])
+      }
+    }
+  }
+
+  // 2. Extract from craftingitemlist (Crafting stations)
+  if (raw.craftingitemlist?.craftitem) {
+    const items = Array.isArray(raw.craftingitemlist.craftitem)
+      ? raw.craftingitemlist.craftitem
+      : [raw.craftingitemlist.craftitem]
+    
+    for (const item of items) {
+      if (item['@uniquename']) {
+        permittedItemIds.push(item['@uniquename'])
+      }
+    }
+  }
 
   return {
     uniqueName,
@@ -70,6 +97,7 @@ export function normalizeBuilding(
     nextTierBuildingId: raw['@upgradeableto'],
     uiSpriteName: raw['@uispritename'],
     uiBuildMenuTexture: raw['@uibuildmenutexture'],
+    permittedItemIds: permittedItemIds.length > 0 ? [...new Set(permittedItemIds)] : undefined,
     requirements
   }
 }

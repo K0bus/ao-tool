@@ -23,6 +23,7 @@ const schema = z.object({
   excludeShopSubcategories: z.string().optional(), // comma-separated
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(96).default(48),
+  stationId: z.string().optional(),
 });
 
 const DEFAULT_LOCALE = "FR-FR";
@@ -56,9 +57,16 @@ export default defineEventHandler(async (event) => {
     excludeShopSubcategories,
     cursor,
     limit,
+    stationId,
   } = query.data;
 
   const where: Prisma.ItemWhereInput = {};
+ 
+  if (stationId) {
+    where.permittedInStations = {
+      some: { stationId }
+    }
+  }
 
   // Tier filter: single or multi (tiers takes precedence)
   if (tiers) {

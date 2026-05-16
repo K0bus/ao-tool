@@ -223,6 +223,7 @@ function buildVariant(
   override: RawEnchantment | undefined,
   localizations: RawLocalizationTable,
   itemIndex: Map<string, RawBaseItem>,
+  lootMap: Map<string, string>,
 ): NormalizedItem {
   const get = (key: string): string | undefined => {
     const fk = `@${key}`
@@ -327,6 +328,11 @@ function buildVariant(
     productProductionTime: Array.isArray(products?.product) ? parseInt(products.product[0]?.['@productiontime'] ?? '0', 10) : (products?.product?.['@productiontime'] ? parseInt(products.product['@productiontime'], 10) : undefined),
     favoriteFoodItemId: consumption?.food?.acceptedfood?.['@favorite'],
     nutritionMax: consumption?.food?.['@nutritionmax'] ? parseFloat(consumption.food['@nutritionmax']) : undefined,
+
+    harvestResultItemId: harvest?.['@lootlist'] ? lootMap.get(harvest['@lootlist']) : undefined,
+    productResultItemId: (Array.isArray(products?.product) ? products.product[0]?.['@lootlist'] : products?.product?.['@lootlist']) 
+      ? lootMap.get(Array.isArray(products?.product) ? products.product[0]?.['@lootlist'] : products?.product?.['@lootlist']) 
+      : undefined,
   }
 }
 
@@ -337,6 +343,7 @@ export function normalizeItem(
   raw: RawBaseItem,
   localizations: RawLocalizationTable,
   itemIndex: Map<string, RawBaseItem> = new Map([[raw['@uniquename'], raw]]),
+  lootMap: Map<string, string>,
 ): NormalizedItem[] {
   if (!raw['@uniquename']) return []
 
@@ -349,7 +356,7 @@ export function normalizeItem(
 
   const results: NormalizedItem[] = []
 
-  results.push(buildVariant(baseUniqueName, baseTier, baseEnchantLevel, raw, undefined, localizations, itemIndex))
+  results.push(buildVariant(baseUniqueName, baseTier, baseEnchantLevel, raw, undefined, localizations, itemIndex, lootMap))
 
   const enchantments = raw.enchantments?.enchantment
   if (enchantments) {
@@ -362,7 +369,7 @@ export function normalizeItem(
       const enchUniqueName = ench['@uniquename'] ?? `${baseUniqueName}@${enchLevel}`
       const enchTier = ench['@tier'] ? parseInt(ench['@tier'], 10) : baseTier
 
-      results.push(buildVariant(enchUniqueName, enchTier, enchLevel, raw, ench, localizations, itemIndex))
+      results.push(buildVariant(enchUniqueName, enchTier, enchLevel, raw, ench, localizations, itemIndex, lootMap))
     }
   }
 

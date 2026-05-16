@@ -15,9 +15,12 @@ function createPrismaClient() {
   return new PrismaClient({ adapter })
 }
 
-/** True when the client matches the generated schema (Build feature, etc.). */
+/** True when the client matches the generated schema. */
 function prismaClientHasExpectedDelegates(client: PrismaClientInstance): boolean {
-  return typeof (client as PrismaClientInstance & { build?: { findUnique: unknown } }).build?.findUnique === 'function'
+  const c = client as any
+  return typeof c.build?.findUnique === 'function' && 
+         typeof c.craftingStation?.findUnique === 'function' &&
+         typeof c.item?.findUnique === 'function'
 }
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClientInstance }

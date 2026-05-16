@@ -1,4 +1,4 @@
-import type { RawBaseItem, RawItemsJson, RawLocalizationTable, RawSpellsJson, NormalizedSpell, RawBuildingsJson, RawBuilding } from './types'
+import type { RawBaseItem, RawItemsJson, RawLocalizationTable, RawSpellsJson, NormalizedSpell, RawBuildingsJson, RawBuilding, RawLootItem } from './types'
 import { normalizeSpell } from './normalizers/spell'
 
 // Source canonique : items.json (pas /formatted/ qui est une version appauvrie)
@@ -9,6 +9,7 @@ const URLS = {
   localizations: `${AO_DATA_BASE}/localization.json`,
   spells: `${AO_DATA_BASE}/spells.json`,
   buildings: `${AO_DATA_BASE}/buildings.json`,
+  loot: `${AO_DATA_BASE}/loot.json`,
 } as const
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -90,26 +91,41 @@ export interface AoRawData {
   items: RawBaseItem[]
   localizations: RawLocalizationTable
   buildings: Array<RawBuilding & { category: string }>
+  loot: Map<string, string> // LootList Name -> First Item UniqueName
 }
 
 export async function fetchAoData(): Promise<AoRawData> {
   console.log('Fetching ao-bin-dumps data...')
 
-  const [rawItemsJson, rawBuildingsJson, rawLocalizations] = await Promise.all([
+  const [rawItemsJson, rawBuildingsJson, rawLocalizations, rawLootJson] = await Promise.all([
     fetchJson<RawItemsJson>(URLS.items),
     fetchJson<RawBuildingsJson>(URLS.buildings).catch(() => ({ buildings: {} })),
     fetchJson<TmxLocalization>(URLS.localizations).catch(() => {
       console.warn('Could not fetch localizations, continuing without')
       return null
     }),
+    fetchJson<any>(URLS.loot).catch(() => ({ lootlist: [] })),
   ])
 
   const items = flattenItemsJson(rawItemsJson)
   const buildings = flattenBuildingsJson(rawBuildingsJson as RawBuildingsJson)
   const localizations = rawLocalizations ? parseTmx(rawLocalizations) : {}
 
-  console.log(`Fetched ${items.length} base items, ${buildings.length} buildings, ${Object.keys(localizations).length} locales`)
-  return { items, buildings, localizations }
+  // Parse loot
+  const lootMap = new Map<string, string>()
+  const rawLootList = rawLootJson?.LootDefinition?.Lootlist
+  const lootLists = Array.isArray(rawLootList) ? rawLootList : (rawLootList ? [rawLootList] : [])
+  for (const list of lootLists) {
+    if (!list['@name']) continue
+    const loots = Array.isArray(list.Item) ? list.Item : (list.Item ? [list.Item] : [])
+    const firstItem = loots.find((l: RawLootItem) => l['@type'])
+    if (firstItem) {
+      lootMap.set(list['@name'], firstItem['@type'])
+    }
+  }
+
+  console.log(`Fetched ${items.length} base items, ${buildings.length} buildings, ${lootMap.size} loot lists, ${Object.keys(localizations).length} locales`)
+  return { items, buildings, localizations, loot: lootMap }
 }
 
 export async function fetchSpells(localizations: RawLocalizationTable): Promise<NormalizedSpell[]> {

@@ -31,20 +31,32 @@ export class IslandEngine {
       const resourceProfits = await Promise.all(buildingInstance.resources.map(async (resource) => {
         if (!resource.item) return null
 
-        const marketPrice = await prisma.marketPrice.findFirst({
-          where: { itemId: resource.itemId, locationId: parentCityId, quality: 1 }
-        })
+        const resultItemId = resource.item.harvestResultItemId || 
+                           resource.item.productResultItemId || 
+                           resource.item.grownItemUniqueName || 
+                           resource.itemId.replace('_SEED', '')
 
-        const sellPrice = marketPrice?.sellPriceMin ?? 0
-        const buyPrice = marketPrice?.buyPriceMax ?? 0
+        const [resultPriceData, resourcePriceData] = await Promise.all([
+          prisma.marketPrice.findFirst({
+            where: { itemId: resultItemId, locationId: parentCityId, quality: 1 }
+          }),
+          prisma.marketPrice.findFirst({
+            where: { itemId: resource.itemId, locationId: parentCityId, quality: 1 }
+          })
+        ])
+
+        const resultSellPrice = resultPriceData?.sellPriceMin ?? 0
+        const resourceBuyPrice = resourcePriceData?.buyPriceMax ?? 0
 
         const baseYield = 1.0
         const bonusYield = resource.isFocusUsed ? FOCUS_EFFICIENCY_BONUS : 0
         const totalYield = baseYield + bonusYield
 
-        const revenue = (sellPrice * totalYield) * resource.count
+        // Revenue is what we SELL (the results)
+        const revenue = (resultSellPrice * totalYield) * resource.count
         const tax = revenue * TAX_RATE
-        const cost = buyPrice * resource.count
+        // Cost is what we BOUGHT (the seeds/babies)
+        const cost = resourceBuyPrice * resource.count
         const netProfit = revenue - tax - cost
 
         return {

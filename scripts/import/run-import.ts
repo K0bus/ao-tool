@@ -100,7 +100,7 @@ export async function runImport(
     await report('fetching', 0, 0)
     await logInfo('Fetching ao-bin-dumps data (items.json)...')
 
-    const [{ items: rawItems, buildings: rawBuildings, localizations }, sourceCommit] = await Promise.all([
+    const [{ items: rawItems, buildings: rawBuildings, localizations, loot: lootMap }, sourceCommit] = await Promise.all([
       fetchAoData(),
       fetchLatestCommit(),
     ])
@@ -121,7 +121,7 @@ export async function runImport(
     const normalized: NormalizedItem[] = []
     for (const raw of rawItems) {
       try {
-        normalized.push(...normalizeItem(raw, localizations, itemIndex))
+        normalized.push(...normalizeItem(raw, localizations, itemIndex, lootMap))
       } catch {
         itemsFailed++
       }
@@ -259,6 +259,8 @@ export async function runImport(
               productProductionTime: item.productProductionTime,
               favoriteFoodItemId: item.favoriteFoodItemId,
               nutritionMax: item.nutritionMax,
+              harvestResultItemId: item.harvestResultItemId,
+              productResultItemId: item.productResultItemId,
             },
             update: {
               tier: item.tier,
@@ -288,6 +290,8 @@ export async function runImport(
               productProductionTime: item.productProductionTime,
               favoriteFoodItemId: item.favoriteFoodItemId,
               nutritionMax: item.nutritionMax,
+              harvestResultItemId: item.harvestResultItemId,
+              productResultItemId: item.productResultItemId,
             },
           })
 
@@ -402,6 +406,27 @@ export async function runImport(
             count: r.count,
           })),
         })
+      }
+
+      if (b.permittedItemIds && b.permittedItemIds.length > 0) {
+        await prisma.stationItem.deleteMany({ where: { stationId: b.uniqueName } })
+        
+        const existingItems = await prisma.item.findMany({
+          where: { id: { in: b.permittedItemIds } },
+          select: { id: true }
+        })
+        const existingItemIds = new Set(existingItems.map(i => i.id))
+        const validItemIds = b.permittedItemIds.filter(id => existingItemIds.has(id))
+
+        if (validItemIds.length > 0) {
+          await prisma.stationItem.createMany({
+            data: validItemIds.map(itemId => ({
+              stationId: b.uniqueName,
+              itemId
+            })),
+            skipDuplicates: true
+          })
+        }
       }
     }
     await report('buildings', rawBuildings.length, rawBuildings.length)

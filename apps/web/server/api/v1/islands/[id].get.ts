@@ -17,7 +17,26 @@ export default defineEventHandler(async (event) => {
           resources: {
             include: {
               item: {
-                include: {
+                select: {
+                  id: true,
+                  uniqueName: true,
+                  grownItemUniqueName: true,
+                  harvestResultItemId: true,
+                  productResultItemId: true,
+                  harvestResultItem: {
+                    select: {
+                      uniqueName: true,
+                      iconUrl: true,
+                      localizations: { where: { locale: 'FR-FR' }, take: 1 }
+                    }
+                  },
+                  productResultItem: {
+                    select: {
+                      uniqueName: true,
+                      iconUrl: true,
+                      localizations: { where: { locale: 'FR-FR' }, take: 1 }
+                    }
+                  },
                   localizations: { where: { locale: 'FR-FR' }, take: 1 }
                 }
               }

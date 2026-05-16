@@ -297,6 +297,8 @@ export interface NormalizedItem {
   productProductionTime?: number
   favoriteFoodItemId?: string
   nutritionMax?: number
+  harvestResultItemId?: string
+  productResultItemId?: string
 }
 
 export interface NormalizedBuilding {
@@ -313,8 +315,28 @@ export interface NormalizedBuilding {
   nextTierBuildingId?: string
   uiSpriteName?: string
   uiBuildMenuTexture?: string
+  permittedItemIds?: string[]
   requirements: Array<{
     uniqueName: string
     count: number
   }>
+}
+
+// ─── Types bruts pour loot.json ──────────────────────────────────────────
+
+export interface RawLootItem {
+  '@type': string
+  '@chance'?: string
+  '@amount'?: string
+}
+
+export interface RawLootList {
+  '@name': string
+  Item?: RawLootItem | RawLootItem[]
+}
+
+export interface RawLootJson {
+  LootDefinition?: {
+    Lootlist: RawLootList | RawLootList[]
+  }
 }

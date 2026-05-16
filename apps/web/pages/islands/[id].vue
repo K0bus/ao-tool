@@ -52,33 +52,39 @@
             </div>
             
             <div class="plot-content">
-               <div class="b-visual-main">
+               <div class="b-mini-icon">
                   <img v-if="building.buildingIcon" :src="building.buildingIcon" class="b-icon-img" />
                   <div v-else class="b-placeholder">T{{ building.tier }}</div>
                </div>
                
-               <div class="b-status-area">
-                  <!-- Resources List (Summary) -->
-                  <div v-if="building.resources.length > 0" class="mini-resources">
-                     <div v-for="res in building.resources.slice(0, 3)" :key="res.id" class="mini-res">
-                        <AoItemImage :unique-name="res.itemId" size="xs" />
-                        <span>x{{ res.count }}</span>
+               <div class="plot-stats-row">
+                  <!-- Expected Results -->
+                  <div v-if="building.resources.length > 0" class="expected-yield">
+                     <div v-for="res in building.resources.slice(0, 1)" :key="res.id" class="yield-item">
+                        <AoItemImage :unique-name="res.item?.harvestResultItem?.uniqueName || res.item?.productResultItem?.uniqueName || res.item?.grownItemUniqueName || res.itemId.replace('_SEED', '')" />
+                        <span class="yield-val">x{{ Math.round(res.count * (res.isFocusUsed ? 1.5 : 1)) }}</span>
                      </div>
-                     <span v-if="building.resources.length > 3" class="t-dim">...</span>
+                     <div v-if="building.resources[0]?.item?.productResultItem" class="yield-item secondary">
+                        <AoItemImage :unique-name="building.resources[0].item.productResultItem.uniqueName" />
+                        <span class="yield-val small">Product</span>
+                     </div>
                   </div>
-                  <div v-else class="t-dim" style="font-size: 11px">Aucune production</div>
-
-                  <div v-if="building.nutrition !== null" class="nut-status">
-                     <div class="nut-bar"><div class="nut-fill" :style="{ width: building.nutrition + '%' }"></div></div>
-                     <span style="font-size: 9px">{{ building.nutrition }}% nut.</span>
+                  
+                  <div class="profit-estimate">
+                     <span class="t-success" v-if="getBuildingProfit(building.id) > 0">
+                       +{{ Math.round(getBuildingProfit(building.id)).toLocaleString() }}
+                       <span class="silver-tag">S</span>
+                     </span>
+                     <span class="t-dim" v-else>0 S</span>
                   </div>
                </div>
             </div>
 
             <div class="plot-footer">
-               <span class="t-success" v-if="getBuildingProfit(building.id) > 0">
-                 +{{ Math.round(getBuildingProfit(building.id)).toLocaleString() }} silver
-               </span>
+               <div class="nut-status" v-if="building.nutrition !== null">
+                  <div class="nut-bar"><div class="nut-fill" :style="{ width: building.nutrition + '%' }"></div></div>
+                  <span style="font-size: 9px">{{ building.nutrition }}%</span>
+               </div>
                <span class="t-gold" v-else>Gérer →</span>
             </div>
           </div>
@@ -175,7 +181,7 @@
                    <input v-model="itemSearch" type="text" class="ds-input" placeholder="Ex: Carottes..." @input="onItemSearch" />
                    <div v-if="searchResults.length > 0" class="inline-results">
                       <div v-for="item in searchResults" :key="item.uniqueName" class="inline-res-item" @click="addResource(item)">
-                         <AoItemImage :unique-name="item.uniqueName" size="xs" />
+                         <AoItemImage :unique-name="item.uniqueName" />
                          <span>{{ item.name }} (T{{ item.tier }})</span>
                       </div>
                    </div>
@@ -338,7 +344,15 @@ async function onItemSearch() {
   searchTimeout = setTimeout(async () => {
     searchingItems.value = true
     try {
-      const resp = await $fetch('/api/v1/items', { params: { itemType: 'FARMABLE', q: itemSearch.value, limit: 5 } })
+      const params: any = { q: itemSearch.value, limit: 10 }
+      
+      if (activeBuilding.value?.building?.id) {
+        params.stationId = activeBuilding.value.building.id
+      } else {
+        params.itemType = 'FARMABLE'
+      }
+
+      const resp = await $fetch('/api/v1/items', { params })
       searchResults.value = (resp as any).data
     } catch (err) {
       console.error(err)
@@ -433,18 +447,24 @@ definePageMeta({ layout: 'default' })
 .plot-header { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
 .plot-type { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-2); font-weight: 700; }
 .plot-tier { font-size: 11px; }
-.plot-content { flex: 1; display: flex; gap: 12px; align-items: center; }
-.b-visual-main { width: 50px; height: 50px; background: rgba(0,0,0,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.plot-content { flex: 1; display: flex; gap: 12px; align-items: center; min-height: 48px; }
+.b-mini-icon { width: 36px; height: 36px; background: rgba(0,0,0,0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .b-icon-img { width: 100%; height: 100%; object-fit: contain; }
-.b-placeholder { color: var(--gold); font-weight: 700; }
-.b-status-area { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-.mini-resources { display: flex; gap: 4px; flex-wrap: wrap; }
-.mini-res { display: flex; align-items: center; gap: 2px; font-size: 9px; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 4px; }
-.nut-status { display: flex; align-items: center; gap: 6px; }
-.nut-bar, .nut-bar-lg { flex: 1; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; }
-.nut-bar-lg { height: 8px; }
+.b-placeholder { color: var(--gold); font-weight: 700; font-size: 11px; }
+
+.plot-stats-row { flex: 1; display: flex; justify-content: space-between; align-items: center; }
+.expected-yield { display: flex; align-items: center; gap: 8px; }
+.yield-item { display: flex; align-items: center; gap: 4px; }
+.yield-item img { width: 24px; height: 24px; }
+.yield-val { font-size: 13px; font-weight: 700; color: var(--text-1); }
+
+.profit-estimate { text-align: right; font-family: var(--font-mono); font-size: 13px; }
+.silver-tag { font-size: 10px; color: var(--gold); border: 1px solid var(--gold); padding: 0 3px; border-radius: 3px; margin-left: 2px; }
+
+.plot-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 11px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.nut-status { display: flex; align-items: center; gap: 8px; flex: 1; max-width: 120px; }
+.nut-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
 .nut-fill { height: 100%; background: var(--info); border-radius: 2px; }
-.plot-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 11px; font-weight: 600; text-align: right; }
 .is-empty { border-style: dashed; opacity: 0.6; justify-content: center; align-items: center; }
 .empty-plot { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-3); }
 
@@ -470,7 +490,8 @@ definePageMeta({ layout: 'default' })
 .res-m-status { font-size: 11px; color: var(--text-3); }
 .add-res-inline { margin-top: 12px; padding: 12px; }
 .inline-results { margin-top: 8px; background: var(--bg-1); border-radius: 4px; overflow: hidden; }
-.inline-res-item { padding: 6px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.inline-res-item { padding: 4px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; }
+.inline-res-item img { width: 28px !important; height: 28px !important; }
 .inline-res-item:hover { background: rgba(255,255,255,0.05); }
 
 /* Colors */

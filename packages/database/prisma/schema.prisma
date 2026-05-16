@@ -320,11 +320,20 @@ model Item {
   grownItemUniqueName String? // Unique name of the grown animal
   offspringChance     Float?  // Chance to get offspring
   productLootList     String? // Loot list ID for products (eggs, milk)
-  productProductionTime Int?  // Time in seconds for production
+  productProductionTime Int?   // Time to produce (seconds)
+
+  harvestResultItemId String?
+  harvestResultItem   Item?    @relation("HarvestResult", fields: [harvestResultItemId], references: [id])
+  harvestResultFor    Item[]   @relation("HarvestResult")
+
+  productResultItemId String?
+  productResultItem   Item?    @relation("ProductResult", fields: [productResultItemId], references: [id])
+  productResultFor    Item[]   @relation("ProductResult")
   favoriteFoodItemId  String? // Item ID of favorite food
   nutritionMax        Float?  // Max nutrition for animals
   
   favoriteFoodFor      CraftingStation[]     @relation("FavoriteDish")
+  permittedInStations  StationItem[]
   buildingRequirements BuildingRequirement[]
 
   maxQuality      Int      @default(1)
@@ -382,6 +391,8 @@ model CraftingStation {
   uiSpriteName       String?
   uiBuildMenuTexture String?
 
+  permittedItems    StationItem[]
+  
   nextTierBuildingId String?
   
   nextTierBuilding   CraftingStation?    @relation("BuildingEvolution", fields: [nextTierBuildingId], references: [id])
@@ -396,6 +407,17 @@ model CraftingStation {
 
   @@index([type])
   @@index([favoriteDishItemId])
+}
+
+model StationItem {
+  stationId String
+  itemId    String
+  station   CraftingStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  item      Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([stationId, itemId])
+  @@index([stationId])
+  @@index([itemId])
 }
 
 model BuildingRequirement {
