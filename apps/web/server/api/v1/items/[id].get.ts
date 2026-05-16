@@ -126,6 +126,15 @@ export default defineEventHandler(async (event) => {
           }
         : null,
       cityBonuses: raw.cityBonuses,
+      growTime: raw.growTime,
+      harvestLootList: raw.harvestLootList,
+      harvestSeedChance: raw.harvestSeedChance,
+      grownItemUniqueName: raw.grownItemUniqueName,
+      offspringChance: raw.offspringChance,
+      productLootList: raw.productLootList,
+      productProductionTime: raw.productProductionTime,
+      favoriteFoodItemId: raw.favoriteFoodItemId,
+      nutritionMax: raw.nutritionMax,
     };
   });
 

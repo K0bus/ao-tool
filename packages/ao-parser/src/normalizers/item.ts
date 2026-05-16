@@ -275,12 +275,24 @@ function buildVariant(
   const baseItemUniqueName =
     enchantmentLevel > 0 && hasEnchantSuffix ? uniqueName.replace(/@\d+$/, '') : undefined
 
-  const hashSource = { uniqueName, tier, enchantmentLevel, maxQuality, craftingReqs, craftSpells, stats }
-
   const harvest = override?.harvest ?? base.harvest
   const grownitem = override?.grownitem ?? base.grownitem
   const products = override?.products ?? base.products
   const consumption = override?.consumption ?? base.consumption
+
+  const hashSource = { 
+    uniqueName, 
+    tier, 
+    enchantmentLevel, 
+    maxQuality, 
+    craftingReqs, 
+    craftSpells, 
+    stats,
+    harvest,
+    grownitem,
+    products,
+    consumption
+  }
 
   return {
     uniqueName,
