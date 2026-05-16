@@ -15,6 +15,7 @@ export type SessionUser = {
   username: string
   role: string
   status: string
+  avatar?: string | null
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -52,7 +53,7 @@ export async function getSessionUser(token: string): Promise<SessionUser | null>
     where: { token },
     include: {
       user: {
-        select: { id: true, email: true, username: true, role: true, status: true },
+        select: { id: true, email: true, username: true, role: true, status: true, avatar: true },
       },
     },
   })

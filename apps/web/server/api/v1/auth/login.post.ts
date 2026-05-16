@@ -36,6 +36,7 @@ export default defineEventHandler(async (event) => {
       passwordHash: true,
       role: true,
       status: true,
+      avatar: true,
     },
   })
 
@@ -80,6 +81,7 @@ export default defineEventHandler(async (event) => {
       username: user.username,
       role: user.role,
       status: user.status,
+      avatar: user.avatar,
     },
   }
 })

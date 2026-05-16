@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { prisma } from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/guards'
 import { redis } from '~/server/utils/redis'
+import { getSessionToken } from '~/server/utils/auth'
 
 const schema = z.object({
   username: z
@@ -10,6 +11,7 @@ const schema = z.object({
     .max(32, 'Le nom d\'utilisateur ne doit pas dépasser 32 caractères')
     .regex(/^[a-zA-Z0-9_-]+$/, 'Le nom d\'utilisateur ne peut contenir que des lettres, chiffres, _ et -'),
   email: z.string().email('Adresse e-mail invalide'),
+  avatar: z.string().optional().nullable(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -24,7 +26,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { username, email } = body.data
+  const { username, email, avatar } = body.data
 
   // Check for conflicts (excluding the current user)
   const existing = await prisma.user.findFirst({
@@ -52,19 +54,16 @@ export default defineEventHandler(async (event) => {
     data: {
       email: email.toLowerCase(),
       username,
+      avatar,
     },
-    select: { id: true, email: true, username: true, role: true, status: true },
+    select: { id: true, email: true, username: true, role: true, status: true, avatar: true },
   })
 
   // Invalidate session cache in Redis
-  // We don't have the token here easily from the event context unless we look it up,
-  // but we can just let it expire (5 mins) or we could try to find all sessions.
-  // getSessionUser uses `session:${token}` as key.
-  // For now, let's just update the user. The frontend will re-fetch /auth/me.
-  
-  // Actually, we should probably clear the cache for all sessions of this user if possible,
-  // but we don't have a user-to-sessions mapping in redis.
-  // Let's just return the updated data.
+  const token = getSessionToken(event)
+  if (token) {
+    await redis.del(`session:${token}`).catch(() => {})
+  }
 
   return { data: updatedUser }
 })

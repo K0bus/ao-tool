@@ -47,6 +47,19 @@
                 </div>
                 <input v-model="profileForm.email" type="email" class="ds-input" style="width:240px" placeholder="Email" />
               </div>
+              <div class="sp-row">
+                <div class="sp-row-info">
+                  <div class="sp-row-label">Avatar</div>
+                  <div class="sp-row-sub">Choisissez une image pour vous représenter.</div>
+                </div>
+                <div class="avatar-current-wrap">
+                  <div class="avatar-preview">
+                    <img v-if="profileForm.avatar" :src="`/game_assets/gui/avatars/${profileForm.avatar}`" alt="Avatar" />
+                    <div v-else class="avatar-placeholder">?</div>
+                  </div>
+                  <button class="ds-btn ghost sm" @click="openAvatarSelector">Changer l'avatar</button>
+                </div>
+              </div>
               <div style="display:flex;justify-content:flex-end;margin-top:8px">
                 <button class="ds-btn primary sm" :disabled="savingProfile" @click="saveProfile">
                   {{ savingProfile ? 'Enregistrement...' : 'Mettre à jour le profil' }}
@@ -278,6 +291,37 @@
         {{ feedback.message }}
       </div>
     </Transition>
+
+    <!-- Avatar Selector Modal -->
+    <Transition name="fade">
+      <div v-if="showAvatarSelector" class="modal-overlay" @click.self="showAvatarSelector = false">
+        <div class="modal panel avatar-modal">
+          <div class="modal-head">
+            <h3>Choisir un avatar</h3>
+            <button class="close-btn" @click="showAvatarSelector = false">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="search-bar">
+              <input v-model="avatarSearch" type="text" class="ds-input" placeholder="Rechercher un avatar..." autofocus />
+            </div>
+            <div v-if="loadingAvatars" class="avatars-loading">Chargement...</div>
+            <div v-else class="avatars-grid">
+              <div
+                v-for="a in filteredAvatars"
+                :key="a"
+                :class="['avatar-item', profileForm.avatar === a && 'active']"
+                @click="selectAvatar(a)"
+              >
+                <img :src="`/game_assets/gui/avatars/${a}`" :alt="a" loading="lazy" />
+                <span class="avatar-name">{{ a.replace('.png', '') }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -295,9 +339,18 @@ const sections = [
 ]
 
 const profileForm = ref({
-  username: auth.user.value?.username ?? '',
-  email: auth.user.value?.email ?? '',
+  username: '',
+  email: '',
+  avatar: '',
 })
+
+watch(() => auth.user.value, (u) => {
+  if (u) {
+    profileForm.value.username = u.username
+    profileForm.value.email = u.email
+    profileForm.value.avatar = u.avatar ?? ''
+  }
+}, { immediate: true })
 
 const passwordForm = ref({
   currentPassword: '',
@@ -316,6 +369,37 @@ function setFeedback(type: 'success' | 'error', message: string) {
   }, 3000)
 }
 
+const showAvatarSelector = ref(false)
+const allAvatars = ref<string[]>([])
+const loadingAvatars = ref(false)
+const avatarSearch = ref('')
+
+const filteredAvatars = computed(() => {
+  if (!avatarSearch.value) return allAvatars.value
+  const s = avatarSearch.value.toLowerCase()
+  return allAvatars.value.filter(a => a.toLowerCase().includes(s))
+})
+
+async function openAvatarSelector() {
+  showAvatarSelector.value = true
+  if (allAvatars.value.length === 0) {
+    loadingAvatars.value = true
+    try {
+      const res = await $fetch<{ data: string[] }>('/api/v1/me/avatars')
+      allAvatars.value = res.data
+    } catch (err) {
+      console.error('Failed to load avatars', err)
+    } finally {
+      loadingAvatars.value = false
+    }
+  }
+}
+
+function selectAvatar(filename: string) {
+  profileForm.value.avatar = filename
+  showAvatarSelector.value = false
+}
+
 async function saveProfile() {
   savingProfile.value = true
   try {
@@ -324,6 +408,7 @@ async function saveProfile() {
       body: {
         username: profileForm.value.username,
         email: profileForm.value.email,
+        avatar: profileForm.value.avatar,
       },
     })
     await auth.fetchUser()
@@ -440,5 +525,151 @@ function save() {
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
   transform: translateY(20px);
+}
+
+/* Avatar Styles */
+.avatar-current-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  background: var(--panel-bg-lighter);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  font-size: 24px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.avatar-modal {
+  width: 100%;
+  max-width: 800px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+}
+
+.close-btn:hover {
+  background: var(--panel-bg-lighter);
+  color: var(--text-1);
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.search-bar input {
+  width: 100%;
+}
+
+.avatars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.avatar-item {
+  background: var(--panel-bg-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.avatar-item:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+  background: var(--panel-bg-lightest);
+}
+
+.avatar-item.active {
+  border-color: var(--gold);
+  background: var(--gold-dark);
+}
+
+.avatar-item img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.avatar-name {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  word-break: break-all;
+  max-width: 100%;
+}
+
+.avatars-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
 }
 </style>

@@ -7,6 +7,7 @@ export interface AuthUser {
   username: string
   role: UserRole
   status: UserStatus
+  avatar?: string | null
 }
 
 export interface UserSummary extends AuthUser {

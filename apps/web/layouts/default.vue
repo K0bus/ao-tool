@@ -89,7 +89,8 @@
             @click.stop="toggleUserMenu"
           >
             <span class="nav-avatar" aria-hidden="true">
-              {{ (auth.user.value?.username?.[0] ?? '?').toUpperCase() }}
+              <img v-if="auth.user.value?.avatar" :src="`/game_assets/gui/avatars/${auth.user.value.avatar}`" alt="" class="nav-avatar-img" />
+              <template v-else>{{ (auth.user.value?.username?.[0] ?? '?').toUpperCase() }}</template>
             </span>
             <svg class="nav-user-caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
@@ -350,5 +351,19 @@ onMounted(() => {
 .nav-login-btn {
   margin-left: 4px;
   white-space: nowrap;
+}
+
+.nav-avatar {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(1.8);
 }
 </style>
