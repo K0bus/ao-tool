@@ -378,6 +378,9 @@ model CraftingStation {
   favoriteDishItemId String?
   favoriteDishBonus  Float?
   
+  uiSpriteName       String?
+  uiBuildMenuTexture String?
+
   nextTierBuildingId String?
   
   nextTierBuilding   CraftingStation?    @relation("BuildingEvolution", fields: [nextTierBuildingId], references: [id])

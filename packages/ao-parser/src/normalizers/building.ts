@@ -59,11 +59,17 @@ export function normalizeBuilding(
     tier,
     description,
     capability,
-    iconUrl: raw['@iconSprite'] ? `https://render.albiononline.com/v1/item/${raw['@iconSprite']}.png` : undefined,
+    iconUrl: raw['@iconSprite'] 
+      ? (raw['@iconSprite'].startsWith('building_') 
+          ? `/game_assets/gui/buildingicons/${raw['@iconSprite']}.png` 
+          : `https://render.albiononline.com/v1/item/${raw['@iconSprite']}.png`)
+      : undefined,
     nutritionStorage: raw['@nutritionstorage'] ? parseFloat(raw['@nutritionstorage']) : undefined,
     favoriteDishItemId: raw.favoritedish?.dish?.['@item'],
     favoriteDishBonus: raw.favoritedish?.dish?.['@bonus'] ? parseFloat(raw.favoritedish.dish['@bonus']) : undefined,
     nextTierBuildingId: raw['@upgradeableto'],
+    uiSpriteName: raw['@uispritename'],
+    uiBuildMenuTexture: raw['@uibuildmenutexture'],
     requirements
   }
 }

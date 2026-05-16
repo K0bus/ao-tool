@@ -194,7 +194,8 @@
                     class="search-result-item"
                     @click="setBuilding(b.id)"
                   >
-                    <img v-if="b.iconUrl" :src="b.iconUrl" style="width: 32px; height: 32px; object-fit: contain" />
+                    <img v-if="b.uiBuildMenuTexture" :src="`/game_assets/${b.uiBuildMenuTexture.toLowerCase()}.png`" style="width: 32px; height: 32px; object-fit: contain" />
+                    <img v-else-if="b.iconUrl" :src="b.iconUrl" style="width: 32px; height: 32px; object-fit: contain" />
                     <div class="sr-meta">
                       <span class="sr-name">{{ b.name }}</span>
                       <span class="sr-tier t-dim">T{{ b.tier }} • {{ b.type }}</span>

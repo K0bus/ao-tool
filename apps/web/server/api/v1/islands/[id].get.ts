@@ -38,7 +38,12 @@ export default defineEventHandler(async (event) => {
       profitability,
       plots: island.plots.map(p => ({
         ...p,
-        itemName: p.item?.localizations[0]?.name ?? p.plantedItemId, buildingName: p.building?.name, buildingIcon: p.building?.iconUrl, tier: p.building?.tier
+        itemName: p.item?.localizations[0]?.name ?? p.plantedItemId, 
+        buildingName: p.building?.name, 
+        buildingIcon: p.building?.uiBuildMenuTexture 
+          ? `/game_assets/${p.building.uiBuildMenuTexture.toLowerCase()}.png` 
+          : p.building?.iconUrl, 
+        tier: p.building?.tier
       }))
     } 
   }

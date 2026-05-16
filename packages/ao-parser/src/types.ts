@@ -115,6 +115,8 @@ export interface RawBuilding {
   '@initialnutrition'?: string
   '@descriptionlocatag'?: string
   '@iconSprite'?: string
+  '@uispritename'?: string
+  '@uibuildmenutexture'?: string
   favoritedish?: {
     dish: {
       '@item': string
@@ -309,6 +311,8 @@ export interface NormalizedBuilding {
   favoriteDishItemId?: string
   favoriteDishBonus?: number
   nextTierBuildingId?: string
+  uiSpriteName?: string
+  uiBuildMenuTexture?: string
   requirements: Array<{
     uniqueName: string
     count: number

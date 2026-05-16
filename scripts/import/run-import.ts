@@ -362,6 +362,8 @@ export async function runImport(
           nutritionStorage: b.nutritionStorage,
           favoriteDishItemId: b.favoriteDishItemId,
           favoriteDishBonus: b.favoriteDishBonus,
+          uiSpriteName: b.uiSpriteName,
+          uiBuildMenuTexture: b.uiBuildMenuTexture,
         },
         update: {
           name: b.name,
@@ -373,6 +375,8 @@ export async function runImport(
           nutritionStorage: b.nutritionStorage,
           favoriteDishItemId: b.favoriteDishItemId,
           favoriteDishBonus: b.favoriteDishBonus,
+          uiSpriteName: b.uiSpriteName,
+          uiBuildMenuTexture: b.uiBuildMenuTexture,
         },
       })
     }

@@ -45,6 +45,8 @@ export default defineEventHandler(async (event) => {
       description: true,
       capability: true,
       iconUrl: true,
+      uiSpriteName: true,
+      uiBuildMenuTexture: true,
     }
   });
 
