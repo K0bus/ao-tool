@@ -12,17 +12,23 @@ export interface IslandProfitability {
   islandId: string
   name: string
   totalNetProfit: number
-  plots: PlotProfitability[]
+  buildings: BuildingProfitability[]
 }
 
-export interface PlotProfitability {
-  position: number
-  type: PlotType
+export interface BuildingProfitability {
+  buildingId: string
+  buildingName: string
+  totalNetProfit: number
+  resources: ResourceProfitability[]
+}
+
+export interface ResourceProfitability {
+  itemId: string
   itemName: string
   netProfit: number
   roi: number
   taxAmount: number
-  focusReturnRate?: number
+  count: number
 }
 
 export interface FoodOptimization {
@@ -39,12 +45,15 @@ export interface FoodOptimization {
 
 export interface IslandStatus {
   id: string
-  plots: {
-    position: number
-    type: PlotType
-    status: 'empty' | 'growing' | 'ready' | 'working'
-    completionPercentage: number
-    readyAt?: Date
+  buildings: {
+    id: string
+    name: string
+    resources: {
+      itemId: string
+      status: 'empty' | 'growing' | 'ready' | 'working'
+      completionPercentage: number
+      readyAt?: Date
+    }[]
     nutrition?: number
   }[]
 }

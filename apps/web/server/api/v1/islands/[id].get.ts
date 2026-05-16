@@ -11,16 +11,20 @@ export default defineEventHandler(async (event) => {
   const island = await prisma.island.findUnique({
     where: { id },
     include: {
-      plots: {
+      buildings: {
         include: {
-          building: true, item: {
+          building: true,
+          resources: {
             include: {
-              localizations: { where: { locale: 'FR-FR' }, take: 1 }
+              item: {
+                include: {
+                  localizations: { where: { locale: 'FR-FR' }, take: 1 }
+                }
+              }
             }
           },
           laborers: true
-        },
-        orderBy: { position: 'asc' }
+        }
       },
       location: true
     }
@@ -36,14 +40,17 @@ export default defineEventHandler(async (event) => {
     data: { 
       ...island, 
       profitability,
-      plots: island.plots.map(p => ({
-        ...p,
-        itemName: p.item?.localizations[0]?.name ?? p.plantedItemId, 
-        buildingName: p.building?.name, 
-        buildingIcon: p.building?.uiBuildMenuTexture 
-          ? `/game_assets/${p.building.uiBuildMenuTexture.toLowerCase()}.png` 
-          : p.building?.iconUrl, 
-        tier: p.building?.tier
+      buildings: island.buildings.map(b => ({
+        ...b,
+        buildingName: b.building?.name, 
+        buildingIcon: b.building?.uiBuildMenuTexture 
+          ? `/game_assets/${b.building.uiBuildMenuTexture.toLowerCase()}.png` 
+          : b.building?.iconUrl, 
+        tier: b.building?.tier,
+        resources: b.resources.map(r => ({
+          ...r,
+          itemName: r.item?.localizations[0]?.name ?? r.itemId
+        }))
       }))
     } 
   }

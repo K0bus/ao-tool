@@ -311,7 +311,7 @@ model Item {
   marketPricesHistory MarketPriceHistory[]
   resolvedPrices ResolvedPrice[]
   itemSpells     ItemSpell[]
-  plots          Plot[]
+  buildingResources BuildingResource[]
   
   // Farming metadata
   growTime            Int?    // Growth time in seconds
@@ -390,7 +390,7 @@ model CraftingStation {
   requirements       BuildingRequirement[]
   craftingRecipes    CraftingRecipe[]
   refiningRecipes    RefiningRecipe[]
-  plots              Plot[]
+  buildings         IslandBuilding[]
   
   favoriteDish      Item? @relation("FavoriteDish", fields: [favoriteDishItemId], references: [id])
 
@@ -907,7 +907,7 @@ model Island {
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   location Location @relation(fields: [locationId], references: [id])
-  plots    Plot[]
+  buildings IslandBuilding[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -916,41 +916,56 @@ model Island {
   @@index([locationId])
 }
 
-model Plot {
+model IslandBuilding {
   id           String    @id @default(cuid())
   islandId     String
-  type         PlotType
-  position     Int
   level        Int       @default(1)
   
   nutrition    Float?    // For crafting/refining buildings (0-100)
   metadata     Json?     // Specific data (happiness, furniture, etc.)
 
-  plantedItemId String?
-  plantedAt     DateTime?
-  isFocusUsed   Boolean   @default(false)
-
   buildingId    String?
   building      CraftingStation? @relation(fields: [buildingId], references: [id])
 
   island   Island    @relation(fields: [islandId], references: [id], onDelete: Cascade)
-  item     Item?     @relation(fields: [plantedItemId], references: [id])
-  laborers Laborer[]
+  resources BuildingResource[]
+  laborers  Laborer[]
 
-  @@unique([islandId, position])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([islandId])
 }
 
+model BuildingResource {
+  id               String    @id @default(cuid())
+  buildingId       String
+  itemId           String
+  
+  count            Int       @default(1)
+  plantedAt        DateTime?
+  isFocusUsed      Boolean   @default(false)
+  
+  building         IslandBuilding @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  item             Item           @relation(fields: [itemId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buildingId])
+  @@index([itemId])
+}
+
 model Laborer {
-  id        String  @id @default(cuid())
-  plotId    String
-  type      String  // uniqueName of the laborer item
-  level     Int     @default(1)
-  happiness Float   @default(0)
-  isWorking Boolean @default(false)
-  returnAt  DateTime?
+  id         String  @id @default(cuid())
+  buildingId String
+  type       String  // uniqueName of the laborer item
+  level      Int     @default(1)
+  happiness  Float   @default(0)
+  isWorking  Boolean @default(false)
+  returnAt   DateTime?
 
-  plot Plot @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  building IslandBuilding @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
-  @@index([plotId])
+  @@index([buildingId])
 }

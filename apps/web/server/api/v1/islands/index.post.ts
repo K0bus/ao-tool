@@ -25,27 +25,5 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  // Basic plot initialization (Albion personal island plots)
-  // Level 1: 0 plots
-  // Level 2: 1 farm plot + 1 building plot
-  // Level 3-6: +1 farm plot per level
-  const plots = []
-  if (result.data.level >= 2) {
-    plots.push({ islandId: island.id, type: 'FARM' as const, position: 0, level: 1 })
-    plots.push({ islandId: island.id, type: 'BUILDING' as const, position: 1, level: 1 })
-  }
-  
-  if (result.data.level >= 3) {
-    for (let i = 2; i < result.data.level; i++) {
-      plots.push({ islandId: island.id, type: 'FARM' as const, position: i, level: 1 })
-    }
-  }
-
-  if (plots.length > 0) {
-    await prisma.plot.createMany({
-      data: plots
-    })
-  }
-
   return { data: island }
 })

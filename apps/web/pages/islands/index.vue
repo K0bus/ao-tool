@@ -40,8 +40,8 @@
             <span class="val">{{ island.location?.name ?? 'Inconnue' }}</span>
           </div>
           <div class="ic-stat">
-            <span class="label">Parcelles</span>
-            <span class="val">{{ island._count?.plots ?? 0 }}</span>
+            <span class="label">Bâtiments</span>
+            <span class="val">{{ island._count?.buildings ?? 0 }}</span>
           </div>
         </div>
 

@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
     where: { userId: user.id },
     include: {
       location: true,
-      _count: { select: { plots: true } }
+      _count: { select: { buildings: true } }
     },
     orderBy: { createdAt: 'desc' }
   })

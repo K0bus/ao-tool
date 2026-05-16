@@ -9,16 +9,14 @@ export class IslandEngine {
     const island = await prisma.island.findUnique({
       where: { id: islandId },
       include: {
-        plots: {
+        buildings: {
           include: {
-            item: {
+            resources: {
               include: {
-                marketPrices: {
-                  where: { locationId: islandId }, // Actually should be parent city
-                  take: 1
-                }
+                item: true
               }
-            }
+            },
+            building: true
           }
         },
         location: true
@@ -27,55 +25,53 @@ export class IslandEngine {
 
     if (!island) return null
 
-    // We need the parent city location ID to fetch prices
     const parentCityId = island.locationId
 
-    const plotProfits = await Promise.all(island.plots.map(async (plot) => {
-      if (!plot.plantedItemId || !plot.item) {
+    const buildingProfits = await Promise.all(island.buildings.map(async (buildingInstance) => {
+      const resourceProfits = await Promise.all(buildingInstance.resources.map(async (resource) => {
+        if (!resource.item) return null
+
+        const marketPrice = await prisma.marketPrice.findFirst({
+          where: { itemId: resource.itemId, locationId: parentCityId, quality: 1 }
+        })
+
+        const sellPrice = marketPrice?.sellPriceMin ?? 0
+        const buyPrice = marketPrice?.buyPriceMax ?? 0
+
+        const baseYield = 1.0
+        const bonusYield = resource.isFocusUsed ? FOCUS_EFFICIENCY_BONUS : 0
+        const totalYield = baseYield + bonusYield
+
+        const revenue = (sellPrice * totalYield) * resource.count
+        const tax = revenue * TAX_RATE
+        const cost = buyPrice * resource.count
+        const netProfit = revenue - tax - cost
+
         return {
-          position: plot.position,
-          type: plot.type,
-          itemName: 'Empty',
-          netProfit: 0,
-          roi: 0,
-          taxAmount: 0
+          itemId: resource.itemId,
+          itemName: resource.itemId, // Should be resolved by caller or via localized relation
+          netProfit,
+          roi: cost > 0 ? (netProfit / cost) * 100 : 0,
+          taxAmount: tax,
+          count: resource.count
         }
-      }
+      }))
 
-      // Fetch seed/baby cost (Item usually has a purchase price or market price)
-      // For seeds, we often use the fixed vendor price if available, or market price
-      const marketPrice = await prisma.marketPrice.findFirst({
-        where: { itemId: plot.plantedItemId, locationId: parentCityId, quality: 1 }
-      })
-
-      const sellPrice = marketPrice?.sellPriceMin ?? 0
-      const buyPrice = marketPrice?.buyPriceMax ?? 0 // Cost to buy seed
-
-      // Yield calculation (Placeholder for complex Albion math)
-      const baseYield = 1.0
-      const bonusYield = plot.isFocusUsed ? FOCUS_EFFICIENCY_BONUS : 0
-      const totalYield = baseYield + bonusYield
-
-      const revenue = sellPrice * totalYield
-      const tax = revenue * TAX_RATE
-      const netProfit = revenue - tax - buyPrice
+      const activeResources = resourceProfits.filter((r): r is NonNullable<typeof r> => r !== null)
 
       return {
-        position: plot.position,
-        type: plot.type,
-        itemName: plot.plantedItemId, // Should resolve localization
-        netProfit,
-        roi: buyPrice > 0 ? (netProfit / buyPrice) * 100 : 0,
-        taxAmount: tax,
-        focusReturnRate: plot.isFocusUsed ? 47.8 : 0 // Placeholder
+        buildingId: buildingInstance.id,
+        buildingName: buildingInstance.building?.name ?? 'Unknown',
+        totalNetProfit: activeResources.reduce((sum, r) => sum + r.netProfit, 0),
+        resources: activeResources
       }
     }))
 
     return {
       islandId: island.id,
       name: island.name,
-      totalNetProfit: plotProfits.reduce((sum, p) => sum + p.netProfit, 0),
-      plots: plotProfits
+      totalNetProfit: buildingProfits.reduce((sum, b) => sum + b.totalNetProfit, 0),
+      buildings: buildingProfits as any // Types might need update in @albion-tool/types
     }
   }
 
