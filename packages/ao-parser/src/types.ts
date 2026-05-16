@@ -303,6 +303,7 @@ export interface NormalizedBuilding {
   type: string
   tier: number
   description?: string
+  capability?: string
   iconUrl?: string
   nutritionStorage?: number
   favoriteDishItemId?: string

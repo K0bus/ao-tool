@@ -41,6 +41,7 @@
           >
             <div class="plot-header">
               <span class="plot-type">{{ formatPlotType(plot.type) }}</span>
+              <span class="plot-tier t-dim" v-if="plot.buildingId">T{{ plot.tier || '?' }}</span>
               <span class="plot-pos">#{{ plot.position + 1 }}</span>
             </div>
             
@@ -69,17 +70,18 @@
                 </template>
               </template>
 
-              <!-- Building Content (House, Crafting, Refining) -->
+              <!-- Building Content (House, Crafting, Refining, Building) -->
               <template v-else>
                 <div class="building-visual">
                   <div class="b-icon">
-                    <svg v-if="plot.type === 'HOUSE'" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    <img v-if="plot.buildingIcon" :src="plot.buildingIcon" class="b-icon-img" />
+                    <svg v-else-if="plot.type === 'HOUSE'" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                     <svg v-else-if="plot.type === 'CRAFTING'" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z"/></svg>
                     <svg v-else viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>
                   </div>
                   <div class="b-info">
-                    <h4>{{ plot.type === 'BUILDING' ? 'Emplacement vide' : formatPlotType(plot.type) }}</h4>
-                    <span class="t-dim" style="font-size: 11px">Niveau {{ plot.level }}</span>
+                    <h4>{{ plot.buildingName || (plot.type === 'BUILDING' ? 'Emplacement vide' : formatPlotType(plot.type)) }}</h4>
+                    <span class="t-dim" style="font-size: 11px">Niveau {{ plot.buildingId ? plot.tier : plot.level }}</span>
                     <div v-if="plot.nutrition !== null" class="nutrition-status">
                       <div class="nut-bar">
                         <div class="nut-fill" :style="{ width: plot.nutrition + '%' }"></div>
@@ -89,6 +91,7 @@
                   </div>
                 </div>
               </template>
+
             </div>
 
             <div class="plot-footer">
@@ -162,13 +165,57 @@
           <!-- Management for existing buildings -->
           <div v-else class="manage-options">
             <div class="form-group">
-              <label>Changer le type de bâtiment</label>
+              <label>Type de parcelle</label>
               <select :value="activePlot.type" class="ds-select" @change="(e: any) => updatePlotType((e.target as HTMLSelectElement).value)">
                 <option v-for="t in allPlotTypes" :key="t" :value="t">{{ formatPlotType(t) }}</option>
               </select>
             </div>
+
+            <!-- Building Assignment -->
+            <div v-if="activePlot.type !== 'BUILDING'" class="building-assignment">
+              <div class="form-group">
+                <label>Bâtiment spécifique</label>
+                <div class="item-search-wrap">
+                  <input 
+                    v-model="buildingSearch" 
+                    type="text" 
+                    class="ds-input" 
+                    placeholder="Rechercher un bâtiment (ex: Forge, Ferme...)" 
+                    @input="onBuildingSearch"
+                  />
+                  <div v-if="searchingBuildings" class="search-loader">Chargement...</div>
+                </div>
+
+                <!-- Building Results -->
+                <div v-if="buildingResults.length > 0" class="search-results-list">
+                  <div 
+                    v-for="b in buildingResults" 
+                    :key="b.id" 
+                    class="search-result-item"
+                    @click="setBuilding(b.id)"
+                  >
+                    <img v-if="b.iconUrl" :src="b.iconUrl" style="width: 32px; height: 32px; object-fit: contain" />
+                    <div class="sr-meta">
+                      <span class="sr-name">{{ b.name }}</span>
+                      <span class="sr-tier t-dim">T{{ b.tier }} • {{ b.type }}</span>
+                      <span class="sr-desc t-dim" v-if="b.description" style="font-size: 10px; line-height: 1.2; margin-top: 4px">{{ b.description }}</span>
+                      <span class="sr-cap t-gold" v-if="b.capability" style="font-size: 10px; font-weight: 600; margin-top: 2px">{{ b.capability }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="activePlot.buildingId" class="current-planted">
+                <label>Bâtiment actuel</label>
+                <div class="cp-info">
+                  <img v-if="activePlot.buildingIcon" :src="activePlot.buildingIcon" style="width: 32px; height: 32px" />
+                  <span>{{ activePlot.buildingName }}</span>
+                  <button class="ds-btn ghost sm danger" @click="setBuilding(null)">Retirer</button>
+                </div>
+              </div>
+            </div>
             
-            <div v-if="isAgricultural(activePlot.type)" class="agri-manage">
+            <div v-if="isAgricultural(activePlot.type)" class="agri-manage" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-divider)">
               <div class="form-group">
                 <label>Plante / Animal</label>
                 <div class="item-search-wrap">
@@ -240,6 +287,11 @@ const showIslandEdit = ref(false)
 const itemSearch = ref('')
 const searchResults = ref<any[]>([])
 const searchingItems = ref(false)
+
+const buildingSearch = ref('')
+const buildingResults = ref<any[]>([])
+const searchingBuildings = ref(false)
+
 let searchTimeout: any = null
 
 const allPlotTypes = ['FARM', 'HERB_GARDEN', 'PASTURE', 'KENNEL', 'HOUSE', 'REFINING', 'CRAFTING', 'BUILDING']
@@ -276,6 +328,8 @@ function openPlotAction(plot: any) {
   activePlot.value = { ...plot }
   itemSearch.value = ''
   searchResults.value = []
+  buildingSearch.value = ''
+  buildingResults.value = []
 }
 
 async function updatePlotType(newType: string) {
@@ -290,6 +344,46 @@ async function updatePlotType(newType: string) {
     await refresh()
   } catch (err) {
     console.error('Failed to update plot:', err)
+  }
+}
+
+async function onBuildingSearch() {
+  if (buildingSearch.value.length < 2) {
+    buildingResults.value = []
+    return
+  }
+
+  if (searchTimeout) clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(async () => {
+    searchingBuildings.value = true
+    try {
+      const resp = await $fetch('/api/v1/buildings', {
+        params: {
+          q: buildingSearch.value,
+          limit: 10
+        }
+      })
+      buildingResults.value = (resp as any).data
+    } catch (err) {
+      console.error('Building search failed:', err)
+    } finally {
+      searchingBuildings.value = false
+    }
+  }, 300)
+}
+
+async function setBuilding(buildingId: string | null) {
+  if (!activePlot.value) return
+
+  try {
+    await $fetch(`/api/v1/plots/${activePlot.value.id}`, {
+      method: 'PATCH',
+      body: { buildingId }
+    })
+    activePlot.value = null
+    await refresh()
+  } catch (err) {
+    console.error('Failed to set building:', err)
   }
 }
 
@@ -494,9 +588,19 @@ definePageMeta({ layout: 'default' })
   color: var(--gold);
 }
 
+.b-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .item-info h4, .b-info h4 {
   margin: 0 0 6px 0;
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
 }
 
 .status-indicator {

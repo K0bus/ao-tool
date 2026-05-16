@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     include: {
       plots: {
         include: {
-          item: {
+          building: true, item: {
             include: {
               localizations: { where: { locale: 'FR-FR' }, take: 1 }
             }
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
       profitability,
       plots: island.plots.map(p => ({
         ...p,
-        itemName: p.item?.localizations[0]?.name ?? p.plantedItemId
+        itemName: p.item?.localizations[0]?.name ?? p.plantedItemId, buildingName: p.building?.name, buildingIcon: p.building?.iconUrl, tier: p.building?.tier
       }))
     } 
   }

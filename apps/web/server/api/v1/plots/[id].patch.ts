@@ -7,7 +7,8 @@ const plotSchema = z.object({
   level: z.number().int().min(1).max(8).optional(),
   nutrition: z.number().min(0).max(100).optional(),
   plantedItemId: z.string().nullable().optional(),
-  plantedAt: z.string().datetime().nullable().optional()
+  plantedAt: z.string().datetime().nullable().optional(),
+  buildingId: z.string().nullable().optional()
 })
 
 export default defineEventHandler(async (event) => {

@@ -27,7 +27,15 @@ export function normalizeBuilding(
     'PLAYERHOUSE': 'House'
   }
 
-  const enName = nameMap[baseName] || baseName.charAt(0) + baseName.slice(1).toLowerCase().replace(/_/g, ' ')
+  const enNameHeuristic = nameMap[baseName] || baseName.charAt(0) + baseName.slice(1).toLowerCase().replace(/_/g, ' ')
+  
+  const nameTag = `@BUILDINGS_${uniqueName}`
+  const descTag = `@BUILDINGS_${uniqueName}_DESC`
+  const capTag = `@BUILDING_CAPABILITY_${uniqueName}`
+  
+  const name = localizations['EN-US']?.[nameTag] || enNameHeuristic
+  const description = localizations['EN-US']?.[descTag] || (raw['@descriptionlocatag'] ? localizations['EN-US']?.[raw['@descriptionlocatag']] : undefined)
+  const capability = localizations['EN-US']?.[capTag] || undefined
   
   const requirements = []
   if (raw.craftingrequirements?.craftresource) {
@@ -43,15 +51,14 @@ export function normalizeBuilding(
     }
   }
 
-  const descTag = raw['@descriptionlocatag']
-  const description = descTag ? (localizations['EN-US']?.[descTag] || undefined) : undefined
 
   return {
     uniqueName,
-    name: enName,
+    name,
     type: categoryType,
     tier,
     description,
+    capability,
     iconUrl: raw['@iconSprite'] ? `https://render.albiononline.com/v1/item/${raw['@iconSprite']}.png` : undefined,
     nutritionStorage: raw['@nutritionstorage'] ? parseFloat(raw['@nutritionstorage']) : undefined,
     favoriteDishItemId: raw.favoritedish?.dish?.['@item'],

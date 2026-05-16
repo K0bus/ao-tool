@@ -371,6 +371,7 @@ model CraftingStation {
   type              String  // Category (ex: craftbuilding, farmbuilding)
   tier              Int     @default(1)
   description       String? @db.Text
+  capability        String? @db.Text
   iconUrl           String?
   nutritionStorage  Float?
   
@@ -379,13 +380,15 @@ model CraftingStation {
   
   nextTierBuildingId String?
   
-  requirements      BuildingRequirement[]
-  craftingRecipes   CraftingRecipe[]
-  refiningRecipes   RefiningRecipe[]
+  nextTierBuilding   CraftingStation?    @relation("BuildingEvolution", fields: [nextTierBuildingId], references: [id])
+  previousTierBuildings CraftingStation[] @relation("BuildingEvolution")
+  
+  requirements       BuildingRequirement[]
+  craftingRecipes    CraftingRecipe[]
+  refiningRecipes    RefiningRecipe[]
+  plots              Plot[]
   
   favoriteDish      Item? @relation("FavoriteDish", fields: [favoriteDishItemId], references: [id])
-  nextTierBuilding  CraftingStation? @relation("BuildingUpgrades", fields: [nextTierBuildingId], references: [id])
-  previousTierBuildings CraftingStation[] @relation("BuildingUpgrades")
 
   @@index([type])
   @@index([favoriteDishItemId])
@@ -922,6 +925,9 @@ model Plot {
   plantedItemId String?
   plantedAt     DateTime?
   isFocusUsed   Boolean   @default(false)
+
+  buildingId    String?
+  building      CraftingStation? @relation(fields: [buildingId], references: [id])
 
   island   Island    @relation(fields: [islandId], references: [id], onDelete: Cascade)
   item     Item?     @relation(fields: [plantedItemId], references: [id])
