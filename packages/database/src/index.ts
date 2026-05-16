@@ -7,7 +7,7 @@ const {
   PrismaClient,
   Prisma: PrismaRuntime,
   PriceConfidence: PriceConfidenceValues,
-} = prismaClient
+} = prismaClient as any
 
 function createPrismaClient() {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })

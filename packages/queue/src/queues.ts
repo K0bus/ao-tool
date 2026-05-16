@@ -5,10 +5,12 @@ import type { ImportJobData, ImportJobResult, MarketJobData, MarketJobResult } f
 export const IMPORT_QUEUE_NAME = 'albion-import'
 export const MARKET_QUEUE_NAME = 'albion-market'
 export const SCHEDULER_QUEUE_NAME = 'scheduler'
+export const ISLAND_QUEUE_NAME = 'albion-island'
 
 let _importQueue: Queue<ImportJobData, ImportJobResult> | null = null
 let _marketQueue: Queue<MarketJobData, MarketJobResult> | null = null
 let _schedulerQueue: Queue<any, any> | null = null
+let _islandQueue: Queue<any, any> | null = null
 
 export function getImportQueue(): Queue<ImportJobData, ImportJobResult> {
   if (!_importQueue) {
@@ -51,4 +53,19 @@ export function getSchedulerQueue(): Queue<any, any> {
     })
   }
   return _schedulerQueue
+}
+
+export function getIslandQueue(): Queue<any, any> {
+  if (!_islandQueue) {
+    _islandQueue = new Queue(ISLAND_QUEUE_NAME, {
+      connection: getConnection(),
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'fixed', delay: 5_000 },
+        removeOnComplete: { count: 20 },
+        removeOnFail: { count: 20 },
+      },
+    })
+  }
+  return _islandQueue
 }

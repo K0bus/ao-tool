@@ -10,6 +10,7 @@ dist
 
 # Prisma
 packages/database/node_modules
+packages/database/prisma/generated
 
 # Build artifacts
 apps/web/.output

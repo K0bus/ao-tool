@@ -1,4 +1,4 @@
-import type { RawBaseItem, RawItemsJson, RawLocalizationTable, RawSpellsJson, NormalizedSpell } from './types'
+import type { RawBaseItem, RawItemsJson, RawLocalizationTable, RawSpellsJson, NormalizedSpell, RawBuildingsJson, RawBuilding } from './types'
 import { normalizeSpell } from './normalizers/spell'
 
 // Source canonique : items.json (pas /formatted/ qui est une version appauvrie)
@@ -8,6 +8,7 @@ const URLS = {
   items: `${AO_DATA_BASE}/items.json`,
   localizations: `${AO_DATA_BASE}/localization.json`,
   spells: `${AO_DATA_BASE}/spells.json`,
+  buildings: `${AO_DATA_BASE}/buildings.json`,
 } as const
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -27,6 +28,18 @@ function flattenItemsJson(json: RawItemsJson): RawBaseItem[] {
     const arr = Array.isArray(value) ? value : [value]
     for (const item of arr) {
       if (item['@uniquename']) result.push(item)
+    }
+  }
+  return result
+}
+
+function flattenBuildingsJson(json: RawBuildingsJson): Array<RawBuilding & { category: string }> {
+  const result: Array<RawBuilding & { category: string }> = []
+  for (const [category, value] of Object.entries(json.buildings)) {
+    if (!value) continue
+    const arr = Array.isArray(value) ? value : [value]
+    for (const b of arr) {
+      if (b['@uniquename']) result.push({ ...b, category })
     }
   }
   return result
@@ -76,13 +89,15 @@ function parseTmx(raw: TmxLocalization): RawLocalizationTable {
 export interface AoRawData {
   items: RawBaseItem[]
   localizations: RawLocalizationTable
+  buildings: Array<RawBuilding & { category: string }>
 }
 
 export async function fetchAoData(): Promise<AoRawData> {
   console.log('Fetching ao-bin-dumps data...')
 
-  const [rawItemsJson, rawLocalizations] = await Promise.all([
+  const [rawItemsJson, rawBuildingsJson, rawLocalizations] = await Promise.all([
     fetchJson<RawItemsJson>(URLS.items),
+    fetchJson<RawBuildingsJson>(URLS.buildings).catch(() => ({ buildings: {} })),
     fetchJson<TmxLocalization>(URLS.localizations).catch(() => {
       console.warn('Could not fetch localizations, continuing without')
       return null
@@ -90,10 +105,11 @@ export async function fetchAoData(): Promise<AoRawData> {
   ])
 
   const items = flattenItemsJson(rawItemsJson)
+  const buildings = flattenBuildingsJson(rawBuildingsJson as RawBuildingsJson)
   const localizations = rawLocalizations ? parseTmx(rawLocalizations) : {}
 
-  console.log(`Fetched ${items.length} base items, ${Object.keys(localizations).length} locales`)
-  return { items, localizations }
+  console.log(`Fetched ${items.length} base items, ${buildings.length} buildings, ${Object.keys(localizations).length} locales`)
+  return { items, buildings, localizations }
 }
 
 export async function fetchSpells(localizations: RawLocalizationTable): Promise<NormalizedSpell[]> {

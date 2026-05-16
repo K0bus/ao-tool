@@ -4,13 +4,15 @@ import {
   IMPORT_QUEUE_NAME, 
   MARKET_QUEUE_NAME, 
   SCHEDULER_QUEUE_NAME, 
+  ISLAND_QUEUE_NAME,
   getConnection,
   closeAllConnections, 
   getImportQueue, 
+  getIslandQueue,
   schedulerService,
   sendDiscordNotification
 } from '@albion-tool/queue'
-import type { ImportJobData, ImportJobProgress, ImportJobResult, MarketJobData, MarketJobResult, MarketJobItem, MarketJobProgress } from '@albion-tool/queue'
+import type { ImportJobData, ImportJobProgress, ImportJobResult, MarketJobData, MarketJobResult, MarketJobItem, MarketJobProgress, IslandJobData, IslandJobResult } from '@albion-tool/queue'
 import { runImport } from '../import/run-import.js'
 import { runMarketSync } from '../import/run-market-sync.js'
 import { marketPriceService, getTopProfitHighlight } from '@albion-tool/market-engine'
@@ -120,6 +122,60 @@ const schedulerWorker = new Worker(
 )
 
 // ══════════════════════════════════════════════════════════════
+// ISLAND WORKER
+// ══════════════════════════════════════════════════════════════
+
+const islandWorker = new Worker<IslandJobData, IslandJobResult>(
+  ISLAND_QUEUE_NAME,
+  async (job) => {
+    const { islandId, plotId } = job.data
+    let plotsChecked = 0
+    let harvestsReady = 0
+    let notificationsSent = 0
+
+    // Find plots that are ready to harvest
+    const plots = await prisma.plot.findMany({
+      where: {
+        id: plotId,
+        islandId,
+        AND: [
+          { plantedAt: { not: null } },
+          { plantedAt: { lte: new Date(Date.now() - 22 * 60 * 60 * 1000) } }
+        ]
+      },
+      include: {
+        island: { include: { user: true } },
+        item: true
+      }
+    })
+
+    for (const plot of plots) {
+      plotsChecked++
+      harvestsReady++
+      
+      // Send notification if it hasn't been sent yet (we should track this in DB)
+      // For now, let's just send it
+      await sendDiscordNotification({
+        title: `🌾 Harvest Ready on ${plot.island.name}!`,
+        description: `Your **${plot.plantedItemId}** is ready to be harvested at position ${plot.position + 1}.`,
+        color: 0x84cc16, // Lime
+        fields: [
+          { name: 'Island', value: plot.island.name, inline: true },
+          { name: 'Position', value: (plot.position + 1).toString(), inline: true },
+        ]
+      })
+      notificationsSent++
+    }
+
+    return { plotsChecked, harvestsReady, notificationsSent }
+  },
+  {
+    connection: getConnection(),
+    concurrency: 2,
+  }
+)
+
+// ══════════════════════════════════════════════════════════════
 // EVENT HANDLERS
 // ══════════════════════════════════════════════════════════════
 
@@ -222,6 +278,7 @@ async function shutdown() {
   await importWorker.close()
   await marketWorker.close()
   await schedulerWorker.close()
+  await islandWorker.close()
   await closeAllConnections()
   await prisma.$disconnect()
   process.exit(0)
@@ -233,6 +290,7 @@ process.on('SIGINT', shutdown)
 console.log(`[worker] Listening on queue "${IMPORT_QUEUE_NAME}"`)
 console.log(`[worker] Listening on queue "${MARKET_QUEUE_NAME}"`)
 console.log(`[worker] Listening on queue "${SCHEDULER_QUEUE_NAME}"`)
+console.log(`[worker] Listening on queue "${ISLAND_QUEUE_NAME}"`)
 
 // Initialize schedules on start
 schedulerService.syncSchedules().then(() => {

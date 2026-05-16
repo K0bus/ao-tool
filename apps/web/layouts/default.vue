@@ -41,6 +41,8 @@
             Marché
             <svg class="caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
+
+          <NuxtLink to="/islands" class="nav-link" :class="{ active: route.path.startsWith('/islands') }">Îles</NuxtLink>
  
           <NuxtLink to="/killboard" class="nav-link" :class="{ active: route.path.startsWith('/killboard') || route.path.startsWith('/guilds') || route.path.startsWith('/alliances') || route.path.startsWith('/players') }">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;color:var(--gold)"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 3.5-3.5"/><path d="m16 16 4 4"/><path d="m9.5 4.5 5 5"/><path d="m4.5 9.5 5 5"/></svg>

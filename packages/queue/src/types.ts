@@ -22,7 +22,7 @@ export interface ImportJobResult {
 }
 
 export interface ImportJobProgress {
-  phase: 'fetching' | 'normalizing' | 'categories' | 'importing' | 'localizations' | 'variants' | 'recipes' | 'refining' | 'spells' | 'item_spells' | 'done'
+  phase: 'fetching' | 'normalizing' | 'categories' | 'importing' | 'localizations' | 'variants' | 'buildings' | 'recipes' | 'refining' | 'spells' | 'item_spells' | 'done'
   processed: number
   total: number
   percent: number
@@ -62,4 +62,19 @@ export interface MarketJobProgress {
   updated: number
   failed: number
   total: number
+}
+
+// ══════════════════════════════════════════════════════════════
+// ISLAND JOBS
+// ══════════════════════════════════════════════════════════════
+
+export interface IslandJobData {
+  islandId?: string // Optional: if provided, check only one island. Else check all.
+  plotId?: string   // Optional: check only one plot.
+}
+
+export interface IslandJobResult {
+  plotsChecked: number
+  harvestsReady: number
+  notificationsSent: number
 }

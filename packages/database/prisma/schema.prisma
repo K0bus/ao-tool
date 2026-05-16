@@ -160,6 +160,22 @@ enum LogLevel {
   ERROR
 }
 
+enum IslandType {
+  PERSONAL
+  GUILD
+}
+
+enum PlotType {
+  FARM
+  HERB_GARDEN
+  PASTURE
+  KENNEL
+  HOUSE
+  REFINING
+  CRAFTING
+  BUILDING
+}
+
 // ══════════════════════════════════════════════════════════════
 // USERS & AUTH
 // ══════════════════════════════════════════════════════════════
@@ -188,6 +204,7 @@ model User {
   marketSyncJobs       MarketSyncJob[]
   builds               Build[]
   buildCollections     BuildCollection[]
+  islands              Island[]
 
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
@@ -293,6 +310,21 @@ model Item {
   marketPricesHistory MarketPriceHistory[]
   resolvedPrices ResolvedPrice[]
   itemSpells     ItemSpell[]
+  plots          Plot[]
+  
+  // Farming metadata
+  growTime            Int?    // Growth time in seconds
+  harvestLootList     String? // Loot list ID for harvest
+  harvestSeedChance   Float?  // Chance to get seed back
+  grownItemUniqueName String? // Unique name of the grown animal
+  offspringChance     Float?  // Chance to get offspring
+  productLootList     String? // Loot list ID for products (eggs, milk)
+  productProductionTime Int?  // Time in seconds for production
+  favoriteFoodItemId  String? // Item ID of favorite food
+  nutritionMax        Float?  // Max nutrition for animals
+  
+  favoriteFoodFor      CraftingStation[]     @relation("FavoriteDish")
+  buildingRequirements BuildingRequirement[]
 
   maxQuality      Int      @default(1)
 
@@ -334,15 +366,43 @@ model ItemLocalization {
 // ══════════════════════════════════════════════════════════════
 
 model CraftingStation {
-  id       String @id
-  name     String
-  type     String
-  maxLevel Int    @default(3)
-
-  craftingRecipes CraftingRecipe[]
-  refiningRecipes RefiningRecipe[]
+  id                String  @id // Unique name (ex: T4_WEAVINGMILL)
+  name              String
+  type              String  // Category (ex: craftbuilding, farmbuilding)
+  tier              Int     @default(1)
+  description       String? @db.Text
+  iconUrl           String?
+  nutritionStorage  Float?
+  
+  favoriteDishItemId String?
+  favoriteDishBonus  Float?
+  
+  nextTierBuildingId String?
+  
+  requirements      BuildingRequirement[]
+  craftingRecipes   CraftingRecipe[]
+  refiningRecipes   RefiningRecipe[]
+  
+  favoriteDish      Item? @relation("FavoriteDish", fields: [favoriteDishItemId], references: [id])
+  nextTierBuilding  CraftingStation? @relation("BuildingUpgrades", fields: [nextTierBuildingId], references: [id])
+  previousTierBuildings CraftingStation[] @relation("BuildingUpgrades")
 
   @@index([type])
+  @@index([favoriteDishItemId])
+}
+
+model BuildingRequirement {
+  id         String @id @default(cuid())
+  buildingId String
+  itemId     String
+  count      Int
+  
+  building   CraftingStation @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  item       Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  @@unique([buildingId, itemId])
+  @@index([buildingId])
+  @@index([itemId])
 }
 
 model CraftingRecipe {
@@ -416,6 +476,7 @@ model Location {
   cityBonuses    CityItemBonus[]
   marketPrices   MarketPrice[]
   resolvedPrices ResolvedPrice[]
+  islands        Island[]
 
   @@index([type])
 }
@@ -823,4 +884,63 @@ model BuildCollectionItem {
   @@unique([collectionId, buildId])
   @@index([collectionId])
   @@index([buildId])
+}
+
+// ══════════════════════════════════════════════════════════════
+// ISLANDS & FARMING
+// ══════════════════════════════════════════════════════════════
+
+model Island {
+  id         String     @id @default(cuid())
+  userId     String
+  name       String
+  type       IslandType @default(PERSONAL)
+  locationId String
+  level      Int        @default(1)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id])
+  plots    Plot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([locationId])
+}
+
+model Plot {
+  id           String    @id @default(cuid())
+  islandId     String
+  type         PlotType
+  position     Int
+  level        Int       @default(1)
+  
+  nutrition    Float?    // For crafting/refining buildings (0-100)
+  metadata     Json?     // Specific data (happiness, furniture, etc.)
+
+  plantedItemId String?
+  plantedAt     DateTime?
+  isFocusUsed   Boolean   @default(false)
+
+  island   Island    @relation(fields: [islandId], references: [id], onDelete: Cascade)
+  item     Item?     @relation(fields: [plantedItemId], references: [id])
+  laborers Laborer[]
+
+  @@unique([islandId, position])
+  @@index([islandId])
+}
+
+model Laborer {
+  id        String  @id @default(cuid())
+  plotId    String
+  type      String  // uniqueName of the laborer item
+  level     Int     @default(1)
+  happiness Float   @default(0)
+  isWorking Boolean @default(false)
+  returnAt  DateTime?
+
+  plot Plot @relation(fields: [plotId], references: [id], onDelete: Cascade)
+
+  @@index([plotId])
 }

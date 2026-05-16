@@ -277,6 +277,11 @@ function buildVariant(
 
   const hashSource = { uniqueName, tier, enchantmentLevel, maxQuality, craftingReqs, craftSpells, stats }
 
+  const harvest = override?.harvest ?? base.harvest
+  const grownitem = override?.grownitem ?? base.grownitem
+  const products = override?.products ?? base.products
+  const consumption = override?.consumption ?? base.consumption
+
   return {
     uniqueName,
     tier,
@@ -299,6 +304,17 @@ function buildVariant(
     craftingRecipe: crafting,
     refiningRecipe: refining,
     localizations: itemLocalizations,
+
+    // Farming metadata
+    growTime: harvest?.['@growtime'] ? parseInt(harvest['@growtime'], 10) : grownitem?.['@growtime'] ? parseInt(grownitem['@growtime'], 10) : undefined,
+    harvestLootList: harvest?.['@lootlist'],
+    harvestSeedChance: harvest?.seed?.['@chance'] ? parseFloat(harvest.seed['@chance']) : undefined,
+    grownItemUniqueName: grownitem?.['@uniquename'],
+    offspringChance: grownitem?.offspring?.['@chance'] ? parseFloat(grownitem.offspring['@chance']) : undefined,
+    productLootList: Array.isArray(products?.product) ? products.product[0]?.['@lootlist'] : products?.product?.['@lootlist'],
+    productProductionTime: Array.isArray(products?.product) ? parseInt(products.product[0]?.['@productiontime'] ?? '0', 10) : (products?.product?.['@productiontime'] ? parseInt(products.product['@productiontime'], 10) : undefined),
+    favoriteFoodItemId: consumption?.food?.acceptedfood?.['@favorite'],
+    nutritionMax: consumption?.food?.['@nutritionmax'] ? parseFloat(consumption.food['@nutritionmax']) : undefined,
   }
 }
 

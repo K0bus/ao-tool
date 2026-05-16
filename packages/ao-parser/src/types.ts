@@ -51,6 +51,10 @@ export interface RawEnchantment {
   '@canbeovercharged'?: string
   craftingrequirements?: RawCraftingRequirements | RawCraftingRequirements[]
   craftingspelllist?: RawCraftingSpellList
+  harvest?: any
+  grownitem?: any
+  products?: any
+  consumption?: any
 }
 
 export interface RawEnchantments {
@@ -89,11 +93,46 @@ export interface RawBaseItem {
   craftingrequirements?: RawCraftingRequirements | RawCraftingRequirements[]
   craftingspelllist?: RawCraftingSpellList
   enchantments?: RawEnchantments
+  harvest?: any
+  grownitem?: any
+  products?: any
+  consumption?: any
 }
 
 // items.json racine : { items: { Weapon: [...], EquipmentItem: [...], ... } }
 export type RawItemsJson = {
   items: Record<string, RawBaseItem | RawBaseItem[] | undefined>
+}
+
+// ─── Types bruts pour buildings.json ───────────────────────────────────────
+
+export interface RawBuilding {
+  '@uniquename': string
+  '@tier': string
+  '@placecost'?: string
+  '@upgradeableto'?: string
+  '@nutritionstorage'?: string
+  '@initialnutrition'?: string
+  '@descriptionlocatag'?: string
+  '@iconSprite'?: string
+  favoritedish?: {
+    dish: {
+      '@item': string
+      '@bonus'?: string
+      '@weight'?: string
+    }
+  }
+  craftingrequirements?: RawCraftingRequirements
+  craftingitemlist?: {
+    craftitem: Array<{ '@uniquename': string }> | { '@uniquename': string }
+  }
+  farmableitems?: {
+    farmableitem: Array<{ '@uniquename': string }> | { '@uniquename': string }
+  }
+}
+
+export interface RawBuildingsJson {
+  buildings: Record<string, RawBuilding | RawBuilding[] | undefined>
 }
 
 export interface RawLocalizationTable {
@@ -244,5 +283,33 @@ export interface NormalizedItem {
     locale: string
     name: string
     description?: string
+  }>
+
+  // Farming metadata
+  growTime?: number
+  harvestLootList?: string
+  harvestSeedChance?: number
+  grownItemUniqueName?: string
+  offspringChance?: number
+  productLootList?: string
+  productProductionTime?: number
+  favoriteFoodItemId?: string
+  nutritionMax?: number
+}
+
+export interface NormalizedBuilding {
+  uniqueName: string
+  name: string
+  type: string
+  tier: number
+  description?: string
+  iconUrl?: string
+  nutritionStorage?: number
+  favoriteDishItemId?: string
+  favoriteDishBonus?: number
+  nextTierBuildingId?: string
+  requirements: Array<{
+    uniqueName: string
+    count: number
   }>
 }

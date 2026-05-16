@@ -1,6 +1,6 @@
 import { prisma, type ItemType } from '@albion-tool/database'
-import { fetchAoData, fetchLatestCommit, normalizeItem, fetchSpells } from '@albion-tool/ao-parser'
-import type { NormalizedCraftSpell, NormalizedItem, NormalizedSpell } from '@albion-tool/ao-parser'
+import { fetchAoData, fetchLatestCommit, normalizeItem, normalizeBuilding, fetchSpells } from '@albion-tool/ao-parser'
+import type { NormalizedCraftSpell, NormalizedItem, NormalizedSpell, NormalizedBuilding } from '@albion-tool/ao-parser'
 import type { ImportJobProgress, ImportJobResult, ImportJobType } from '@albion-tool/queue'
 
 const BATCH_SIZE = 500
@@ -100,7 +100,7 @@ export async function runImport(
     await report('fetching', 0, 0)
     await logInfo('Fetching ao-bin-dumps data (items.json)...')
 
-    const [{ items: rawItems, localizations }, sourceCommit] = await Promise.all([
+    const [{ items: rawItems, buildings: rawBuildings, localizations }, sourceCommit] = await Promise.all([
       fetchAoData(),
       fetchLatestCommit(),
     ])
@@ -245,11 +245,20 @@ export async function runImport(
               canBeOvercharged: item.canBeOvercharged,
               isCraftable: item.isCraftable,
               isRefinable: item.isRefinable,
-              stats: statsJson,
-              craftSpells: spellsJson,
+              stats: statsJson as any,
+              craftSpells: spellsJson as any,
               iconUrl: item.iconUrl,
               dataHash: item.dataHash,
               importedAt: new Date(),
+              growTime: item.growTime,
+              harvestLootList: item.harvestLootList,
+              harvestSeedChance: item.harvestSeedChance,
+              grownItemUniqueName: item.grownItemUniqueName,
+              offspringChance: item.offspringChance,
+              productLootList: item.productLootList,
+              productProductionTime: item.productProductionTime,
+              favoriteFoodItemId: item.favoriteFoodItemId,
+              nutritionMax: item.nutritionMax,
             },
             update: {
               tier: item.tier,
@@ -265,11 +274,20 @@ export async function runImport(
               canBeOvercharged: item.canBeOvercharged,
               isCraftable: item.isCraftable,
               isRefinable: item.isRefinable,
-              stats: statsJson,
-              craftSpells: spellsJson,
+              stats: statsJson as any,
+              craftSpells: spellsJson as any,
               iconUrl: item.iconUrl,
               dataHash: item.dataHash,
               importedAt: new Date(),
+              growTime: item.growTime,
+              harvestLootList: item.harvestLootList,
+              harvestSeedChance: item.harvestSeedChance,
+              grownItemUniqueName: item.grownItemUniqueName,
+              offspringChance: item.offspringChance,
+              productLootList: item.productLootList,
+              productProductionTime: item.productProductionTime,
+              favoriteFoodItemId: item.favoriteFoodItemId,
+              nutritionMax: item.nutritionMax,
             },
           })
 
@@ -325,27 +343,62 @@ export async function runImport(
     }
     await report('variants', varDone, normalized.length)
 
-    // ── Phase 6: Crafting stations ──────────────────────────────────────────
-    // On collecte toutes les stations référencées dans les recettes et on les crée
-    // avant d'importer les recettes (sinon FK constraint → toutes les recettes échouent).
-    const allStationIds = new Set<string>()
-    for (const item of normalized) {
-      if (item.craftingRecipe?.craftingStationId) allStationIds.add(item.craftingRecipe.craftingStationId)
-      if (item.refiningRecipe?.craftingStationId) allStationIds.add(item.refiningRecipe.craftingStationId)
+    await report('buildings', 0, rawBuildings.length)
+    await logInfo(`Importing ${rawBuildings.length} buildings...`)
+
+    const normalizedBuildings = rawBuildings.map((b) => normalizeBuilding(b, b.category, localizations))
+
+    for (const b of normalizedBuildings) {
+      await prisma.craftingStation.upsert({
+        where: { id: b.uniqueName },
+        create: {
+          id: b.uniqueName,
+          name: b.name,
+          type: b.type,
+          tier: b.tier,
+          description: b.description,
+          iconUrl: b.iconUrl,
+          nutritionStorage: b.nutritionStorage,
+          favoriteDishItemId: b.favoriteDishItemId,
+          favoriteDishBonus: b.favoriteDishBonus,
+        },
+        update: {
+          name: b.name,
+          type: b.type,
+          tier: b.tier,
+          description: b.description,
+          iconUrl: b.iconUrl,
+          nutritionStorage: b.nutritionStorage,
+          favoriteDishItemId: b.favoriteDishItemId,
+          favoriteDishBonus: b.favoriteDishBonus,
+        },
+      })
     }
 
-    await logInfo(`Upserting ${allStationIds.size} crafting stations...`)
-    for (const stationId of allStationIds) {
-      await prisma.craftingStation.upsert({
-        where: { id: stationId },
-        create: {
-          id: stationId,
-          name: stationNameFromId(stationId),
-          type: stationTypeFromId(stationId),
-        },
-        update: {},
-      }).catch(() => {})
+    // Pass 2: Update relations and requirements (now that all buildings exist)
+    const allBuildingIds = new Set(normalizedBuildings.map((b) => b.uniqueName))
+    for (const b of normalizedBuildings) {
+      if (b.nextTierBuildingId && allBuildingIds.has(b.nextTierBuildingId)) {
+        await prisma.craftingStation.update({
+          where: { id: b.uniqueName },
+          data: {
+            nextTierBuildingId: b.nextTierBuildingId,
+          },
+        }).catch(() => {})
+      }
+
+      if (b.requirements.length > 0) {
+        await prisma.buildingRequirement.deleteMany({ where: { buildingId: b.uniqueName } })
+        await prisma.buildingRequirement.createMany({
+          data: b.requirements.map((r) => ({
+            buildingId: b.uniqueName,
+            itemId: r.uniqueName,
+            count: r.count,
+          })),
+        })
+      }
     }
+    await report('buildings', rawBuildings.length, rawBuildings.length)
 
     // ── Phase 7: Crafting recipes ───────────────────────────────────────────
     // On utilise delete + create dans une transaction pour garantir que les ingrédients
