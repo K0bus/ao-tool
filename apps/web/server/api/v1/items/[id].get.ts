@@ -56,10 +56,73 @@ export default defineEventHandler(async (event) => {
         cityBonuses: {
           include: { location: true },
         },
+        harvestResultItem: {
+          include: {
+            localizations: { where: { locale: "FR-FR" }, take: 1 },
+          },
+        },
+        productResultItem: {
+          include: {
+            localizations: { where: { locale: "FR-FR" }, take: 1 },
+          },
+        },
       },
     });
 
     if (!raw) return null;
+
+    // Resolve other related items if they exist
+    let grownItemName = null;
+    if (raw.grownItemUniqueName) {
+      const grown = await prisma.item.findUnique({
+        where: { uniqueName: raw.grownItemUniqueName },
+        include: { localizations: { where: { locale: "FR-FR" }, take: 1 } },
+      });
+      grownItemName = grown?.localizations[0]?.name ?? raw.grownItemUniqueName;
+    }
+
+    let favoriteFoodName = null;
+    if (raw.favoriteFoodItemId) {
+      const food = await prisma.item.findUnique({
+        where: { uniqueName: raw.favoriteFoodItemId },
+        include: { localizations: { where: { locale: "FR-FR" }, take: 1 } },
+      });
+      favoriteFoodName = food?.localizations[0]?.name ?? raw.favoriteFoodItemId;
+    }
+
+    let harvestResultItem = raw.harvestResultItem;
+    if (!harvestResultItem && raw.harvestLootList) {
+      const resolvedUniqueName = raw.harvestLootList.replace('_LOOT', '');
+      const dbHarvest = await prisma.item.findUnique({
+        where: { uniqueName: resolvedUniqueName },
+        include: { localizations: { where: { locale: "FR-FR" }, take: 1 } },
+      });
+      if (dbHarvest) {
+        harvestResultItem = dbHarvest;
+      }
+    }
+
+    const PRODUCT_LOOT_MAP: Record<string, string> = {
+      'T3_CHICKEN_LOOT': 'T3_EGG',
+      'T4_GOAT_LOOT': 'T4_MILK',
+      'T5_GOOSE_LOOT': 'T5_EGG',
+      'T6_SHEEP_LOOT': 'T6_MILK',
+      'T8_COW_LOOT': 'T8_MILK',
+    };
+
+    let productResultItem = raw.productResultItem;
+    if (!productResultItem && raw.productLootList) {
+      const resolvedUniqueName = PRODUCT_LOOT_MAP[raw.productLootList];
+      if (resolvedUniqueName) {
+        const dbProduct = await prisma.item.findUnique({
+          where: { uniqueName: resolvedUniqueName },
+          include: { localizations: { where: { locale: "FR-FR" }, take: 1 } },
+        });
+        if (dbProduct) {
+          productResultItem = dbProduct;
+        }
+      }
+    }
 
     return {
       id: raw.id,
@@ -130,11 +193,25 @@ export default defineEventHandler(async (event) => {
       harvestLootList: raw.harvestLootList,
       harvestSeedChance: raw.harvestSeedChance,
       grownItemUniqueName: raw.grownItemUniqueName,
+      grownItemName,
       offspringChance: raw.offspringChance,
       productLootList: raw.productLootList,
       productProductionTime: raw.productProductionTime,
       favoriteFoodItemId: raw.favoriteFoodItemId,
+      favoriteFoodName,
       nutritionMax: raw.nutritionMax,
+      harvestResultItemId: raw.harvestResultItemId,
+      harvestResultItem: harvestResultItem ? {
+        id: harvestResultItem.id,
+        uniqueName: harvestResultItem.uniqueName,
+        name: harvestResultItem.localizations[0]?.name ?? harvestResultItem.uniqueName,
+      } : null,
+      productResultItemId: raw.productResultItemId,
+      productResultItem: productResultItem ? {
+        id: productResultItem.id,
+        uniqueName: productResultItem.uniqueName,
+        name: productResultItem.localizations[0]?.name ?? productResultItem.uniqueName,
+      } : null,
     };
   });
 

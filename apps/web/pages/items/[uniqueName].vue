@@ -222,6 +222,161 @@
 
         <!-- RIGHT column -->
         <div class="id-col">
+          <!-- Farming & Breeding Panel (Only for farming items) -->
+          <div v-if="isFarmingItem" class="panel parchment framed">
+            <div class="panel-header"><h3>Agriculture & Élevage</h3></div>
+            
+            <div style="display:flex;flex-direction:column;gap:16px;padding:18px">
+              <!-- Section: Croissance & Culture -->
+              <div v-if="item.growTime !== null || item.grownItemUniqueName !== null || item.harvestSeedChance !== null || item.offspringChance !== null">
+                <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;font-family:var(--font-display);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                  <span style="color:var(--gold)">✦</span> Croissance & Culture
+                </div>
+                
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <!-- Temps de pousse -->
+                  <div v-if="item.growTime !== null" class="stat-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border-divider)">
+                    <span style="font-size:12px;color:var(--text-2)">Temps de croissance</span>
+                    <span style="font-size:13px;color:var(--text-0);font-family:var(--font-mono)">{{ formatDuration(item.growTime) }}</span>
+                  </div>
+
+                  <!-- Chance de retour (Graine / Offspring) -->
+                  <div v-if="item.harvestSeedChance !== null || item.offspringChance !== null" class="stat-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border-divider)">
+                    <span style="font-size:12px;color:var(--text-2)">{{ item.grownItemUniqueName ? 'Chance de rejeton' : 'Retour de graine' }}</span>
+                    <span style="font-size:13px;color:var(--text-0);font-family:var(--font-mono)">{{ formatPercent(item.offspringChance ?? item.harvestSeedChance) }}</span>
+                  </div>
+
+                  <!-- Résultat Adulte / Récolte -->
+                  <div v-if="item.grownItemUniqueName || item.harvestResultItem" style="margin-top:4px">
+                    <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Résultat obtenu :</div>
+                    
+                    <!-- Grown animal -->
+                    <NuxtLink v-if="item.grownItemUniqueName" :to="`/items/${item.grownItemUniqueName}`" class="rmi" style="text-decoration:none;display:flex;align-items:center">
+                      <div class="item-frame q-normal" style="width:40px;height:40px;flex-shrink:0">
+                        <AoItemImage
+                          :unique-name="item.grownItemUniqueName"
+                          :display-name="item.grownItemName"
+                          :alt="item.grownItemName"
+                          :img-style="{ width: '100%', height: '100%', objectFit: 'contain' }"
+                        />
+                      </div>
+                      <div class="rmi-meta" style="margin-left:10px">
+                        <div class="rmi-name" style="font-size:13px;color:var(--text-1);font-weight:500">{{ item.grownItemName }}</div>
+                        <div class="rmi-id" style="font-size:10px;color:var(--text-3)">{{ item.grownItemUniqueName }}</div>
+                      </div>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3);margin-left:auto"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    </NuxtLink>
+
+                    <!-- Harvest crop -->
+                    <NuxtLink v-else-if="item.harvestResultItem" :to="`/items/${item.harvestResultItem.uniqueName}`" class="rmi" style="text-decoration:none;display:flex;align-items:center">
+                      <div class="item-frame q-normal" style="width:40px;height:40px;flex-shrink:0">
+                        <AoItemImage
+                          :unique-name="item.harvestResultItem.uniqueName"
+                          :display-name="item.harvestResultItem.name"
+                          :alt="item.harvestResultItem.name"
+                          :img-style="{ width: '100%', height: '100%', objectFit: 'contain' }"
+                        />
+                      </div>
+                      <div class="rmi-meta" style="margin-left:10px">
+                        <div class="rmi-name" style="font-size:13px;color:var(--text-1);font-weight:500">{{ item.harvestResultItem.name }}</div>
+                        <div class="rmi-id" style="font-size:10px;color:var(--text-3)">{{ item.harvestResultItem.uniqueName }}</div>
+                      </div>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3);margin-left:auto"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    </NuxtLink>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Production Animale -->
+              <div v-if="item.productLootList !== null || item.productProductionTime !== null">
+                <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;font-family:var(--font-display);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                  <span style="color:var(--gold)">✦</span> Production de l'Animal
+                </div>
+                
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <!-- Temps de production -->
+                  <div v-if="item.productProductionTime !== null" class="stat-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border-divider)">
+                    <span style="font-size:12px;color:var(--text-2)">Temps de production</span>
+                    <span style="font-size:13px;color:var(--text-0);font-family:var(--font-mono)">{{ formatDuration(item.productProductionTime) }}</span>
+                  </div>
+
+                  <!-- Produit récolté -->
+                  <div v-if="item.productResultItem || item.productLootList" style="margin-top:4px">
+                    <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Ressource produite :</div>
+                    
+                    <NuxtLink v-if="item.productResultItem" :to="`/items/${item.productResultItem.uniqueName}`" class="rmi" style="text-decoration:none;display:flex;align-items:center">
+                      <div class="item-frame q-normal" style="width:40px;height:40px;flex-shrink:0">
+                        <AoItemImage
+                          :unique-name="item.productResultItem.uniqueName"
+                          :display-name="item.productResultItem.name"
+                          :alt="item.productResultItem.name"
+                          :img-style="{ width: '100%', height: '100%', objectFit: 'contain' }"
+                        />
+                      </div>
+                      <div class="rmi-meta" style="margin-left:10px">
+                        <div class="rmi-name" style="font-size:13px;color:var(--text-1);font-weight:500">{{ item.productResultItem.name }}</div>
+                        <div class="rmi-id" style="font-size:10px;color:var(--text-3)">{{ item.productResultItem.uniqueName }}</div>
+                      </div>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3);margin-left:auto"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    </NuxtLink>
+
+                    <div v-else class="rmi" style="display:flex;align-items:center;padding:10px;background:var(--bg-1);border-radius:var(--radius-sm)">
+                      <div class="rmi-meta">
+                        <div class="rmi-name" style="font-size:13px;color:var(--text-1)">{{ item.productLootList }}</div>
+                        <div class="rmi-id" style="font-size:10px;color:var(--text-3)">Loot List ID</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Alimentation & Soins -->
+              <div v-if="item.favoriteFoodItemId !== null || item.nutritionMax !== null">
+                <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;font-family:var(--font-display);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                  <span style="color:var(--gold)">✦</span> Alimentation & Soins
+                </div>
+                
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <!-- Nutrition maximum -->
+                  <div v-if="item.nutritionMax !== null" class="stat-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border-divider)">
+                    <span style="font-size:12px;color:var(--text-2)">Nutrition max</span>
+                    <span style="font-size:13px;color:var(--text-0);font-family:var(--font-mono)">{{ item.nutritionMax.toLocaleString('fr-FR') }}</span>
+                  </div>
+
+                  <!-- Nourriture préférée -->
+                  <div v-if="item.favoriteFoodItemId" style="margin-top:4px">
+                    <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Nourriture favorite (x2 de nutrition) :</div>
+                    
+                    <NuxtLink :to="`/items/${item.favoriteFoodItemId}`" class="rmi" style="text-decoration:none;display:flex;align-items:center">
+                      <div class="item-frame q-normal" style="width:40px;height:40px;flex-shrink:0">
+                        <AoItemImage
+                          :unique-name="item.favoriteFoodItemId"
+                          :display-name="item.favoriteFoodName"
+                          :alt="item.favoriteFoodName"
+                          :img-style="{ width: '100%', height: '100%', objectFit: 'contain' }"
+                        />
+                      </div>
+                      <div class="rmi-meta" style="margin-left:10px">
+                        <div class="rmi-name" style="font-size:13px;color:var(--text-1);font-weight:500">{{ item.favoriteFoodName }}</div>
+                        <div class="rmi-id" style="font-size:10px;color:var(--text-3)">{{ item.favoriteFoodItemId }}</div>
+                      </div>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3);margin-left:auto"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    </NuxtLink>
+
+                    <!-- Quantité de nourriture à fournir -->
+                    <div v-if="item.nutritionMax" style="margin-top:8px;padding:10px;background:rgba(201,161,74,0.03);border:1px solid var(--border-divider);border-radius:var(--radius-sm);font-size:11px;line-height:1.45;color:var(--text-2)">
+                      <div style="margin-bottom:4px;color:var(--gold);font-weight:500">
+                        ❖ Quantité requise pour remplir la jauge :
+                      </div>
+                      <div>• Nourriture favorite : <strong style="color:var(--gold-bright)">{{ Math.ceil(item.nutritionMax / 96) }}</strong> unités (96 nutrition / u)</div>
+                      <div>• Autres plantes : <strong style="color:var(--text-0)">{{ Math.ceil(item.nutritionMax / 48) }}</strong> unités (48 nutrition / u)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Item stats panel -->
           <div class="panel">
             <div class="panel-header"><h3>Statistiques</h3></div>
@@ -424,6 +579,32 @@ const statRows = computed(() => {
 
 const hasStats = computed(() => statRows.value.length > 0)
 
+// Farming specific helpers
+const isFarmingItem = computed(() => {
+  if (!item.value) return false
+  return (
+    item.value.growTime !== null ||
+    item.value.grownItemUniqueName !== null ||
+    item.value.productLootList !== null ||
+    item.value.favoriteFoodItemId !== null
+  )
+})
+
+function formatDuration(seconds: number | null | undefined): string {
+  if (!seconds) return '—'
+  const hours = Math.round(seconds / 3600)
+  if (hours % 24 === 0) {
+    const days = hours / 24
+    return `${days} jour${days > 1 ? 's' : ''}`
+  }
+  return `${hours} heure${hours > 1 ? 's' : ''}`
+}
+
+function formatPercent(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—'
+  const pct = value * 100
+  return `${pct.toFixed(1).replace('.0', '')}%`
+}
 
 useHead(() => ({
   title: item.value ? `${item.value.name} — Albion Codex` : 'Item — Albion Codex',
