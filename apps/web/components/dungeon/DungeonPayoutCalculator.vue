@@ -110,8 +110,8 @@
               <div class="stat-val text-gold">{{ rawLootShare.toLocaleString() }} <span class="unit">S</span></div>
             </div>
             <div class="stat-item">
-              <div class="stat-label">Cible par joueur</div>
-              <div class="stat-val text-success">{{ targetTotalShare.toLocaleString() }} <span class="unit">S</span></div>
+              <div class="stat-label">Cible Sacs / Joueur</div>
+              <div class="stat-val text-success">{{ targetSilverShare.toLocaleString() }} <span class="unit">S</span></div>
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@
         <div class="col-lbl" style="text-align: center">Revendiquer part</div>
         <div class="col-lbl" style="text-align: right">Sacs d'argent</div>
         <div class="col-lbl" style="text-align: right">Part du Loot</div>
-        <div class="col-lbl" style="text-align: right">À Verser (Leader)</div>
+        <div class="col-lbl" style="text-align: right">Ajustement Argent</div>
         <div class="col-lbl" style="text-align: center">Action</div>
       </div>
 
@@ -219,7 +219,7 @@
             <span v-else class="t-dim">—</span>
           </div>
 
-          <!-- Leader Total Payout value -->
+          <!-- Silver Bags adjustment (strictly coins adjustment, no loot value) -->
           <div class="cell-payout font-mono">
             <span 
               v-if="player.claimsPayout"
@@ -229,7 +229,7 @@
               {{ player.leaderPayout >= 0 ? '+' : '' }}{{ player.leaderPayout.toLocaleString() }} ◇
             </span>
             <span v-else class="uncalculable-label italic text-xs" style="color: var(--text-4)">
-              Exclu (0 Payout)
+              Exclu
             </span>
           </div>
 
@@ -303,36 +303,27 @@ const rawLootShare = computed(() => {
   return count > 0 ? Math.floor(totalLootValue.value / count) : 0
 })
 
-// Target total share of the session (loot + bags combined)
-const targetTotalShare = computed(() => {
+// Target silver bags share per claiming player (strictly totalSilverBags / claimantsCount)
+const targetSilverShare = computed(() => {
   const count = claimantsCount.value
-  if (count === 0) return 0
-
-  if (calculationMode.value === 'fair') {
-    const totalSessionValue = totalLootValue.value + totalSilverBags.value
-    return Math.floor(totalSessionValue / count)
-  } else {
-    return Math.floor(totalLootValue.value / count)
-  }
+  return count > 0 ? Math.floor(totalSilverBags.value / count) : 0
 })
 
-// Rounded excess leftover
+// Target total combined share (loot + silver bags) per claiming player
+const targetTotalShare = computed(() => {
+  return rawLootShare.value + targetSilverShare.value
+})
+
+// Rounded excess leftover of total loot value
 const residualSilver = computed(() => {
   const count = claimantsCount.value
-  if (count === 0) return 0
-
-  if (calculationMode.value === 'fair') {
-    const totalSessionValue = totalLootValue.value + totalSilverBags.value
-    return totalSessionValue % count
-  } else {
-    return totalLootValue.value % count
-  }
+  return count > 0 ? totalLootValue.value % count : 0
 })
 
 // Complete list with computed loot shares and leader payments
 const calculatedPlayers = computed<CalculatedPlayer[]>(() => {
   const rawShare = rawLootShare.value
-  const targetShare = targetTotalShare.value
+  const silverShare = targetSilverShare.value
   const mode = calculationMode.value
   const count = claimantsCount.value
 
@@ -341,15 +332,16 @@ const calculatedPlayers = computed<CalculatedPlayer[]>(() => {
     let leaderPayout = 0
 
     if (player.claimsPayout && count > 0) {
-      // The Loot Share is completely decoupled: strictly totalLootValue / claimantsCount
+      // The Loot Share is strictly the raw items split: totalLootValue / claimantsCount
       lootShare = rawShare
       
       if (mode === 'fair') {
-        // Payout paid by the leader to reach targetTotalShare
-        leaderPayout = targetShare - player.silverBags
+        // The Leader Payout strictly represents the silver adjustment to balance the silver bags:
+        // (totalSilverBags / claimantsCount) - player.silverBags
+        leaderPayout = silverShare - player.silverBags
       } else {
-        // Direct division
-        leaderPayout = rawShare
+        // Direct division: no silver adjustments are paid by the leader
+        leaderPayout = 0
       }
     }
 
@@ -427,18 +419,19 @@ function copySummaryToClipboard() {
   let text = `⚔️ **RAPPORT DE PAYOUT DE DONJON** ⚔️\n`
   text += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
   text += `🔹 **Méthode :** ${modeText}\n`
-  text += `🔹 **Valeur totale Loot :** ${totalLootValue.value.toLocaleString()} Silver\n`
+  text += `🔹 **Valeur totale Loot (Items) :** ${totalLootValue.value.toLocaleString()} Silver\n`
   text += `🔹 **Cumul des sacs d'argent :** ${totalSilverBags.value.toLocaleString()} Silver\n`
   text += `🔹 **Membres du groupe :** ${players.value.length} (${claimantsCount.value} revendicateurs)\n`
   text += `🔹 **Part du Loot / joueur :** ${rawLootShare.value.toLocaleString()} Silver\n`
-  text += `🔹 **Cible cumulée / joueur :** ${targetTotalShare.value.toLocaleString()} Silver\n`
+  text += `🔹 **Cible Sacs / joueur :** ${targetSilverShare.value.toLocaleString()} Silver\n`
+  text += `🔹 **Total cumulé / joueur :** ${targetTotalShare.value.toLocaleString()} Silver\n`
   text += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
-  text += `📋 **RÉPARTITION (À verser par le chef) :**\n`
+  text += `📋 **AJUSTEMENT DE L'ARGENT (À équilibrer) :**\n`
   
   calculatedPlayers.value.forEach(p => {
     if (p.claimsPayout) {
       const payoutString = p.leaderPayout >= 0 ? `+${p.leaderPayout.toLocaleString()}` : `${p.leaderPayout.toLocaleString()}`
-      text += `👤 **${p.name}** : ${payoutString} Silver  *(Sacs: ${p.silverBags.toLocaleString()})*\n`
+      text += `👤 **${p.name}** : ${payoutString} Silver  *(Sacs: ${p.silverBags.toLocaleString()} | Loot Share: ${rawLootShare.value.toLocaleString()})*\n`
     } else {
       text += `👤 **${p.name}** : Exclu (Gardera ses sacs : ${p.silverBags.toLocaleString()})\n`
     }
@@ -446,7 +439,7 @@ function copySummaryToClipboard() {
   
   if (residualSilver.value > 0) {
     text += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
-    text += `⚠️ *Reste de division à garder par le leader : ${residualSilver.value} Silver*\n`
+    text += `⚠️ *Reste de division Loot à garder par le leader : ${residualSilver.value} Silver*\n`
   }
 
   navigator.clipboard.writeText(text).then(() => {
