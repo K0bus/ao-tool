@@ -106,12 +106,12 @@
               <div class="stat-val">{{ claimantsCount }} / {{ players.length }}</div>
             </div>
             <div class="stat-item">
-              <div class="stat-label">Cible par joueur</div>
-              <div class="stat-val text-gold">{{ targetSharePerPlayer.toLocaleString() }} <span class="unit">S</span></div>
+              <div class="stat-label">Part Loot / Joueur</div>
+              <div class="stat-val text-gold">{{ rawLootShare.toLocaleString() }} <span class="unit">S</span></div>
             </div>
             <div class="stat-item">
-              <div class="stat-label">Reste de Division</div>
-              <div class="stat-val text-dim">{{ residualSilver.toLocaleString() }} <span class="unit">S</span></div>
+              <div class="stat-label">Cible par joueur</div>
+              <div class="stat-val text-success">{{ targetTotalShare.toLocaleString() }} <span class="unit">S</span></div>
             </div>
           </div>
         </div>
@@ -285,9 +285,11 @@ const players = ref<PlayerDonjon[]>([
   { id: '5', name: 'Elysia', silverBags: 0, claimsPayout: false }, // Excluded claimant
 ])
 
-// Computed total silver bags
+// Computed total silver bags for active claimants
 const totalSilverBags = computed(() => {
-  return players.value.reduce((acc, p) => acc + (p.silverBags || 0), 0)
+  return players.value
+    .filter(p => p.claimsPayout)
+    .reduce((acc, p) => acc + (p.silverBags || 0), 0)
 })
 
 // Number of claimants
@@ -295,15 +297,19 @@ const claimantsCount = computed(() => {
   return players.value.filter(p => p.claimsPayout).length
 })
 
-// Target share per claiming player
-const targetSharePerPlayer = computed(() => {
+// Raw Loot share per claiming player (strictly totalLootValue / claimantsCount)
+const rawLootShare = computed(() => {
+  const count = claimantsCount.value
+  return count > 0 ? Math.floor(totalLootValue.value / count) : 0
+})
+
+// Target total share of the session (loot + bags combined)
+const targetTotalShare = computed(() => {
   const count = claimantsCount.value
   if (count === 0) return 0
 
   if (calculationMode.value === 'fair') {
-    const totalSessionValue = totalLootValue.value + players.value
-      .filter(p => p.claimsPayout)
-      .reduce((acc, p) => acc + (p.silverBags || 0), 0)
+    const totalSessionValue = totalLootValue.value + totalSilverBags.value
     return Math.floor(totalSessionValue / count)
   } else {
     return Math.floor(totalLootValue.value / count)
@@ -316,9 +322,7 @@ const residualSilver = computed(() => {
   if (count === 0) return 0
 
   if (calculationMode.value === 'fair') {
-    const totalSessionValue = totalLootValue.value + players.value
-      .filter(p => p.claimsPayout)
-      .reduce((acc, p) => acc + (p.silverBags || 0), 0)
+    const totalSessionValue = totalLootValue.value + totalSilverBags.value
     return totalSessionValue % count
   } else {
     return totalLootValue.value % count
@@ -327,7 +331,8 @@ const residualSilver = computed(() => {
 
 // Complete list with computed loot shares and leader payments
 const calculatedPlayers = computed<CalculatedPlayer[]>(() => {
-  const share = targetSharePerPlayer.value
+  const rawShare = rawLootShare.value
+  const targetShare = targetTotalShare.value
   const mode = calculationMode.value
   const count = claimantsCount.value
 
@@ -336,12 +341,15 @@ const calculatedPlayers = computed<CalculatedPlayer[]>(() => {
     let leaderPayout = 0
 
     if (player.claimsPayout && count > 0) {
+      // The Loot Share is completely decoupled: strictly totalLootValue / claimantsCount
+      lootShare = rawShare
+      
       if (mode === 'fair') {
-        lootShare = Math.max(0, share - player.silverBags)
-        leaderPayout = share - player.silverBags
+        // Payout paid by the leader to reach targetTotalShare
+        leaderPayout = targetShare - player.silverBags
       } else {
-        lootShare = share
-        leaderPayout = share
+        // Direct division
+        leaderPayout = rawShare
       }
     }
 
@@ -422,7 +430,8 @@ function copySummaryToClipboard() {
   text += `🔹 **Valeur totale Loot :** ${totalLootValue.value.toLocaleString()} Silver\n`
   text += `🔹 **Cumul des sacs d'argent :** ${totalSilverBags.value.toLocaleString()} Silver\n`
   text += `🔹 **Membres du groupe :** ${players.value.length} (${claimantsCount.value} revendicateurs)\n`
-  text += `🔹 **Cible par joueur :** ${targetSharePerPlayer.value.toLocaleString()} Silver\n`
+  text += `🔹 **Part du Loot / joueur :** ${rawLootShare.value.toLocaleString()} Silver\n`
+  text += `🔹 **Cible cumulée / joueur :** ${targetTotalShare.value.toLocaleString()} Silver\n`
   text += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
   text += `📋 **RÉPARTITION (À verser par le chef) :**\n`
   
