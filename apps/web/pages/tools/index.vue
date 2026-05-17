@@ -3,10 +3,8 @@
     <!-- Standard Page Header (identical to items / profit pages) -->
     <div class="page-header">
       <div>
-        <div class="breadcrumb">
-          <NuxtLink to="/">Accueil</NuxtLink>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-          <span>Outils</span>
+        <div class="crumbs">
+          <NuxtLink to="/">Accueil</NuxtLink><span class="sep">/</span>Outils
         </div>
         <h1 class="page-title">Simulateurs & Outils</h1>
         <p class="page-sub">Optimisez votre économie sur Albion Online avec nos calculateurs et simulateurs exclusifs.</p>

@@ -3,12 +3,8 @@
     <!-- Standard Page Header -->
     <div class="page-header">
       <div>
-        <div class="breadcrumb">
-          <NuxtLink to="/">Accueil</NuxtLink>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-          <NuxtLink to="/tools">Outils</NuxtLink>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-          <span>Calculateur de Payout</span>
+        <div class="crumbs">
+          <NuxtLink to="/">Accueil</NuxtLink><span class="sep">/</span><NuxtLink to="/tools">Outils</NuxtLink><span class="sep">/</span>Calculateur de Payout
         </div>
         <h1 class="page-title">Calculateur de Payout de Donjon</h1>
         <p class="page-sub">Gérez et divisez équitablement le butin d'une session de donjon de groupe.</p>
