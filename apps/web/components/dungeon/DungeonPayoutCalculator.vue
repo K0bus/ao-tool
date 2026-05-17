@@ -132,7 +132,7 @@
       </div>
     </div>
 
-    <!-- Players Management Section (Retravaillée sous forme de liste propre avec séparateurs) -->
+    <!-- Players Management Section -->
     <div class="panel">
       <div class="panel-header flex-row-between">
         <h3>Membres du Groupe ({{ players.length }})</h3>
@@ -182,7 +182,8 @@
             <span class="status-dot" :class="player.claimsPayout ? 'ok' : 'error'"></span>
             <input 
               type="text" 
-              v-model="player.name" 
+              :value="player.name"
+              @input="updatePlayerName(player.id, ($event.target as HTMLInputElement).value)"
               class="player-name-input"
               placeholder="Nom..."
             />
@@ -193,7 +194,8 @@
             <label class="ds-switch">
               <input 
                 type="checkbox" 
-                v-model="player.claimsPayout" 
+                :checked="player.claimsPayout"
+                @change="togglePlayerClaim(player.id)"
               />
               <span class="ds-track"><span class="ds-thumb"></span></span>
             </label>
@@ -203,7 +205,8 @@
           <div class="cell-bags">
             <input 
               type="number" 
-              v-model.number="player.silverBags" 
+              :value="player.silverBags"
+              @input="updatePlayerBags(player.id, Number(($event.target as HTMLInputElement).value))"
               min="0"
               class="ds-input inline-bags-input font-mono"
               placeholder="0"
@@ -349,6 +352,30 @@ const calculatedPlayers = computed<CalculatedPlayer[]>(() => {
     }
   })
 })
+
+// Update Player Name directly in raw source ref
+function updatePlayerName(id: string, name: string) {
+  const p = players.value.find(x => x.id === id)
+  if (p) {
+    p.name = name
+  }
+}
+
+// Toggle Player Claim Status directly in raw source ref
+function togglePlayerClaim(id: string) {
+  const p = players.value.find(x => x.id === id)
+  if (p) {
+    p.claimsPayout = !p.claimsPayout
+  }
+}
+
+// Update Player Silver Bags directly in raw source ref
+function updatePlayerBags(id: string, bags: number) {
+  const p = players.value.find(x => x.id === id)
+  if (p) {
+    p.silverBags = Math.max(0, bags || 0)
+  }
+}
 
 // Add Player
 function addPlayer() {
