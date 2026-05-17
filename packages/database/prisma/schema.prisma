@@ -316,10 +316,12 @@ model Item {
   // Farming metadata
   growTime            Int?    // Growth time in seconds
   harvestLootList     String? // Loot list ID for harvest
+  harvestLootTable    LootTable? @relation("HarvestLootList", fields: [harvestLootList], references: [id])
   harvestSeedChance   Float?  // Chance to get seed back
   grownItemUniqueName String? // Unique name of the grown animal
   offspringChance     Float?  // Chance to get offspring
   productLootList     String? // Loot list ID for products (eggs, milk)
+  productLootTable    LootTable? @relation("ProductLootList", fields: [productLootList], references: [id])
   productProductionTime Int?   // Time to produce (seconds)
 
   harvestResultItemId String?
@@ -335,6 +337,8 @@ model Item {
   favoriteFoodFor      CraftingStation[]     @relation("FavoriteDish")
   permittedInStations  StationItem[]
   buildingRequirements BuildingRequirement[]
+  lootTableItems       LootTableItem[]
+
 
   maxQuality      Int      @default(1)
 
@@ -991,3 +995,46 @@ model Laborer {
 
   @@index([buildingId])
 }
+
+model LootTable {
+  id           String          @id // e.g. "T1_CARROT_LOOT"
+  name         String          @unique
+  listType     String?         // from `@listtype` attribute
+  rawData      Json            // Complete original nested raw JSON from loot.json
+  
+  items               LootTableItem[] @relation("LootTableItems")
+  referencedInItems   LootTableItem[] @relation("ReferencedInItems")
+  
+  harvestItems Item[]          @relation("HarvestLootList")
+  productItems Item[]          @relation("ProductLootList")
+  
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model LootTableItem {
+  id                String    @id @default(cuid())
+  lootTableId       String
+  
+  // Either an item uniqueName...
+  itemUniqueName    String?
+  itemId            String?   // Links to the Item model if the item exists in the DB
+  
+  // ...or a reference to another loot table
+  referencedLootTableId String?
+  
+  chance            Float     @default(1.0)  // Defaults to 1.0 if not specified
+  amount            String    @default("1")    // e.g. "3-6", "1", "25-74"
+  weight            Int?                     // For OR/AND blocks that use weight instead of chance
+  parentType        String    @default("DIRECT") // e.g. "DIRECT", "OR", "AND"
+  useBlackMarket    Boolean   @default(false)
+  
+  lootTable         LootTable  @relation("LootTableItems", fields: [lootTableId], references: [id], onDelete: Cascade)
+  item              Item?      @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  referencedLootTable LootTable? @relation("ReferencedInItems", fields: [referencedLootTableId], references: [id], onDelete: SetNull)
+
+  @@index([lootTableId])
+  @@index([itemId])
+  @@index([referencedLootTableId])
+}
+

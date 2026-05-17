@@ -22,7 +22,7 @@ export interface ImportJobResult {
 }
 
 export interface ImportJobProgress {
-  phase: 'fetching' | 'normalizing' | 'categories' | 'importing' | 'localizations' | 'variants' | 'buildings' | 'recipes' | 'refining' | 'spells' | 'item_spells' | 'done'
+  phase: 'fetching' | 'normalizing' | 'categories' | 'importing' | 'localizations' | 'variants' | 'buildings' | 'recipes' | 'refining' | 'spells' | 'item_spells' | 'loottables' | 'done'
   processed: number
   total: number
   percent: number

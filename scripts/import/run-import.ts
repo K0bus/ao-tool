@@ -100,7 +100,7 @@ export async function runImport(
     await report('fetching', 0, 0)
     await logInfo('Fetching ao-bin-dumps data (items.json)...')
 
-    const [{ items: rawItems, buildings: rawBuildings, localizations, loot: lootMap }, sourceCommit] = await Promise.all([
+    const [{ items: rawItems, buildings: rawBuildings, localizations, loot: lootMap, rawLootLists }, sourceCommit] = await Promise.all([
       fetchAoData(),
       fetchLatestCommit(),
     ])
@@ -203,6 +203,32 @@ export async function runImport(
 
     await logInfo(`Imported ${parentCats.size} parent categories and ${childCats.size} subcategories`)
     await report('categories', parentCats.size + childCats.size, parentCats.size + childCats.size)
+
+    // ── Phase 3.5: Loot Table Headers ────────────────────────────────────────
+    await logInfo(`Importing ${rawLootLists.length} loot table headers...`)
+    let headersImported = 0
+    for (const list of rawLootLists) {
+      if (!list['@name']) continue
+      try {
+        await prisma.lootTable.upsert({
+          where: { id: list['@name'] },
+          create: {
+            id: list['@name'],
+            name: list['@name'],
+            listType: list['@listtype'] || null,
+            rawData: list,
+          },
+          update: {
+            listType: list['@listtype'] || null,
+            rawData: list,
+          },
+        })
+        headersImported++
+      } catch (err) {
+        await logError(`Failed to upsert LootTable header ${list['@name']}`, { error: String(err) })
+      }
+    }
+    await logInfo(`Imported ${headersImported} loot table headers.`)
 
     // ── Phase 4: Item upsert ─────────────────────────────────────────────────
     const batches = chunk(normalized, BATCH_SIZE)
@@ -609,6 +635,73 @@ export async function runImport(
     await report('item_spells', linksDone, normalized.length)
     await logInfo(`Item-spell links done for ${linksDone} items`)
 
+    // ── Phase 11: Loot Table Items ──────────────────────────────────────────
+    await report('loottables', 0, rawLootLists.length)
+    await logInfo(`Importing items for ${rawLootLists.length} loot tables...`)
+
+    // Load existing items in database so we can link itemId if the item exists
+    const dbItems = await prisma.item.findMany({ select: { id: true } })
+    const dbItemIds = new Set(dbItems.map((i) => i.id))
+
+    let lootTablesImported = 0
+    for (const list of rawLootLists) {
+      if (!list['@name']) continue
+      try {
+        const extracted = extractLootItems(list)
+
+        // Delete old items for this loot table
+        await prisma.lootTableItem.deleteMany({
+          where: { lootTableId: list['@name'] }
+        })
+
+        if (extracted.length > 0) {
+          // Batch insert the flattened entries
+          await prisma.lootTableItem.createMany({
+            data: extracted.map((entry) => ({
+              lootTableId: list['@name'],
+              itemUniqueName: entry.itemUniqueName || null,
+              itemId: entry.itemUniqueName && dbItemIds.has(entry.itemUniqueName) ? entry.itemUniqueName : null,
+              referencedLootTableId: entry.referencedLootTableId || null,
+              chance: entry.chance,
+              amount: entry.amount,
+              weight: entry.weight || null,
+              parentType: entry.parentType,
+              useBlackMarket: entry.useBlackMarket,
+            }))
+          })
+        }
+        
+        lootTablesImported++
+      } catch (err) {
+        await logError(`Failed to import LootTable items for ${list['@name']}`, { error: String(err) })
+      }
+      if (lootTablesImported % 200 === 0) {
+        await report('loottables', lootTablesImported, rawLootLists.length)
+      }
+    }
+    await report('loottables', rawLootLists.length, rawLootLists.length)
+    await logInfo(`Successfully imported loot items for ${lootTablesImported} loot tables.`)
+
+    // Restore the harvestLootTable and productLootTable relations in Item model!
+    await logInfo('Restoring Item harvest/product loot table relations in DB...')
+    let relationsRestored = 0
+    const farmingItems = normalized.filter((i) => i.harvestLootList || i.productLootList)
+    for (const item of farmingItems) {
+      try {
+        await prisma.item.update({
+          where: { uniqueName: item.uniqueName },
+          data: {
+            harvestLootList: item.harvestLootList || null,
+            productLootList: item.productLootList || null,
+          }
+        })
+        relationsRestored++
+      } catch (err) {
+        // non-critique
+      }
+    }
+    await logInfo(`Restored relations for ${relationsRestored} farming items.`)
+
     // ── Done ────────────────────────────────────────────────────────────────
     const durationMs = Date.now() - startedAt
     const result: ImportJobResult = {
@@ -648,4 +741,84 @@ export async function runImport(
 
     throw err
   }
+}
+
+interface ExtractedLootItem {
+  itemUniqueName?: string
+  referencedLootTableId?: string
+  chance: number
+  amount: string
+  weight?: number
+  parentType: string
+  useBlackMarket: boolean
+}
+
+function extractLootItems(
+  node: any,
+  parentType = 'DIRECT',
+  inheritedChance = 1.0
+): ExtractedLootItem[] {
+  const items: ExtractedLootItem[] = []
+
+  if (!node) return items
+
+  // 1. Process "Item"
+  if (node.Item) {
+    const itemNode = Array.isArray(node.Item) ? node.Item : [node.Item]
+    for (const item of itemNode) {
+      if (item['@type']) {
+        const chance = item['@chance'] ? parseFloat(item['@chance']) : 1.0
+        const weight = item['@weight'] ? parseInt(item['@weight'], 10) : undefined
+        const amount = item['@amount'] || '1'
+        
+        items.push({
+          itemUniqueName: item['@type'],
+          chance: chance * inheritedChance,
+          weight,
+          amount,
+          parentType,
+          useBlackMarket: item['@useblackmarket'] === 'true'
+        })
+      }
+    }
+  }
+
+  // 2. Process "LootListReference"
+  if (node.LootListReference) {
+    const refNode = Array.isArray(node.LootListReference) ? node.LootListReference : [node.LootListReference]
+    for (const ref of refNode) {
+      if (ref['@name']) {
+        const chance = ref['@chance'] ? parseFloat(ref['@chance']) : 1.0
+        const weight = ref['@weight'] ? parseInt(ref['@weight'], 10) : undefined
+        items.push({
+          referencedLootTableId: ref['@name'],
+          chance: chance * inheritedChance,
+          weight,
+          amount: '1',
+          parentType,
+          useBlackMarket: false
+        })
+      }
+    }
+  }
+
+  // 3. Process nested "OR"
+  if (node.OR) {
+    const orNodes = Array.isArray(node.OR) ? node.OR : [node.OR]
+    for (const orNode of orNodes) {
+      const chance = orNode['@chance'] ? parseFloat(orNode['@chance']) : 1.0
+      items.push(...extractLootItems(orNode, 'OR', inheritedChance * chance))
+    }
+  }
+
+  // 4. Process nested "AND"
+  if (node.AND) {
+    const andNodes = Array.isArray(node.AND) ? node.AND : [node.AND]
+    for (const andNode of andNodes) {
+      const chance = andNode['@chance'] ? parseFloat(andNode['@chance']) : 1.0
+      items.push(...extractLootItems(andNode, 'AND', inheritedChance * chance))
+    }
+  }
+
+  return items
 }

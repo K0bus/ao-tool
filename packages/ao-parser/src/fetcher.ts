@@ -1,4 +1,4 @@
-import type { RawBaseItem, RawItemsJson, RawLocalizationTable, RawSpellsJson, NormalizedSpell, RawBuildingsJson, RawBuilding, RawLootItem } from './types'
+import type { RawBaseItem, RawItemsJson, RawLocalizationTable, RawSpellsJson, NormalizedSpell, RawBuildingsJson, RawBuilding, RawLootItem, RawLootList } from './types'
 import { normalizeSpell } from './normalizers/spell'
 
 // Source canonique : items.json (pas /formatted/ qui est une version appauvrie)
@@ -92,6 +92,7 @@ export interface AoRawData {
   localizations: RawLocalizationTable
   buildings: Array<RawBuilding & { category: string }>
   loot: Map<string, string> // LootList Name -> First Item UniqueName
+  rawLootLists: RawLootList[]
 }
 
 export async function fetchAoData(): Promise<AoRawData> {
@@ -125,7 +126,7 @@ export async function fetchAoData(): Promise<AoRawData> {
   }
 
   console.log(`Fetched ${items.length} base items, ${buildings.length} buildings, ${lootMap.size} loot lists, ${Object.keys(localizations).length} locales`)
-  return { items, buildings, localizations, loot: lootMap }
+  return { items, buildings, localizations, loot: lootMap, rawLootLists: lootLists }
 }
 
 export async function fetchSpells(localizations: RawLocalizationTable): Promise<NormalizedSpell[]> {

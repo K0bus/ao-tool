@@ -332,7 +332,9 @@ export interface RawLootItem {
 
 export interface RawLootList {
   '@name': string
+  '@listtype'?: string
   Item?: RawLootItem | RawLootItem[]
+  [key: string]: any
 }
 
 export interface RawLootJson {
