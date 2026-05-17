@@ -20,7 +20,7 @@
 
     <!-- Main Configuration Grid -->
     <div class="calculator-grid">
-      <!-- Left Config Card (Silver Input & Mode Switch) -->
+      <!-- Left Config Card -->
       <div class="panel">
         <div class="panel-header">
           <h3>Configuration de la session</h3>
@@ -46,7 +46,6 @@
           <div class="field">
             <label class="field-label">Méthode de Répartition</label>
             <div class="mode-toggles">
-              <!-- Mode A (Absolute redistribution) -->
               <label 
                 class="mode-selector"
                 :class="{ active: calculationMode === 'fair' }"
@@ -63,7 +62,6 @@
                 </span>
               </label>
 
-              <!-- Mode B (Direct split) -->
               <label 
                 class="mode-selector"
                 :class="{ active: calculationMode === 'direct' }"
@@ -84,7 +82,7 @@
         </div>
       </div>
 
-      <!-- Right Summary Panel (Computed Statistics Card) -->
+      <!-- Right Summary Panel -->
       <div class="panel flex-col-between">
         <div class="panel-header">
           <h3>Statistiques de distribution</h3>
@@ -118,7 +116,6 @@
           </div>
         </div>
 
-        <!-- Copy discord summary -->
         <div class="panel-footer-row">
           <p class="t-dim text-xs leading-relaxed max-w-sm" style="margin: 0">
             Copiez un rapport complet avec emojis pour le partager instantanément sur votre Discord de guilde ou dans le chat en jeu.
@@ -135,7 +132,7 @@
       </div>
     </div>
 
-    <!-- Players Management section -->
+    <!-- Players Management Section (Retravaillée sous forme de liste propre avec séparateurs) -->
     <div class="panel">
       <div class="panel-header flex-row-between">
         <h3>Membres du Groupe ({{ players.length }})</h3>
@@ -162,103 +159,94 @@
         </form>
       </div>
 
-      <!-- Players Payout Table (Identical to profit-table) -->
-      <div class="profit-table-wrap">
-        <table class="profit-table">
-          <thead>
-            <tr>
-              <th class="col-item">Joueur</th>
-              <th style="text-align: center; width: 120px">Revendiquer</th>
-              <th class="col-num" style="width: 200px">Sacs d'argent (Silver Bags)</th>
-              <th class="col-num" style="width: 180px">Part du Loot</th>
-              <th class="col-num" style="width: 200px">A Verser (Leader)</th>
-              <th style="text-align: center; width: 100px">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr 
-              v-for="player in calculatedPlayers" 
-              :key="player.id" 
-              class="profit-row"
-              :class="{ 'row-uncalculable': !player.claimsPayout }"
+      <!-- Players List Column Labels -->
+      <div class="players-list-header">
+        <div class="col-lbl">Pseudo</div>
+        <div class="col-lbl" style="text-align: center">Revendiquer part</div>
+        <div class="col-lbl" style="text-align: right">Sacs d'argent</div>
+        <div class="col-lbl" style="text-align: right">Part du Loot</div>
+        <div class="col-lbl" style="text-align: right">À Verser (Leader)</div>
+        <div class="col-lbl" style="text-align: center">Action</div>
+      </div>
+
+      <!-- List Container -->
+      <div class="players-list">
+        <div 
+          v-for="player in calculatedPlayers" 
+          :key="player.id" 
+          class="player-row"
+          :class="{ 'row-inactive': !player.claimsPayout }"
+        >
+          <!-- Status dot & Editable name input -->
+          <div class="cell-player">
+            <span class="status-dot" :class="player.claimsPayout ? 'ok' : 'error'"></span>
+            <input 
+              type="text" 
+              v-model="player.name" 
+              class="player-name-input"
+              placeholder="Nom..."
+            />
+          </div>
+
+          <!-- Claim Toggle Switch -->
+          <div class="cell-switch">
+            <label class="ds-switch">
+              <input 
+                type="checkbox" 
+                v-model="player.claimsPayout" 
+              />
+              <span class="ds-track"><span class="ds-thumb"></span></span>
+            </label>
+          </div>
+
+          <!-- Silver bags collected input -->
+          <div class="cell-bags">
+            <input 
+              type="number" 
+              v-model.number="player.silverBags" 
+              min="0"
+              class="ds-input inline-bags-input font-mono"
+              placeholder="0"
+            />
+          </div>
+
+          <!-- Computed Loot Share -->
+          <div class="cell-loot t-mono">
+            <span v-if="player.claimsPayout" style="color: var(--text-2)">{{ player.lootShare.toLocaleString() }} ◇</span>
+            <span v-else class="t-dim">—</span>
+          </div>
+
+          <!-- Leader Total Payout value -->
+          <div class="cell-payout font-mono">
+            <span 
+              v-if="player.claimsPayout"
+              class="payout-badge"
+              :class="player.leaderPayout >= 0 ? 'pos' : 'neg'"
             >
-              <!-- Player Name -->
-              <td class="col-item">
-                <div class="item-cell">
-                  <div class="status-dot-indicator" :class="player.claimsPayout ? 'bg-success' : 'bg-danger'" />
-                  <input 
-                    type="text" 
-                    v-model="player.name" 
-                    class="player-name-input"
-                  />
-                </div>
-              </td>
+              {{ player.leaderPayout >= 0 ? '+' : '' }}{{ player.leaderPayout.toLocaleString() }} ◇
+            </span>
+            <span v-else class="uncalculable-label italic text-xs" style="color: var(--text-4)">
+              Exclu (0 Payout)
+            </span>
+          </div>
 
-              <!-- Claims Payout Toggle (Standard ds-switch) -->
-              <td style="text-align: center; vertical-align: middle">
-                <label class="ds-switch" style="display: inline-flex">
-                  <input 
-                    type="checkbox" 
-                    v-model="player.claimsPayout" 
-                  />
-                  <span class="ds-track"><span class="ds-thumb"></span></span>
-                </label>
-              </td>
+          <!-- Remove Action -->
+          <div class="cell-actions">
+            <button 
+              @click="removePlayer(player.id)" 
+              class="action-trash-btn"
+              title="Retirer le joueur"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </div>
+        </div>
 
-              <!-- Silver Bags Input -->
-              <td class="col-num">
-                <div class="inline-input-wrapper">
-                  <input 
-                    type="number" 
-                    v-model.number="player.silverBags" 
-                    min="0"
-                    class="ds-input text-right font-mono font-bold"
-                    style="width: 140px; height: 28px; padding: 4px 8px; font-size: 12px;"
-                    placeholder="0"
-                  />
-                </div>
-              </td>
-
-              <!-- Loot Payout Share -->
-              <td class="col-num text-dim font-mono">
-                <span v-if="player.claimsPayout">{{ player.lootShare.toLocaleString() }} ◇</span>
-                <span v-else class="t-dim">—</span>
-              </td>
-
-              <!-- Leader Total Payout to pay -->
-              <td class="col-num font-mono">
-                <span 
-                  v-if="player.claimsPayout"
-                  class="payout-badge"
-                  :class="player.leaderPayout >= 0 ? 'pos' : 'neg'"
-                >
-                  {{ player.leaderPayout >= 0 ? '+' : '' }}{{ player.leaderPayout.toLocaleString() }} ◇
-                </span>
-                <span v-else class="uncalculable-label">
-                  Exclu (0 Payout)
-                </span>
-              </td>
-
-              <!-- Delete player button -->
-              <td style="text-align: center; vertical-align: middle">
-                <button 
-                  @click="removePlayer(player.id)" 
-                  class="action-trash-btn"
-                  title="Retirer le joueur"
-                >
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                </button>
-              </td>
-            </tr>
-
-            <!-- Empty State -->
-            <tr v-if="players.length === 0">
-              <td colspan="6" class="profit-empty" style="padding: 48px 0; text-align: center">
-                <span>Aucun joueur dans la liste. Ajoutez des joueurs ou utilisez les membres par défaut.</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- Empty State Row -->
+        <div v-if="players.length === 0" class="players-empty">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.4" style="color: var(--text-4)"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+          <span>Aucun joueur dans le groupe. Ajoutez des membres ou importez la configuration par défaut.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -319,7 +307,7 @@ const targetSharePerPlayer = computed(() => {
   }
 })
 
-// Rounded excess leftover (due to integer division flooring)
+// Rounded excess leftover
 const residualSilver = computed(() => {
   const count = claimantsCount.value
   if (count === 0) return 0
@@ -581,17 +569,59 @@ function copySummaryToClipboard() {
   background: var(--bg-3);
 }
 
-/* ── Table custom styling ──────────────────────────────────────────────── */
+/* ── Players List (retravaillé avec séparateurs) ────────────────────────── */
 
-.status-dot-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.players-list-header {
+  display: grid;
+  grid-template-columns: 1.8fr 1.2fr 1.3fr 1.2fr 1.5fr 80px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 18px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border-divider);
 }
 
-.bg-success { background: var(--success); }
-.bg-danger { background: var(--danger); }
+.col-lbl {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.player-row {
+  display: grid;
+  grid-template-columns: 1.8fr 1.2fr 1.3fr 1.2fr 1.5fr 80px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-divider);
+  transition: background 0.12s;
+}
+
+.player-row:last-child {
+  border-bottom: none;
+}
+
+.player-row:hover {
+  background: rgba(201, 161, 74, 0.02);
+}
+
+.player-row.row-inactive {
+  opacity: 0.45;
+}
+
+.cell-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
 .player-name-input {
   background: transparent;
@@ -602,6 +632,7 @@ function copySummaryToClipboard() {
   font-weight: 600;
   outline: none;
   padding: 2px 4px;
+  width: 100%;
   transition: border-color 0.1s;
 }
 
@@ -609,10 +640,34 @@ function copySummaryToClipboard() {
   border-color: var(--border-strong);
 }
 
-.inline-input-wrapper {
-  display: inline-flex;
+.cell-switch {
+  display: flex;
+  justify-content: center;
+}
+
+.cell-bags {
+  display: flex;
   justify-content: flex-end;
-  width: 100%;
+}
+
+.inline-bags-input {
+  width: 130px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  text-align: right;
+  font-weight: bold;
+}
+
+.cell-loot {
+  text-align: right;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.cell-payout {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .payout-badge {
@@ -625,15 +680,20 @@ function copySummaryToClipboard() {
 }
 
 .payout-badge.pos {
-  background: rgba(46, 125, 50, 0.12);
-  border: 1px solid rgba(46, 125, 50, 0.25);
+  background: rgba(125, 154, 74, 0.08);
+  border: 1px solid rgba(125, 154, 74, 0.25);
   color: var(--success);
 }
 
 .payout-badge.neg {
-  background: rgba(176, 74, 50, 0.12);
+  background: rgba(176, 74, 50, 0.08);
   border: 1px solid rgba(176, 74, 50, 0.25);
   color: var(--danger);
+}
+
+.cell-actions {
+  display: flex;
+  justify-content: center;
 }
 
 .action-trash-btn {
@@ -652,5 +712,17 @@ function copySummaryToClipboard() {
 .action-trash-btn:hover {
   color: var(--danger);
   background: rgba(176, 74, 50, 0.08);
+}
+
+.players-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: var(--text-3);
+  font-size: 13px;
+  text-align: center;
 }
 </style>
