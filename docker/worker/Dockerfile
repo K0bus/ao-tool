@@ -17,6 +17,12 @@ COPY apps/web/package.json apps/web/
 COPY scripts/package.json scripts/
 RUN pnpm install --frozen-lockfile
 
+# ── Development ───────────────────────────────────────────────
+FROM deps AS development
+COPY . .
+RUN chmod +x docker/worker/dev-entrypoint.sh
+CMD ["sh", "/app/docker/worker/dev-entrypoint.sh"]
+
 # ── Production ────────────────────────────────────────────────
 FROM deps AS production
 COPY . .

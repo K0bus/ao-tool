@@ -8,8 +8,11 @@ packages/**/node_modules
 scripts/node_modules
 apps/**/.nuxt
 apps/**/.output
-*.txt
-*.log
+**/dist
+**/*.log
+**/*.tsbuildinfo
+.DS_Store
+Thumbs.db
 .env
 .env.*
 !.env.example

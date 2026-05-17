@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev --filter=web",
+    "docker:dev": "docker compose up --build",
+    "docker:dev:down": "docker compose down -v",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up -d --build",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
