@@ -61,6 +61,16 @@
           </button>
 
           <button
+            class="nav-link"
+            :class="{ active: route.path.startsWith('/tools'), 'mega-open': activeMega === 'tools' }"
+            @mouseenter="openMega('tools')"
+            @click="navigate('/tools')"
+          >
+            Outils
+            <svg class="caret" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <button
             v-if="auth.isAdmin.value"
             class="nav-link"
             :class="{ active: route.path.startsWith('/admin'), 'mega-open': activeMega === 'admin' }"
@@ -122,7 +132,6 @@
               <li><NuxtLink to="/crafting"><div><div>Crafting Tree</div><div class="desc">Arbre vertical complet</div></div></NuxtLink></li>
               <li><NuxtLink to="/items/profit"><div><div>Analyse de profit</div><div class="desc">Profit direct · tous les items</div></div></NuxtLink></li>
               <li><NuxtLink to="/crafting"><div><div>Liste de courses</div><div class="desc">Ressources agrégées</div></div></NuxtLink></li>
-              <li><NuxtLink to="/tools/dungeon-payout"><div><div>Payout calculateur</div><div class="desc">Redistribution donjon de groupe</div></div></NuxtLink></li>
             </ul>
           </div>
           <div class="mega-cta">
@@ -209,6 +218,30 @@
             <NuxtLink to="/builds/create" class="ds-btn primary sm" style="margin-top:auto">
               Créer un build →
             </NuxtLink>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="activeMega === 'tools'" class="mega" @mouseenter="cancelClose">
+        <div class="mega-grid">
+          <div class="mega-col">
+            <h4>Outils d'Économie</h4>
+            <ul>
+              <li><NuxtLink to="/tools/dungeon-payout"><div><div>Payout Donjon</div><div class="desc">Répartition équitable de butin</div></div></NuxtLink></li>
+              <li><NuxtLink to="/crafting"><div><div>Liste de courses</div><div class="desc">Ressources de craft agrégées</div></div></NuxtLink></li>
+            </ul>
+          </div>
+          <div class="mega-col">
+            <h4>Analyses de Marché</h4>
+            <ul>
+              <li><NuxtLink to="/items/profit"><div><div>Analyse de profit</div><div class="desc">Toutes les marges en un coup d'œil</div></div></NuxtLink></li>
+              <li><NuxtLink to="/items/flip"><div><div>Flip inter-cités</div><div class="desc">Arbitrage de prix entre cités</div></div></NuxtLink></li>
+            </ul>
+          </div>
+          <div class="mega-cta">
+            <span class="label">Codex Outils</span>
+            <p>Accédez à tous nos simulateurs et calculateurs avancés pour optimiser votre rentabilité sur Albion Online.</p>
+            <NuxtLink to="/tools" class="ds-btn primary sm" style="margin-top:auto">Voir tous les outils →</NuxtLink>
           </div>
         </div>
       </div>
