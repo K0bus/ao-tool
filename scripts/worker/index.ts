@@ -246,24 +246,40 @@ marketWorker.on('completed', async (job, result) => {
       // Send Highlight Notification if a second URL is defined
       const highlight = await getTopProfitHighlight()
       if (highlight) {
-        const publicUrlConfig = await prisma.systemConfig.findUnique({
-          where: { key: 'public_app_url' }
+        const lastSentConfig = await prisma.systemConfig.findUnique({
+          where: { key: 'last_sent_top_profit_item' }
         })
-        const publicUrl = publicUrlConfig?.value as string | undefined
-        const itemUrl = publicUrl ? `${publicUrl}/items/${highlight.uniqueName}` : undefined
+        const lastSentUniqueName = lastSentConfig?.value as string | undefined
 
-        await sendDiscordNotification({
-          title: `💎 Opportunity of the Moment: ${highlight.name}`,
-          description: `An exceptional opportunity was detected in **${highlight.city}**!${itemUrl ? `\n\n[🔗 View Item on Albion Tool](${itemUrl})` : ''}`,
-          url: itemUrl,
-          color: 0xf59e0b, // Gold/Amber
-          thumbnail: highlight.iconUrl ? { url: highlight.iconUrl } : undefined,
-          fields: [
-            { name: 'Estimated Profit', value: `${Math.round(highlight.profit).toLocaleString()} silver`, inline: true },
-            { name: 'Profit Margin', value: `${highlight.margin.toFixed(1)}%`, inline: true },
-            { name: 'Production Cost', value: `${Math.round(highlight.cost).toLocaleString()} silver`, inline: true },
-          ]
-        }, 'discord_market_highlight_webhook_url')
+        if (lastSentUniqueName === highlight.uniqueName) {
+          console.log(`[market-worker] Top profit item (${highlight.uniqueName}) has not changed. Skipping Discord notification.`)
+        } else {
+          const publicUrlConfig = await prisma.systemConfig.findUnique({
+            where: { key: 'public_app_url' }
+          })
+          const publicUrl = publicUrlConfig?.value as string | undefined
+          const itemUrl = publicUrl ? `${publicUrl}/items/${highlight.uniqueName}` : undefined
+
+          await sendDiscordNotification({
+            title: `💎 Opportunity of the Moment: ${highlight.name}`,
+            description: `An exceptional opportunity was detected in **${highlight.city}**!${itemUrl ? `\n\n[🔗 View Item on Albion Tool](${itemUrl})` : ''}`,
+            url: itemUrl,
+            color: 0xf59e0b, // Gold/Amber
+            thumbnail: highlight.iconUrl ? { url: highlight.iconUrl } : undefined,
+            fields: [
+              { name: 'Estimated Profit', value: `${Math.round(highlight.profit).toLocaleString()} silver`, inline: true },
+              { name: 'Profit Margin', value: `${highlight.margin.toFixed(1)}%`, inline: true },
+              { name: 'Production Cost', value: `${Math.round(highlight.cost).toLocaleString()} silver`, inline: true },
+            ]
+          }, 'discord_market_highlight_webhook_url')
+
+          // Update the last sent top profit item in SystemConfig
+          await prisma.systemConfig.upsert({
+            where: { key: 'last_sent_top_profit_item' },
+            update: { value: highlight.uniqueName },
+            create: { key: 'last_sent_top_profit_item', value: highlight.uniqueName }
+          })
+        }
       }
     }
   }
