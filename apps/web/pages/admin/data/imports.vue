@@ -77,39 +77,139 @@
           </tr>
         </tbody>
         <tbody v-else class="divide-y divide-surface-800">
-          <tr v-for="job in jobs" :key="job.id" class="hover:bg-surface-800/30 transition-colors">
-            <td class="px-4 py-3">
-              <span
-                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
-                :class="statusClass(job.status)"
-              >
-                <span class="w-1.5 h-1.5 rounded-full" :class="statusDot(job.status)" />
-                {{ job.status.replace('_', ' ') }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-gray-300">{{ job.type }}</td>
-            <td class="px-4 py-3 text-gray-500 text-xs text-right hidden sm:table-cell">
-              {{ formatDate(job.startedAt ?? job.createdAt) }}
-            </td>
-            <td class="px-4 py-3 text-gray-400 text-xs text-right hidden md:table-cell">
-              {{ job.durationMs ? `${(job.durationMs / 1000).toFixed(1)}s` : '—' }}
-            </td>
-            <td class="px-4 py-3 text-right hidden md:table-cell">
-              <template v-if="job.itemsProcessed > 0">
-                <span class="text-green-400 text-xs">+{{ job.itemsCreated }}</span>
-                <span class="text-gray-600 text-xs mx-1">/</span>
-                <span class="text-blue-400 text-xs">~{{ job.itemsUpdated }}</span>
-                <span v-if="job.itemsFailed > 0" class="text-red-400 text-xs ml-1">✗{{ job.itemsFailed }}</span>
-              </template>
-              <span v-else class="text-gray-600 text-xs">—</span>
-            </td>
-            <td class="px-4 py-3 text-right">
-              <span v-if="job.sourceCommit" class="font-mono text-xs text-gray-500">
-                {{ job.sourceCommit.slice(0, 7) }}
-              </span>
-              <span v-else class="text-gray-700 text-xs">—</span>
-            </td>
-          </tr>
+          <template v-for="job in jobs" :key="job.id">
+            <tr
+              class="hover:bg-surface-800/30 transition-colors cursor-pointer"
+              @click="toggleJobExpand(job.id)"
+            >
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <svg
+                    class="w-3 h-3 text-gray-500 transition-transform duration-200"
+                    :class="{ 'rotate-90 text-primary-400': expandedJobs[job.id] }"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                    :class="statusClass(job.status)"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" :class="statusDot(job.status)" />
+                    {{ job.status.replace('_', ' ') }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-gray-300">{{ job.type }}</td>
+              <td class="px-4 py-3 text-gray-500 text-xs text-right hidden sm:table-cell">
+                {{ formatDate(job.startedAt ?? job.createdAt) }}
+              </td>
+              <td class="px-4 py-3 text-gray-400 text-xs text-right hidden md:table-cell">
+                {{ job.durationMs ? `${(job.durationMs / 1000).toFixed(1)}s` : '—' }}
+              </td>
+              <td class="px-4 py-3 text-right hidden md:table-cell">
+                <template v-if="job.itemsProcessed > 0">
+                  <span class="text-green-400 text-xs">+{{ job.itemsCreated }}</span>
+                  <span class="text-gray-600 text-xs mx-1">/</span>
+                  <span class="text-blue-400 text-xs">~{{ job.itemsUpdated }}</span>
+                  <span v-if="job.itemsFailed > 0" class="text-red-400 text-xs ml-1">✗{{ job.itemsFailed }}</span>
+                </template>
+                <span v-else class="text-gray-600 text-xs">—</span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span v-if="job.sourceCommit" class="font-mono text-xs text-gray-500">
+                  {{ job.sourceCommit.slice(0, 7) }}
+                </span>
+                <span v-else class="text-gray-700 text-xs">—</span>
+              </td>
+            </tr>
+
+            <!-- Expanded Details Section -->
+            <tr v-if="expandedJobs[job.id]" class="bg-surface-900/40">
+              <td colspan="6" class="px-6 py-4 border-t border-b border-surface-800">
+                <div class="space-y-4">
+                  <!-- Header details -->
+                  <div class="flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400 border-b border-surface-800 pb-3">
+                    <div>
+                      <span>Job ID: <span class="font-mono text-gray-300 font-bold select-all">{{ job.id }}</span></span>
+                      <span v-if="job.sourceCommit" class="ml-4">Commit: <span class="font-mono text-gray-300 select-all">{{ job.sourceCommit }}</span></span>
+                    </div>
+                    <div class="flex gap-4">
+                      <span>Started: <span class="text-gray-300">{{ formatDate(job.startedAt ?? job.createdAt) }}</span></span>
+                      <span v-if="job.completedAt">Ended: <span class="text-gray-300">{{ formatDate(job.completedAt) }}</span></span>
+                    </div>
+                  </div>
+
+                  <!-- Error message block -->
+                  <div v-if="job.errorMessage" class="bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r">
+                    <div class="flex items-center gap-2 text-xs font-bold text-red-400 mb-2">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      Execution Exception
+                    </div>
+                    <pre class="text-xs text-red-200 font-mono whitespace-pre-wrap break-all bg-red-950/20 p-2 rounded border border-red-500/20 max-h-[150px] overflow-y-auto">{{ job.errorMessage }}</pre>
+                  </div>
+
+                  <!-- Job Statistics Grid -->
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-surface-950/30 p-3 rounded border border-surface-800/50">
+                    <div>
+                      <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Total Processed</div>
+                      <div class="text-sm font-bold text-gray-200 font-mono mt-0.5">{{ job.itemsProcessed.toLocaleString() }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Created / Updated</div>
+                      <div class="text-sm font-bold mt-0.5 font-mono">
+                        <span class="text-green-400">+{{ job.itemsCreated }}</span>
+                        <span class="text-gray-600 mx-1">/</span>
+                        <span class="text-blue-400">~{{ job.itemsUpdated }}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Skipped Items</div>
+                      <div class="text-sm font-bold text-gray-400 font-mono mt-0.5">{{ (job.itemsProcessed - job.itemsCreated - job.itemsUpdated - job.itemsFailed) || 0 }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Errors / Failed</div>
+                      <div class="text-sm font-bold font-mono mt-0.5" :class="job.itemsFailed > 0 ? 'text-red-400' : 'text-gray-400'">{{ job.itemsFailed }}</div>
+                    </div>
+                  </div>
+
+                  <!-- Logs Stream -->
+                  <div>
+                    <h4 class="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                      </svg>
+                      Detailed Import Logs
+                    </h4>
+                    
+                    <div v-if="loadingLogs[job.id]" class="bg-surface-950 p-4 rounded border border-surface-800 flex items-center justify-center gap-2">
+                      <svg class="w-4 h-4 text-primary-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span class="text-xs text-gray-500">Loading execution logs...</span>
+                    </div>
+
+                    <div v-else-if="!jobLogs[job.id] || jobLogs[job.id].length === 0" class="bg-surface-950 p-4 rounded border border-surface-800 text-xs text-gray-600 text-center italic">
+                      No detailed logs recorded for this import run.
+                    </div>
+
+                    <div v-else class="bg-surface-950 font-mono text-[11px] p-4 rounded border border-surface-800 max-h-[300px] overflow-y-auto space-y-1.5 shadow-inner">
+                      <div v-for="log in jobLogs[job.id]" :key="log.id" class="flex gap-2.5 leading-relaxed hover:bg-surface-900/50 py-0.5 px-1 rounded transition-colors">
+                        <span class="text-gray-600 select-none font-semibold">{{ formatTime(log.createdAt) }}</span>
+                        <span :class="logLevelClass(log.level)" class="px-1 py-0.2 rounded text-[9px] font-bold uppercase select-none h-fit">{{ log.level }}</span>
+                        <span class="text-gray-300 whitespace-pre-wrap break-all">{{ log.message }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
 
@@ -135,6 +235,16 @@ interface ImportJobRow {
   durationMs: number | null
   startedAt: string | null
   createdAt: string
+  completedAt?: string | null
+  errorMessage?: string | null
+}
+
+interface ImportLog {
+  id: string
+  level: string
+  message: string
+  context: any
+  createdAt: string
 }
 
 interface LiveStatus {
@@ -152,6 +262,38 @@ const triggering = ref(false)
 const activeJobId = ref<string | null>(null)
 const liveStatus = ref<LiveStatus | null>(null)
 const now = ref(Date.now())
+
+const expandedJobs = ref<Record<string, boolean>>({})
+const jobLogs = ref<Record<string, ImportLog[]>>({})
+const loadingLogs = ref<Record<string, boolean>>({})
+
+async function toggleJobExpand(jobId: string) {
+  expandedJobs.value[jobId] = !expandedJobs.value[jobId]
+  if (expandedJobs.value[jobId] && !jobLogs.value[jobId]) {
+    loadingLogs.value[jobId] = true
+    try {
+      const res = await $fetch<{ data: ImportLog[] }>(`/api/v1/admin/import/jobs/${jobId}/logs`)
+      jobLogs.value[jobId] = res.data
+    } catch {
+      // ignore
+    } finally {
+      loadingLogs.value[jobId] = false
+    }
+  }
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function logLevelClass(level: string) {
+  return ({
+    INFO: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+    WARN: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+    ERROR: 'bg-red-500/10 text-red-400 border border-red-500/20',
+    DEBUG: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
+  } as Record<string, string>)[level] ?? 'bg-gray-500/10 text-gray-400'
+}
 
 useIntervalFn(() => {
   now.value = Date.now()

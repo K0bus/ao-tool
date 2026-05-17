@@ -95,7 +95,7 @@
           Aucun job — lancez un import ou une sync marché.
         </div>
         <div v-else class="workers-list">
-          <div v-for="job in allJobs" :key="job.id" :class="['worker-row', job.status === 'FAILED' && 'warn']">
+          <div v-for="job in allJobs" :key="job.id" :class="['worker-row', (job.status === 'FAILED' || job.status === 'PARTIAL_SUCCESS') && 'warn']">
             <span :class="['status-dot', dotClass(job.status)]" style="width:8px;height:8px;border-radius:50%;flex-shrink:0" />
             <div style="min-width:0">
               <div class="wr-name">{{ job.label }}</div>
@@ -110,7 +110,7 @@
                 <div class="prog-fill prog-indeterminate" style="background:var(--gold)" />
               </div>
               <div v-else class="prog-bar">
-                <div class="prog-fill" :style="{ width: job.status === 'SUCCESS' ? '100%' : '0%', background: job.status === 'FAILED' ? 'var(--danger)' : 'var(--gold)' }" />
+                <div class="prog-fill" :style="{ width: (job.status === 'SUCCESS' || job.status === 'PARTIAL_SUCCESS') ? '100%' : '0%', background: job.status === 'FAILED' ? 'var(--danger)' : 'var(--gold)' }" />
               </div>
             </div>
             <div class="wr-last">{{ formatRelative(job.createdAt) }}</div>
@@ -274,6 +274,7 @@ const allJobs = computed(() => {
 function dotClass(status: string): string {
   if (status === 'SUCCESS') return 'ok'
   if (status === 'FAILED') return 'error'
+  if (status === 'PARTIAL_SUCCESS') return 'warn'
   if (status === 'RUNNING') return 'live'
   return 'idle'
 }
@@ -282,6 +283,7 @@ function statusLabel(status: string): string {
   const map: Record<string, string> = {
     SUCCESS: 'Terminé',
     FAILED: 'Échec',
+    PARTIAL_SUCCESS: 'Succès partiel',
     RUNNING: 'En cours…',
     PENDING: 'En attente',
   }

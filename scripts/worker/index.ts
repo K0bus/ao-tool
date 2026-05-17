@@ -56,22 +56,52 @@ const marketWorker = new Worker<MarketJobData, MarketJobResult>(
     }
 
     const start = Date.now()
-    const result = await marketPriceService.syncMarketPrices({
-      items,
-      locations,
-      qualities,
-      jobId,
-      onProgress: async (progress: MarketJobProgress) => {
-        await job.updateProgress(progress)
-      }
-    })
+    try {
+      const result = await marketPriceService.syncMarketPrices({
+        items,
+        locations,
+        qualities,
+        jobId,
+        onProgress: async (progress: MarketJobProgress) => {
+          await job.updateProgress(progress)
+        }
+      })
 
-    return {
-      itemsRequested: items.length,
-      itemsProcessed: items.length,
-      itemsUpdated: result.itemsUpdated,
-      itemsFailed: result.itemsFailed,
-      durationMs: Date.now() - start,
+      return {
+        itemsRequested: items.length,
+        itemsProcessed: items.length,
+        itemsUpdated: result.itemsUpdated,
+        itemsFailed: result.itemsFailed,
+        durationMs: Date.now() - start,
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      console.error(`[market-worker] Batch failed for jobId ${jobId}: ${errorMsg}`)
+
+      if (jobId) {
+        try {
+          const currentJob = await prisma.marketSyncJob.findUnique({
+            where: { id: jobId },
+            select: { errorMessage: true }
+          })
+          const nextErrorMessage = currentJob?.errorMessage
+            ? `${currentJob.errorMessage}\nBatch error: ${errorMsg}`
+            : `Batch error: ${errorMsg}`
+
+          await prisma.marketSyncJob.update({
+            where: { id: jobId },
+            data: {
+              itemsFailed: { increment: items.length },
+              itemsProcessed: { increment: items.length },
+              errorMessage: nextErrorMessage.slice(0, 5000), // Prevent infinite growth
+            }
+          })
+        } catch (dbErr) {
+          console.error(`[market-worker] Failed to update MarketSyncJob error status:`, dbErr)
+        }
+      }
+
+      throw err // Rethrow to mark the BullMQ job as failed
     }
   },
   {
@@ -196,6 +226,98 @@ importWorker.on('failed', (job, err) => {
   console.error(`[import-worker] Job ${job?.id} failed:`, err.message)
 })
 
+async function checkAndCompleteMarketSyncJob(jobId: string) {
+  const dbJob = await prisma.marketSyncJob.findUnique({
+    where: { id: jobId },
+    select: {
+      status: true,
+      itemsUpdated: true,
+      itemsFailed: true,
+      itemsRequested: true,
+      itemsProcessed: true,
+      startedAt: true,
+      errorMessage: true,
+    },
+  })
+
+  if (!dbJob) return
+
+  if (dbJob.status === 'RUNNING' && dbJob.itemsProcessed >= dbJob.itemsRequested) {
+    let finalStatus: 'SUCCESS' | 'PARTIAL_SUCCESS' | 'FAILED' = 'SUCCESS'
+    if (dbJob.itemsFailed === dbJob.itemsRequested) {
+      finalStatus = 'FAILED'
+    } else if (dbJob.itemsFailed > 0) {
+      finalStatus = 'PARTIAL_SUCCESS'
+    }
+
+    const updated = await prisma.marketSyncJob.updateMany({
+      where: { id: jobId, status: 'RUNNING' },
+      data: {
+        status: finalStatus,
+        completedAt: new Date(),
+        durationMs: dbJob.startedAt ? Date.now() - dbJob.startedAt.getTime() : null,
+      },
+    })
+
+    if (updated.count === 1) {
+      const duration = dbJob.startedAt ? Date.now() - dbJob.startedAt.getTime() : 0
+      console.log(`[market-worker] Sync job ${jobId} finished with status ${finalStatus} (${dbJob.itemsUpdated} updated, ${dbJob.itemsFailed} failed)`)
+
+      const statusEmoji = finalStatus === 'SUCCESS' ? '📊' : finalStatus === 'PARTIAL_SUCCESS' ? '⚠️' : '❌'
+
+      await sendDiscordTextMessage(
+        `${statusEmoji} **[System Log] Market Sync Finished (${finalStatus.replace('_', ' ')})**\n` +
+        `• **Total Requested:** ${dbJob.itemsRequested.toLocaleString()}\n` +
+        `• **Updated:** ${dbJob.itemsUpdated.toLocaleString()}\n` +
+        `• **Failed:** ${dbJob.itemsFailed.toLocaleString()}\n` +
+        `• **Duration:** ${(duration / 1000).toFixed(0)}s` +
+        (dbJob.errorMessage ? `\n• **Errors:** \n\`\`\`\n${dbJob.errorMessage.slice(0, 1000)}\n\`\`\`` : '')
+      )
+
+      if (finalStatus !== 'FAILED') {
+        // Send Highlight Notification if a second URL is defined
+        const highlight = await getTopProfitHighlight()
+        if (highlight) {
+          const lastSentConfig = await prisma.systemConfig.findUnique({
+            where: { key: 'last_sent_top_profit_item' }
+          })
+          const lastSentUniqueName = lastSentConfig?.value as string | undefined
+
+          if (lastSentUniqueName === highlight.uniqueName) {
+            console.log(`[market-worker] Top profit item (${highlight.uniqueName}) has not changed. Skipping Discord notification.`)
+          } else {
+            const publicUrlConfig = await prisma.systemConfig.findUnique({
+              where: { key: 'public_app_url' }
+            })
+            const publicUrl = publicUrlConfig?.value as string | undefined
+            const itemUrl = publicUrl ? `${publicUrl}/items/${highlight.uniqueName}` : undefined
+
+            await sendDiscordNotification({
+              title: `💎 Opportunity of the Moment: ${highlight.name}`,
+              description: `An exceptional opportunity was detected in **${highlight.city}**!${itemUrl ? `\n\n[🔗 View Item on Albion Tool](${itemUrl})` : ''}`,
+              url: itemUrl,
+              color: 0xf59e0b, // Gold/Amber
+              image: highlight.iconUrl ? { url: highlight.iconUrl } : undefined,
+              fields: [
+                { name: 'Estimated Profit', value: `${Math.round(highlight.profit).toLocaleString()} silver`, inline: true },
+                { name: 'Profit Margin', value: `${highlight.margin.toFixed(1)}%`, inline: true },
+                { name: 'Production Cost', value: `${Math.round(highlight.cost).toLocaleString()} silver`, inline: true },
+              ]
+            }, 'discord_market_highlight_webhook_url')
+
+            // Update the last sent top profit item in SystemConfig
+            await prisma.systemConfig.upsert({
+              where: { key: 'last_sent_top_profit_item' },
+              update: { value: highlight.uniqueName },
+              create: { key: 'last_sent_top_profit_item', value: highlight.uniqueName }
+            })
+          }
+        }
+      }
+    }
+  }
+}
+
 marketWorker.on('completed', async (job, result) => {
   const { jobId } = job.data
   if (!jobId) return
@@ -211,77 +333,16 @@ marketWorker.on('completed', async (job, result) => {
     console.log(`[market-worker] [Sync ${jobId.slice(-6)}] Batch ${job.id} done: ${result.itemsUpdated} items (${progressPercent}% — ${dbJob.itemsProcessed}/${dbJob.itemsRequested})`)
   }
 
-  // Check if the whole MarketSyncJob is done — atomic updateMany to avoid TOCTOU race
-  if (
-    dbJob &&
-    dbJob.status === 'RUNNING' &&
-    dbJob.itemsProcessed >= dbJob.itemsRequested
-  ) {
-    // updateMany with WHERE status='RUNNING' ensures only one worker wins the race
-    const updated = await prisma.marketSyncJob.updateMany({
-      where: { id: jobId, status: 'RUNNING' },
-      data: {
-        status: 'SUCCESS',
-        completedAt: new Date(),
-        durationMs: dbJob.startedAt ? Date.now() - dbJob.startedAt.getTime() : null,
-      },
-    })
-    if (updated.count === 1) {
-      const duration = dbJob.startedAt ? Date.now() - dbJob.startedAt.getTime() : 0
-      console.log(`[market-worker] Sync job ${jobId} finished (${dbJob.itemsUpdated} updated, ${dbJob.itemsFailed} failed)`)
-
-      await sendDiscordTextMessage(
-        `📊 **[System Log] Market Sync Completed**\n` +
-        `• **Total Requested:** ${dbJob.itemsRequested.toLocaleString()}\n` +
-        `• **Updated:** ${dbJob.itemsUpdated.toLocaleString()}\n` +
-        `• **Failed:** ${dbJob.itemsFailed.toLocaleString()}\n` +
-        `• **Duration:** ${(duration / 1000).toFixed(0)}s`
-      )
-
-      // Send Highlight Notification if a second URL is defined
-      const highlight = await getTopProfitHighlight()
-      if (highlight) {
-        const lastSentConfig = await prisma.systemConfig.findUnique({
-          where: { key: 'last_sent_top_profit_item' }
-        })
-        const lastSentUniqueName = lastSentConfig?.value as string | undefined
-
-        if (lastSentUniqueName === highlight.uniqueName) {
-          console.log(`[market-worker] Top profit item (${highlight.uniqueName}) has not changed. Skipping Discord notification.`)
-        } else {
-          const publicUrlConfig = await prisma.systemConfig.findUnique({
-            where: { key: 'public_app_url' }
-          })
-          const publicUrl = publicUrlConfig?.value as string | undefined
-          const itemUrl = publicUrl ? `${publicUrl}/items/${highlight.uniqueName}` : undefined
-
-          await sendDiscordNotification({
-            title: `💎 Opportunity of the Moment: ${highlight.name}`,
-            description: `An exceptional opportunity was detected in **${highlight.city}**!${itemUrl ? `\n\n[🔗 View Item on Albion Tool](${itemUrl})` : ''}`,
-            url: itemUrl,
-            color: 0xf59e0b, // Gold/Amber
-            image: highlight.iconUrl ? { url: highlight.iconUrl } : undefined,
-            fields: [
-              { name: 'Estimated Profit', value: `${Math.round(highlight.profit).toLocaleString()} silver`, inline: true },
-              { name: 'Profit Margin', value: `${highlight.margin.toFixed(1)}%`, inline: true },
-              { name: 'Production Cost', value: `${Math.round(highlight.cost).toLocaleString()} silver`, inline: true },
-            ]
-          }, 'discord_market_highlight_webhook_url')
-
-          // Update the last sent top profit item in SystemConfig
-          await prisma.systemConfig.upsert({
-            where: { key: 'last_sent_top_profit_item' },
-            update: { value: highlight.uniqueName },
-            create: { key: 'last_sent_top_profit_item', value: highlight.uniqueName }
-          })
-        }
-      }
-    }
-  }
+  await checkAndCompleteMarketSyncJob(jobId)
 })
 
-marketWorker.on('failed', (job, err) => {
+marketWorker.on('failed', async (job, err) => {
   console.error(`[market-worker] Job ${job?.id} failed:`, err.message)
+  
+  const jobId = job?.data?.jobId
+  if (jobId) {
+    await checkAndCompleteMarketSyncJob(jobId)
+  }
 })
 
 async function shutdown() {
