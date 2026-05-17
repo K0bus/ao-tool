@@ -1,157 +1,134 @@
 <template>
-  <div class="dungeon-calculator card p-6 max-w-5xl mx-auto space-y-6 bg-surface-900 border border-surface-800 rounded-xl shadow-2xl">
-    <!-- Header Banner -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-800 pb-5">
-      <div class="flex items-center gap-3">
-        <div class="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500">
-          <svg class="w-6 h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <div>
-          <h2 class="text-xl font-bold text-gray-100 uppercase tracking-wide">Calculateur de Payout de Donjon</h2>
-          <p class="text-xs text-gray-400">Gérez et distribuez équitablement les gains de vos sessions de donjon de groupe.</p>
-        </div>
-      </div>
-      
-      <!-- Top Action buttons -->
-      <div class="flex items-center gap-2">
-        <button 
-          @click="addDefaultPlayers" 
-          class="px-3 py-1.5 bg-surface-800 hover:bg-surface-700 text-xs font-semibold text-gray-300 rounded border border-surface-700 transition-colors flex items-center gap-1.5"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Membres par défaut
-        </button>
-        <button 
-          @click="clearPlayers" 
-          class="px-3 py-1.5 bg-red-950/20 hover:bg-red-900/20 text-xs font-semibold text-red-400 rounded border border-red-900/30 transition-colors flex items-center gap-1.5"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          Vider la liste
-        </button>
-      </div>
+  <div class="dungeon-calculator-wrapper space-y-6">
+    <!-- Top Action Row -->
+    <div class="row" style="gap: 10px; justify-content: flex-end;">
+      <button 
+        @click="addDefaultPlayers" 
+        class="ds-btn sm"
+      >
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px"><path d="M12 5v14M5 12h14"/></svg>
+        Membres par défaut
+      </button>
+      <button 
+        @click="clearPlayers" 
+        class="ds-btn sm danger"
+      >
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        Vider la liste
+      </button>
     </div>
 
     <!-- Main Configuration Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+    <div class="calculator-grid">
       <!-- Left Config Card (Silver Input & Mode Switch) -->
-      <div class="md:col-span-5 space-y-4 bg-surface-950/40 p-5 rounded-lg border border-surface-800/80">
-        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Configuration de la session</h3>
-
-        <!-- Payout Amount Input -->
-        <div>
-          <label class="block text-xs font-medium text-gray-400 mb-1.5">Valeur Totale du Loot (Argent du leader)</label>
-          <div class="relative rounded-md shadow-sm">
-            <input 
-              type="number" 
-              v-model.number="totalLootValue" 
-              min="0"
-              class="w-full bg-surface-950 border border-surface-800 focus:border-yellow-500/50 rounded-lg px-3 py-2.5 text-base font-bold text-yellow-400 outline-none transition-colors pr-12 font-mono"
-              placeholder="0"
-            />
-            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <span class="text-xs text-gray-500 font-bold">SILVER</span>
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Configuration de la session</h3>
+        </div>
+        <div class="panel-body settings-body space-y-4">
+          <!-- Payout Amount Input -->
+          <div class="field">
+            <label class="field-label">Valeur Totale du Loot (Chef de groupe)</label>
+            <div class="relative-input-container">
+              <input 
+                type="number" 
+                v-model.number="totalLootValue" 
+                min="0"
+                class="ds-input font-bold text-yellow font-mono"
+                placeholder="0"
+                style="padding-right: 60px"
+              />
+              <span class="input-suffix font-mono">SILVER</span>
             </div>
           </div>
-        </div>
 
-        <!-- Calculation Mode -->
-        <div>
-          <label class="block text-xs font-medium text-gray-400 mb-1.5">Méthode de Répartition</label>
-          <div class="grid grid-cols-1 gap-2">
-            <!-- Mode A description -->
-            <label 
-              class="relative flex flex-col p-3 rounded-lg border cursor-pointer transition-all hover:bg-surface-900/60"
-              :class="calculationMode === 'fair' ? 'bg-yellow-500/5 border-yellow-500/30' : 'bg-surface-950/50 border-surface-800'"
-            >
-              <input 
-                type="radio" 
-                v-model="calculationMode" 
-                value="fair" 
-                class="sr-only" 
-              />
-              <span class="text-xs font-bold text-gray-200 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full" :class="calculationMode === 'fair' ? 'bg-yellow-400' : 'bg-gray-600'" />
-                ⚖️ Redistribution Absolue
-              </span>
-              <span class="text-[10px] text-gray-500 mt-1 pl-3.5 leading-relaxed">
-                Les sacs individuels sont intégrés au calcul global. Le leader verse un montant réajusté pour que le total final (Sacs + Part) soit identique pour chaque membre revendicateur.
-              </span>
-            </label>
+          <!-- Calculation Mode Selection -->
+          <div class="field">
+            <label class="field-label">Méthode de Répartition</label>
+            <div class="mode-toggles">
+              <!-- Mode A (Absolute redistribution) -->
+              <label 
+                class="mode-selector"
+                :class="{ active: calculationMode === 'fair' }"
+              >
+                <input 
+                  type="radio" 
+                  v-model="calculationMode" 
+                  value="fair" 
+                  class="sr-only" 
+                />
+                <span class="mode-title">⚖️ Redistribution Absolue</span>
+                <span class="mode-desc">
+                  Les sacs individuels sont intégrés au calcul global. Le leader verse un montant réajusté pour que le cumul final soit identique pour tous.
+                </span>
+              </label>
 
-            <!-- Mode B description -->
-            <label 
-              class="relative flex flex-col p-3 rounded-lg border cursor-pointer transition-all hover:bg-surface-900/60"
-              :class="calculationMode === 'direct' ? 'bg-yellow-500/5 border-yellow-500/30' : 'bg-surface-950/50 border-surface-800'"
-            >
-              <input 
-                type="radio" 
-                v-model="calculationMode" 
-                value="direct" 
-                class="sr-only" 
-              />
-              <span class="text-xs font-bold text-gray-200 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full" :class="calculationMode === 'direct' ? 'bg-yellow-400' : 'bg-gray-600'" />
-                💰 Division brute des loots
-              </span>
-              <span class="text-[10px] text-gray-500 mt-1 pl-3.5 leading-relaxed">
-                Chaque joueur conserve l'intégralité de ses sacs individuels sans compensation, et la valeur totale du loot récolté est simplement divisée à parts égales entre les membres actifs.
-              </span>
-            </label>
+              <!-- Mode B (Direct split) -->
+              <label 
+                class="mode-selector"
+                :class="{ active: calculationMode === 'direct' }"
+              >
+                <input 
+                  type="radio" 
+                  v-model="calculationMode" 
+                  value="direct" 
+                  class="sr-only" 
+                />
+                <span class="mode-title">💰 Division brute des loots</span>
+                <span class="mode-desc">
+                  Chaque joueur conserve ses sacs individuels sans compensation, et la valeur totale du loot récolté est simplement divisée à parts égales.
+                </span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Right Summary Panel (Computed Statistics Card) -->
-      <div class="md:col-span-7 flex flex-col justify-between bg-surface-950/20 p-5 rounded-lg border border-surface-800">
-        <div>
-          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Statistiques de distribution</h3>
-          
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div>
-              <div class="text-[10px] text-gray-500 uppercase font-semibold">Total Loot Partagé</div>
-              <div class="text-base font-bold text-yellow-400 font-mono mt-0.5">{{ totalLootValue.toLocaleString() }} <span class="text-[10px] text-gray-500">S</span></div>
+      <div class="panel flex-col-between">
+        <div class="panel-header">
+          <h3>Statistiques de distribution</h3>
+        </div>
+        <div class="panel-body flex-grow">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">Total Loot Partagé</div>
+              <div class="stat-val text-yellow">{{ totalLootValue.toLocaleString() }} <span class="unit">S</span></div>
             </div>
-            <div>
-              <div class="text-[10px] text-gray-500 uppercase font-semibold">Total Sacs d'argent</div>
-              <div class="text-base font-bold text-gray-300 font-mono mt-0.5">{{ totalSilverBags.toLocaleString() }} <span class="text-[10px] text-gray-500">S</span></div>
+            <div class="stat-item">
+              <div class="stat-label">Total Sacs d'argent</div>
+              <div class="stat-val">{{ totalSilverBags.toLocaleString() }} <span class="unit">S</span></div>
             </div>
-            <div>
-              <div class="text-[10px] text-gray-500 uppercase font-semibold">Total Généré</div>
-              <div class="text-base font-bold text-green-400 font-mono mt-0.5">{{ (totalLootValue + totalSilverBags).toLocaleString() }} <span class="text-[10px] text-gray-500">S</span></div>
+            <div class="stat-item">
+              <div class="stat-label">Total Généré</div>
+              <div class="stat-val text-success">{{ (totalLootValue + totalSilverBags).toLocaleString() }} <span class="unit">S</span></div>
             </div>
-            <div>
-              <div class="text-[10px] text-gray-500 uppercase font-semibold">Membres Actifs</div>
-              <div class="text-base font-bold text-gray-200 mt-0.5">{{ claimantsCount }} / {{ players.length }}</div>
+            <div class="stat-item">
+              <div class="stat-label">Membres Actifs</div>
+              <div class="stat-val">{{ claimantsCount }} / {{ players.length }}</div>
             </div>
-            <div>
-              <div class="text-[10px] text-gray-500 uppercase font-semibold">Cible par joueur</div>
-              <div class="text-base font-bold text-primary-400 font-mono mt-0.5">{{ targetSharePerPlayer.toLocaleString() }} <span class="text-[10px] text-gray-500">S</span></div>
+            <div class="stat-item">
+              <div class="stat-label">Cible par joueur</div>
+              <div class="stat-val text-gold">{{ targetSharePerPlayer.toLocaleString() }} <span class="unit">S</span></div>
             </div>
-            <div>
-              <div class="text-[10px] text-gray-500 uppercase font-semibold">Reste de Division</div>
-              <div class="text-base font-bold text-gray-500 font-mono mt-0.5">{{ residualSilver.toLocaleString() }} <span class="text-[10px] text-gray-600">S</span></div>
+            <div class="stat-item">
+              <div class="stat-label">Reste de Division</div>
+              <div class="stat-val text-dim">{{ residualSilver.toLocaleString() }} <span class="unit">S</span></div>
             </div>
           </div>
         </div>
 
         <!-- Copy discord summary -->
-        <div class="mt-5 pt-4 border-t border-surface-800/80 flex items-center justify-between gap-3">
-          <div class="text-[10px] text-gray-500 leading-relaxed max-w-sm">
-            Partagez facilement ce rapport avec les membres du groupe sur Discord ou dans le chat de guilde en jeu.
-          </div>
+        <div class="panel-footer-row">
+          <p class="t-dim text-xs leading-relaxed max-w-sm" style="margin: 0">
+            Copiez un rapport complet avec emojis pour le partager instantanément sur votre Discord de guilde ou dans le chat en jeu.
+          </p>
           <button 
             @click="copySummaryToClipboard"
-            class="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-xs font-bold text-surface-950 rounded shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/20 active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap"
+            class="ds-btn primary sm"
+            style="min-width: 140px"
           >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
             {{ copied ? 'Copié !' : 'Copier Rapport' }}
           </button>
         </div>
@@ -159,129 +136,125 @@
     </div>
 
     <!-- Players Management section -->
-    <div class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Membres du Groupe ({{ players.length }})</h3>
+    <div class="panel">
+      <div class="panel-header flex-row-between">
+        <h3>Membres du Groupe ({{ players.length }})</h3>
         
         <!-- Add Player Form -->
-        <form @submit.prevent="addPlayer" class="flex gap-2">
+        <form @submit.prevent="addPlayer" class="row" style="gap: 8px; margin: 0">
           <input 
             type="text" 
             v-model.trim="newPlayerName" 
             placeholder="Nom du joueur..."
             maxlength="24"
-            class="bg-surface-950 border border-surface-800 focus:border-yellow-500/30 rounded px-3 py-1.5 text-xs text-gray-200 outline-none w-48 transition-colors font-medium"
+            class="ds-input"
+            style="width: 180px; height: 32px; font-size: 12px"
           />
           <button 
             type="submit" 
             :disabled="!newPlayerName"
-            class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-xs font-bold text-surface-950 rounded transition-colors flex items-center gap-1"
+            class="ds-btn sm primary"
+            style="height: 32px"
           >
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 2px"><path d="M12 5v14M5 12h14"/></svg>
             Ajouter
           </button>
         </form>
       </div>
 
-      <!-- Players Payout Table -->
-      <div class="overflow-x-auto rounded-lg border border-surface-800">
-        <table class="w-full text-xs text-left">
+      <!-- Players Payout Table (Identical to profit-table) -->
+      <div class="profit-table-wrap">
+        <table class="profit-table">
           <thead>
-            <tr class="bg-surface-950 border-b border-surface-800 text-[10px] text-gray-500 uppercase tracking-wider">
-              <th class="px-4 py-3 font-semibold">Joueur</th>
-              <th class="px-4 py-3 font-semibold text-center w-32">Revendiquer</th>
-              <th class="px-4 py-3 font-semibold text-right w-44">Sacs d'argent (Silver Bags)</th>
-              <th class="px-4 py-3 font-semibold text-right w-40">Part du Loot</th>
-              <th class="px-4 py-3 font-semibold text-right w-44">A Verser (Leader)</th>
-              <th class="px-4 py-3 font-semibold text-center w-16">Actions</th>
+            <tr>
+              <th class="col-item">Joueur</th>
+              <th style="text-align: center; width: 120px">Revendiquer</th>
+              <th class="col-num" style="width: 200px">Sacs d'argent (Silver Bags)</th>
+              <th class="col-num" style="width: 180px">Part du Loot</th>
+              <th class="col-num" style="width: 200px">A Verser (Leader)</th>
+              <th style="text-align: center; width: 100px">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-surface-800/60 bg-surface-900/20">
+          <tbody>
             <tr 
               v-for="player in calculatedPlayers" 
               :key="player.id" 
-              class="hover:bg-surface-850/40 transition-colors"
-              :class="{ 'opacity-50 bg-surface-950/20': !player.claimsPayout }"
+              class="profit-row"
+              :class="{ 'row-uncalculable': !player.claimsPayout }"
             >
               <!-- Player Name -->
-              <td class="px-4 py-3.5 font-semibold text-gray-200">
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 rounded-full" :class="player.claimsPayout ? 'bg-green-500' : 'bg-red-500'" />
+              <td class="col-item">
+                <div class="item-cell">
+                  <div class="status-dot-indicator" :class="player.claimsPayout ? 'bg-success' : 'bg-danger'" />
                   <input 
                     type="text" 
                     v-model="player.name" 
-                    class="bg-transparent border-b border-transparent hover:border-surface-700 focus:border-yellow-500/40 text-gray-200 px-1 py-0.5 outline-none font-medium transition-colors"
+                    class="player-name-input"
                   />
                 </div>
               </td>
 
-              <!-- Claims Payout Toggle Switch -->
-              <td class="px-4 py-3.5 text-center">
-                <button 
-                  type="button"
-                  @click="player.claimsPayout = !player.claimsPayout"
-                  class="relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                  :class="player.claimsPayout ? 'bg-yellow-500' : 'bg-surface-800'"
-                >
-                  <span 
-                    class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-surface-950 shadow ring-0 transition duration-200 ease-in-out"
-                    :class="player.claimsPayout ? 'translate-x-5' : 'translate-x-0'"
+              <!-- Claims Payout Toggle (Standard ds-switch) -->
+              <td style="text-align: center; vertical-align: middle">
+                <label class="ds-switch" style="display: inline-flex">
+                  <input 
+                    type="checkbox" 
+                    v-model="player.claimsPayout" 
                   />
-                </button>
+                  <span class="ds-track"><span class="ds-thumb"></span></span>
+                </label>
               </td>
 
               <!-- Silver Bags Input -->
-              <td class="px-4 py-3.5 text-right">
-                <div class="relative inline-block w-full max-w-[160px]">
+              <td class="col-num">
+                <div class="inline-input-wrapper">
                   <input 
                     type="number" 
                     v-model.number="player.silverBags" 
                     min="0"
-                    class="w-full bg-surface-950 border border-surface-800/80 rounded px-2 py-1 text-right text-xs font-mono font-bold text-gray-300 outline-none focus:border-yellow-500/30 transition-colors"
+                    class="ds-input text-right font-mono font-bold"
+                    style="width: 140px; height: 28px; padding: 4px 8px; font-size: 12px;"
                     placeholder="0"
                   />
                 </div>
               </td>
 
               <!-- Loot Payout Share -->
-              <td class="px-4 py-3.5 text-right text-gray-400 font-mono font-medium">
-                {{ player.claimsPayout ? player.lootShare.toLocaleString() : '—' }}
+              <td class="col-num text-dim font-mono">
+                <span v-if="player.claimsPayout">{{ player.lootShare.toLocaleString() }} ◇</span>
+                <span v-else class="t-dim">—</span>
               </td>
 
               <!-- Leader Total Payout to pay -->
-              <td class="px-4 py-3.5 text-right font-mono">
+              <td class="col-num font-mono">
                 <span 
                   v-if="player.claimsPayout"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded font-bold text-xs"
-                  :class="player.leaderPayout >= 0 ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'"
+                  class="payout-badge"
+                  :class="player.leaderPayout >= 0 ? 'pos' : 'neg'"
                 >
-                  {{ player.leaderPayout >= 0 ? '+' : '' }}{{ player.leaderPayout.toLocaleString() }}
+                  {{ player.leaderPayout >= 0 ? '+' : '' }}{{ player.leaderPayout.toLocaleString() }} ◇
                 </span>
-                <span v-else class="text-gray-600 font-semibold italic text-[11px]">
+                <span v-else class="uncalculable-label">
                   Exclu (0 Payout)
                 </span>
               </td>
 
               <!-- Delete player button -->
-              <td class="px-4 py-3 text-center">
+              <td style="text-align: center; vertical-align: middle">
                 <button 
                   @click="removePlayer(player.id)" 
-                  class="p-1 text-gray-500 hover:text-red-400 rounded hover:bg-surface-800/80 transition-colors"
+                  class="action-trash-btn"
                   title="Retirer le joueur"
                 >
-                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
               </td>
             </tr>
 
             <!-- Empty State -->
             <tr v-if="players.length === 0">
-              <td colspan="6" class="py-12 text-center text-gray-500 text-xs italic">
-                Aucun joueur dans la liste. Ajoutez des joueurs ou importez les membres par défaut.
+              <td colspan="6" class="profit-empty" style="padding: 48px 0; text-align: center">
+                <span>Aucun joueur dans la liste. Ajoutez des joueurs ou utilisez les membres par défaut.</span>
               </td>
             </tr>
           </tbody>
@@ -337,14 +310,11 @@ const targetSharePerPlayer = computed(() => {
   if (count === 0) return 0
 
   if (calculationMode.value === 'fair') {
-    // Mode A: Total value (loot + bags) divided equitably among claimants
-    // Silver bags from non-claimants are excluded from sharing (they keep them).
     const totalSessionValue = totalLootValue.value + players.value
       .filter(p => p.claimsPayout)
       .reduce((acc, p) => acc + (p.silverBags || 0), 0)
     return Math.floor(totalSessionValue / count)
   } else {
-    // Mode B: Direct loot division
     return Math.floor(totalLootValue.value / count)
   }
 })
@@ -376,11 +346,9 @@ const calculatedPlayers = computed<CalculatedPlayer[]>(() => {
 
     if (player.claimsPayout && count > 0) {
       if (mode === 'fair') {
-        // Mode A: Redistribution. Total payout is equalized.
         lootShare = Math.max(0, share - player.silverBags)
         leaderPayout = share - player.silverBags
       } else {
-        // Mode B: Direct split of the loot.
         lootShare = share
         leaderPayout = share
       }
@@ -465,7 +433,224 @@ function copySummaryToClipboard() {
 </script>
 
 <style scoped>
-.dungeon-calculator {
-  background-color: var(--bg-2, #141619);
+/* ── Layout Grid ───────────────────────────────────────────────────────── */
+
+.calculator-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .calculator-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.flex-col-between {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.flex-row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ── Settings / Inputs ─────────────────────────────────────────────────── */
+
+.settings-body {
+  padding: 16px 20px 20px;
+}
+
+.relative-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.input-suffix {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+/* ── Mode Selector Cards ───────────────────────────────────────────────── */
+
+.mode-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mode-selector {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mode-selector:hover {
+  background: var(--bg-4);
+  border-color: var(--border-strong);
+}
+
+.mode-selector.active {
+  background: rgba(201, 161, 74, 0.04);
+  border-color: var(--gold);
+}
+
+.mode-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.mode-desc {
+  font-size: 10px;
+  color: var(--text-3);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* ── Stats Display Grid ────────────────────────────────────────────────── */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+@media (max-width: 500px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+}
+
+.stat-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.stat-val.text-yellow { color: var(--gold); }
+.stat-val.text-success { color: var(--success); }
+.stat-val.text-gold { color: var(--gold); }
+.stat-val.text-dim { color: var(--text-3); }
+
+.stat-val .unit {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-left: 2px;
+  font-weight: 500;
+}
+
+.panel-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-3);
+}
+
+/* ── Table custom styling ──────────────────────────────────────────────── */
+
+.status-dot-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bg-success { background: var(--success); }
+.bg-danger { background: var(--danger); }
+
+.player-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text-0);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  padding: 2px 4px;
+  transition: border-color 0.1s;
+}
+
+.player-name-input:focus, .player-name-input:hover {
+  border-color: var(--border-strong);
+}
+
+.inline-input-wrapper {
+  display: inline-flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.payout-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+.payout-badge.pos {
+  background: rgba(46, 125, 50, 0.12);
+  border: 1px solid rgba(46, 125, 50, 0.25);
+  color: var(--success);
+}
+
+.payout-badge.neg {
+  background: rgba(176, 74, 50, 0.12);
+  border: 1px solid rgba(176, 74, 50, 0.25);
+  color: var(--danger);
+}
+
+.action-trash-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.1s, background 0.1s;
+}
+
+.action-trash-btn:hover {
+  color: var(--danger);
+  background: rgba(176, 74, 50, 0.08);
 }
 </style>

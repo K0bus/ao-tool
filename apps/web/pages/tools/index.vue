@@ -1,147 +1,90 @@
 <template>
-  <div class="py-12 px-4 max-w-6xl mx-auto space-y-8">
-    <!-- Header Hero Banner -->
-    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-surface-950 to-surface-900 border border-surface-800 p-8 md:p-10 shadow-2xl">
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(234,179,8,0.06),transparent_50%)]" />
-      <div class="relative z-10 max-w-2xl space-y-3">
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-500 text-[10px] font-bold uppercase tracking-wider border border-yellow-500/20">
-          ⚙️ Simulateurs & Outils
-        </span>
-        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-100 tracking-tight">
-          Codex <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">Outils & Calculateurs</span>
-        </h1>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Optimisez votre rendement économique, planifiez vos sessions de groupe, comparez les prix du marché et maximisez vos marges d'artisanat grâce à nos outils spécialisés pour Albion Online.
-        </p>
+  <div class="page tools-page">
+    <!-- Standard Page Header (identical to items / profit pages) -->
+    <div class="page-header">
+      <div>
+        <div class="breadcrumb">
+          <NuxtLink to="/">Accueil</NuxtLink>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span>Outils</span>
+        </div>
+        <h1 class="page-title">Simulateurs & Outils</h1>
+        <p class="page-sub">Optimisez votre économie sur Albion Online avec nos calculateurs et simulateurs exclusifs.</p>
       </div>
     </div>
 
-    <!-- Tools Grid Category -->
-    <div class="space-y-4">
-      <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Tous les outils disponibles</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Dungeon Payout Calculator Card -->
-        <NuxtLink 
-          to="/tools/dungeon-payout" 
-          class="group relative flex flex-col justify-between p-6 bg-surface-950/40 hover:bg-surface-900/40 border border-surface-800 hover:border-yellow-500/30 rounded-xl transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-yellow-500/5"
-        >
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold text-yellow-500 uppercase tracking-wider bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10">
-                Groupe & Économie
-              </span>
-              <div class="p-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 group-hover:scale-110 transition-transform duration-300">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
+    <!-- Tools Grid Wrapper -->
+    <div class="tools-grid-container" style="margin-top: 24px">
+      <div class="tools-grid">
+        <!-- Dungeon Payout Card -->
+        <NuxtLink to="/tools/dungeon-payout" class="tool-card">
+          <div class="card-head">
+            <div class="tool-icon bg-yellow">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <div class="space-y-2">
-              <h3 class="text-base font-bold text-gray-200 group-hover:text-yellow-400 transition-colors">Calculateur de Payout de Donjon</h3>
-              <p class="text-xs text-gray-400 leading-relaxed">
-                Répartissez équitablement le butin d'une session de donjon. Déduisez ou compensez automatiquement les sacs d'argent récupérés individuellement, et gérez les joueurs exclus.
-              </p>
-            </div>
+            <span class="tool-badge badge-yellow">Groupe & Payout</span>
           </div>
-          <div class="mt-6 flex items-center gap-1 text-[11px] font-bold text-yellow-500/90 group-hover:text-yellow-400">
-            Lancer l'outil
-            <svg class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+          <div class="card-content">
+            <h3 class="tool-name">Calculateur de Payout de Donjon</h3>
+            <p class="tool-desc">Répartissez équitablement le butin d'un donjon. Déduisez ou compensez automatiquement les sacs d'argent récupérés individuellement.</p>
+          </div>
+          <div class="card-footer">
+            <span>Lancer l'outil</span>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
           </div>
         </NuxtLink>
 
         <!-- Crafting Tree Card -->
-        <NuxtLink 
-          to="/crafting" 
-          class="group relative flex flex-col justify-between p-6 bg-surface-950/40 hover:bg-surface-900/40 border border-surface-800 hover:border-yellow-500/30 rounded-xl transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-yellow-500/5"
-        >
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-surface-800 px-2 py-0.5 rounded border border-surface-700">
-                Production & Craft
-              </span>
-              <div class="p-2.5 bg-surface-800 border border-surface-700 rounded-lg text-gray-300 group-hover:scale-110 transition-transform duration-300">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-              </div>
+        <NuxtLink to="/crafting" class="tool-card">
+          <div class="card-head">
+            <div class="tool-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
             </div>
-            <div class="space-y-2">
-              <h3 class="text-base font-bold text-gray-200 group-hover:text-yellow-400 transition-colors">Arbre de Craft vertical</h3>
-              <p class="text-xs text-gray-400 leading-relaxed">
-                Visualisez la cascade complète de fabrication des items. Suivez les dépendances de ressources brutes et raffinées pour vos listes de courses d'artisanat.
-              </p>
-            </div>
+            <span class="tool-badge">Production & Craft</span>
           </div>
-          <div class="mt-6 flex items-center gap-1 text-[11px] font-bold text-yellow-500/90 group-hover:text-yellow-400">
-            Lancer l'outil
-            <svg class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+          <div class="card-content">
+            <h3 class="tool-name">Arbre de Craft</h3>
+            <p class="tool-desc">Visualisez la cascade complète de fabrication des items. Suivez les dépendances de ressources brutes et raffinées pour vos recettes.</p>
+          </div>
+          <div class="card-footer">
+            <span>Lancer l'outil</span>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
           </div>
         </NuxtLink>
 
-        <!-- Direct Profit Analysis Card -->
-        <NuxtLink 
-          to="/items/profit" 
-          class="group relative flex flex-col justify-between p-6 bg-surface-950/40 hover:bg-surface-900/40 border border-surface-800 hover:border-yellow-500/30 rounded-xl transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-yellow-500/5"
-        >
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-surface-800 px-2 py-0.5 rounded border border-surface-700">
-                Commerce & Marge
-              </span>
-              <div class="p-2.5 bg-surface-800 border border-surface-700 rounded-lg text-gray-300 group-hover:scale-110 transition-transform duration-300">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10a2 2 0 01-2 2h-2a2 2 0 01-2-2zm5-18v18" />
-                </svg>
-              </div>
+        <!-- Profit Analysis Card -->
+        <NuxtLink to="/items/profit" class="tool-card">
+          <div class="card-head">
+            <div class="tool-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10a2 2 0 01-2 2h-2a2 2 0 01-2-2zm5-18v18" /></svg>
             </div>
-            <div class="space-y-2">
-              <h3 class="text-base font-bold text-gray-200 group-hover:text-yellow-400 transition-colors">Analyse de profit direct</h3>
-              <p class="text-xs text-gray-400 leading-relaxed">
-                Suivez en temps réel les profits générés par la revente directe ou l'artisanat. Triez les items par marge moyenne et repérez les meilleures opportunités.
-              </p>
-            </div>
+            <span class="tool-badge">Commerce & Marge</span>
           </div>
-          <div class="mt-6 flex items-center gap-1 text-[11px] font-bold text-yellow-500/90 group-hover:text-yellow-400">
-            Lancer l'outil
-            <svg class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+          <div class="card-content">
+            <h3 class="tool-name">Analyse de profit direct</h3>
+            <p class="tool-desc">Suivez en temps réel les profits générés par l'artisanat. Repérez et triez les items par marge moyenne et meilleure ville de revente.</p>
+          </div>
+          <div class="card-footer">
+            <span>Lancer l'outil</span>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
           </div>
         </NuxtLink>
 
         <!-- Inter-city Flip Card -->
-        <NuxtLink 
-          to="/items/flip" 
-          class="group relative flex flex-col justify-between p-6 bg-surface-950/40 hover:bg-surface-900/40 border border-surface-800 hover:border-yellow-500/30 rounded-xl transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-yellow-500/5"
-        >
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-surface-800 px-2 py-0.5 rounded border border-surface-700">
-                Arbitrage & Marché
-              </span>
-              <div class="p-2.5 bg-surface-800 border border-surface-700 rounded-lg text-gray-300 group-hover:scale-110 transition-transform duration-300">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-              </div>
+        <NuxtLink to="/items/flip" class="tool-card">
+          <div class="card-head">
+            <div class="tool-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
             </div>
-            <div class="space-y-2">
-              <h3 class="text-base font-bold text-gray-200 group-hover:text-yellow-400 transition-colors">Flip inter-cités</h3>
-              <p class="text-xs text-gray-400 leading-relaxed">
-                Comparez les opportunités d'arbitrage de prix entre les grandes cités d'Albion Online. Achetez bas à un endroit, transportez et vendez haut pour un profit maximum.
-              </p>
-            </div>
+            <span class="tool-badge">Arbitrage & Marché</span>
           </div>
-          <div class="mt-6 flex items-center gap-1 text-[11px] font-bold text-yellow-500/90 group-hover:text-yellow-400">
-            Lancer l'outil
-            <svg class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+          <div class="card-content">
+            <h3 class="tool-name">Flip inter-cités</h3>
+            <p class="tool-desc">Comparez les opportunités d'arbitrage de prix entre les cités d'Albion. Achetez bas à un endroit, transportez et vendez haut pour un profit maximum.</p>
+          </div>
+          <div class="card-footer">
+            <span>Lancer l'outil</span>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
           </div>
         </NuxtLink>
       </div>
@@ -150,8 +93,135 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ layout: 'default' })
+
 useSeoMeta({
-  title: 'Simulateurs & Outils Économiques - Albion SilverMind',
+  title: 'Outils & Simulateurs - Albion SilverMind',
   description: 'Portail des outils d\'analyse et de simulation pour Albion Online. Calculateur de payout de donjon, simulateur de craft, flip inter-cités et calculs de profit en temps réel.',
 })
 </script>
+
+<style scoped>
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.tool-card:hover {
+  border-color: rgba(201, 161, 74, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.tool-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-2);
+  transition: color 0.15s, background 0.15s;
+}
+
+.tool-card:hover .tool-icon {
+  background: var(--bg-4);
+  color: var(--text-0);
+}
+
+.tool-icon.bg-yellow {
+  background: rgba(201, 161, 74, 0.08);
+  border-color: rgba(201, 161, 74, 0.2);
+  color: var(--gold);
+}
+
+.tool-card:hover .tool-icon.bg-yellow {
+  background: rgba(201, 161, 74, 0.15);
+  color: var(--gold);
+}
+
+.tool-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-3);
+}
+
+.tool-badge.badge-yellow {
+  background: rgba(201, 161, 74, 0.05);
+  border-color: rgba(201, 161, 74, 0.1);
+  color: var(--gold);
+}
+
+.card-content {
+  flex-grow: 1;
+}
+
+.tool-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-0);
+  margin: 0 0 8px 0;
+  transition: color 0.15s;
+}
+
+.tool-card:hover .tool-name {
+  color: var(--gold);
+}
+
+.tool-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+  margin: 0;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-top: 20px;
+  transition: color 0.15s;
+}
+
+.tool-card:hover .card-footer {
+  color: var(--gold);
+}
+
+.card-footer svg {
+  transition: transform 0.15s;
+}
+
+.tool-card:hover .card-footer svg {
+  transform: translateX(2px);
+}
+</style>
