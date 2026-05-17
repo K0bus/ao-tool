@@ -10,7 +10,8 @@ import {
   getImportQueue, 
   getIslandQueue,
   schedulerService,
-  sendDiscordNotification
+  sendDiscordNotification,
+  sendDiscordTextMessage
 } from '@albion-tool/queue'
 import type { ImportJobData, ImportJobProgress, ImportJobResult, MarketJobData, MarketJobResult, MarketJobItem, MarketJobProgress, IslandJobData, IslandJobResult } from '@albion-tool/queue'
 import { runImport } from '../import/run-import.js'
@@ -182,16 +183,13 @@ const islandWorker = new Worker<IslandJobData, IslandJobResult>(
 importWorker.on('completed', async (job, result) => {
   console.log(`[import-worker] Job ${job.id} completed — ${result.itemsProcessed} items in ${(result.durationMs / 1000).toFixed(1)}s`)
 
-  await sendDiscordNotification({
-    title: `✅ Import completed: ${job.data.type}`,
-    color: 0x22c55e, // Green
-    fields: [
-      { name: 'Items Processed', value: result.itemsProcessed.toLocaleString(), inline: true },
-      { name: 'Created', value: result.itemsCreated.toLocaleString(), inline: true },
-      { name: 'Updated', value: result.itemsUpdated.toLocaleString(), inline: true },
-      { name: 'Duration', value: `${(result.durationMs / 1000).toFixed(1)}s`, inline: true },
-    ]
-  })
+  await sendDiscordTextMessage(
+    `🔄 **[System Log] Import completed: ${job.data.type}**\n` +
+    `• **Items Processed:** ${result.itemsProcessed.toLocaleString()}\n` +
+    `• **Created:** ${result.itemsCreated.toLocaleString()}\n` +
+    `• **Updated:** ${result.itemsUpdated.toLocaleString()}\n` +
+    `• **Duration:** ${(result.durationMs / 1000).toFixed(1)}s`
+  )
 })
 
 importWorker.on('failed', (job, err) => {
@@ -232,16 +230,13 @@ marketWorker.on('completed', async (job, result) => {
       const duration = dbJob.startedAt ? Date.now() - dbJob.startedAt.getTime() : 0
       console.log(`[market-worker] Sync job ${jobId} finished (${dbJob.itemsUpdated} updated, ${dbJob.itemsFailed} failed)`)
 
-      await sendDiscordNotification({
-        title: '📊 Market Sync Completed',
-        color: 0x3b82f6, // Blue
-        fields: [
-          { name: 'Total Requested', value: dbJob.itemsRequested.toLocaleString(), inline: true },
-          { name: 'Updated', value: dbJob.itemsUpdated.toLocaleString(), inline: true },
-          { name: 'Failed', value: dbJob.itemsFailed.toLocaleString(), inline: true },
-          { name: 'Duration', value: `${(duration / 1000).toFixed(0)}s`, inline: true },
-        ]
-      })
+      await sendDiscordTextMessage(
+        `📊 **[System Log] Market Sync Completed**\n` +
+        `• **Total Requested:** ${dbJob.itemsRequested.toLocaleString()}\n` +
+        `• **Updated:** ${dbJob.itemsUpdated.toLocaleString()}\n` +
+        `• **Failed:** ${dbJob.itemsFailed.toLocaleString()}\n` +
+        `• **Duration:** ${(duration / 1000).toFixed(0)}s`
+      )
 
       // Send Highlight Notification if a second URL is defined
       const highlight = await getTopProfitHighlight()
@@ -265,7 +260,7 @@ marketWorker.on('completed', async (job, result) => {
             description: `An exceptional opportunity was detected in **${highlight.city}**!${itemUrl ? `\n\n[🔗 View Item on Albion Tool](${itemUrl})` : ''}`,
             url: itemUrl,
             color: 0xf59e0b, // Gold/Amber
-            thumbnail: highlight.iconUrl ? { url: highlight.iconUrl } : undefined,
+            image: highlight.iconUrl ? { url: highlight.iconUrl } : undefined,
             fields: [
               { name: 'Estimated Profit', value: `${Math.round(highlight.profit).toLocaleString()} silver`, inline: true },
               { name: 'Profit Margin', value: `${highlight.margin.toFixed(1)}%`, inline: true },
