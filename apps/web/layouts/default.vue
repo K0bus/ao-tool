@@ -122,6 +122,7 @@
               <li><NuxtLink to="/crafting"><div><div>Crafting Tree</div><div class="desc">Arbre vertical complet</div></div></NuxtLink></li>
               <li><NuxtLink to="/items/profit"><div><div>Analyse de profit</div><div class="desc">Profit direct · tous les items</div></div></NuxtLink></li>
               <li><NuxtLink to="/crafting"><div><div>Liste de courses</div><div class="desc">Ressources agrégées</div></div></NuxtLink></li>
+              <li><NuxtLink to="/tools/dungeon-payout"><div><div>Payout calculateur</div><div class="desc">Redistribution donjon de groupe</div></div></NuxtLink></li>
             </ul>
           </div>
           <div class="mega-cta">
