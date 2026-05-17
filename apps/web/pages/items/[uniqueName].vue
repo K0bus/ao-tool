@@ -32,6 +32,10 @@
           <NuxtLink to="/">Accueil</NuxtLink><span class="sep">/</span><NuxtLink to="/items">Items</NuxtLink><span class="sep">/</span>{{ item.name }}
         </div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button v-if="isAdmin" @click="showRawData = !showRawData" class="ds-btn ghost">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            Raw Data
+          </button>
           <NuxtLink v-if="item.isCraftable" :to="`/crafting?id=${item.uniqueName}`" class="ds-btn primary">
             Crafting tree
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
@@ -119,6 +123,15 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Raw Data Panel (Admin Only) -->
+      <div v-if="isAdmin && showRawData" class="panel" style="margin-bottom:24px; padding: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <h3 style="margin: 0; font-size: 16px; font-family: var(--font-display);">Raw Data</h3>
+          <button class="ds-btn ghost" @click="showRawData = false" style="padding: 4px 8px; font-size: 12px;">Fermer</button>
+        </div>
+        <JsonViewer :value="item" />
       </div>
 
       <!-- Price heatmap -->
@@ -273,8 +286,12 @@
 <script setup lang="ts">
 import ItemSvgChart from '~/components/items/ItemSvgChart.vue'
 import { parseAoDescription } from '~/utils/aoRender'
+import { useAuth } from '~/composables/useAuth'
 
 definePageMeta({ layout: 'default' })
+
+const { isAdmin } = useAuth()
+const showRawData = ref(false)
 
 const route = useRoute()
 const uniqueName = computed(() => route.params.uniqueName as string)
