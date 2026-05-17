@@ -23,6 +23,13 @@ pnpm import:market   # trigger market price sync
 
 `pnpm lint` is the standard lint entrypoint, but ensure ESLint dependencies are installed for the target workspace before relying on it.
 
+## Database Schema & Migrations Guidelines
+
+- **NEVER** edit or mutate the SQL database schema directly in the database (e.g., using direct client connections or raw SQL) without going through Prisma migrations.
+- **ALWAYS** perform database schema changes through Prisma by editing `packages/database/prisma/schema.prisma`.
+- **ALWAYS** generate a migration file by running `npx prisma migrate dev --name <migration_name>` inside the `packages/database` package, and commit the newly created migration folder.
+- **ALWAYS** run `pnpm db:generate` to regenerate the Prisma client after schema/migration updates.
+
 ## Coding Style & Naming Conventions
 
 Use TypeScript and follow existing file-local style: two-space indentation, single quotes, no semicolons, and explicit types at package/API boundaries. Vue components use PascalCase filenames, composables use `useX.ts`, and Nitro routes follow Nuxt conventions such as `index.get.ts`, `[id].get.ts`, and `sync.post.ts`. Prefer existing aliases and package APIs over cross-package deep imports.
