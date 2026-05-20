@@ -13,7 +13,14 @@ export default defineEventHandler(async (event) => {
     include: {
       buildings: {
         include: {
-          building: true,
+          building: {
+            include: {
+              localizations: {
+                where: { locale: 'FR-FR' },
+                take: 1
+              }
+            }
+          },
           resources: {
             include: {
               item: {
@@ -61,7 +68,7 @@ export default defineEventHandler(async (event) => {
       profitability,
       buildings: island.buildings.map(b => ({
         ...b,
-        buildingName: b.building?.name, 
+        buildingName: b.building?.localizations[0]?.name ?? b.building?.name, 
         buildingIcon: b.building?.uiBuildMenuTexture 
           ? `/game_assets/${b.building.uiBuildMenuTexture.toLowerCase()}.png` 
           : b.building?.iconUrl, 

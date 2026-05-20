@@ -226,5 +226,11 @@ export default defineEventHandler(async (event) => {
     orderBy: { quality: "asc" },
   });
 
-  return { data: { ...item, resolvedPrices } };
+  // Fetch market transaction history live
+  const marketHistory = await prisma.marketHistory.findMany({
+    where: { item: { uniqueName: id } },
+    orderBy: { timestamp: "asc" },
+  });
+
+  return { data: { ...item, resolvedPrices, marketHistory } };
 });

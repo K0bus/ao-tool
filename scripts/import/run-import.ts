@@ -409,6 +409,18 @@ export async function runImport(
           uiBuildMenuTexture: b.uiBuildMenuTexture,
         },
       })
+
+      if (b.localizations.length > 0) {
+        await prisma.$transaction(
+          b.localizations.map((loc) =>
+            prisma.craftingStationLocalization.upsert({
+              where: { stationId_locale: { stationId: b.uniqueName, locale: loc.locale } },
+              create: { stationId: b.uniqueName, locale: loc.locale, name: loc.name, description: loc.description },
+              update: { name: loc.name, description: loc.description },
+            })
+          )
+        ).catch(() => {})
+      }
     }
 
     // Pass 2: Update relations and requirements (now that all buildings exist)

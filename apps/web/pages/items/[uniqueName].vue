@@ -222,6 +222,115 @@
 
         <!-- RIGHT column -->
         <div class="id-col">
+          <!-- Volume de Ventes (Sales Volume) -->
+          <div class="panel parchment framed" style="margin-bottom:24px">
+            <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+              <h3 style="display:flex;align-items:center;gap:6px">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                Volume des Ventes
+              </h3>
+              <!-- City Dropdown Selector -->
+              <div v-if="availableLocations.length > 0" class="ds-select-wrapper" style="font-size:12px">
+                <select v-model="selectedLocationId" class="ds-select" style="padding:4px 8px;font-size:12px;background:var(--bg-panel);border:1px solid var(--border-divider);border-radius:var(--radius-sm);color:var(--text-0)">
+                  <option v-for="loc in availableLocations" :key="loc.id" :value="loc.id">
+                    {{ loc.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div style="padding:18px;display:flex;flex-direction:column;gap:16px">
+              <!-- No Data State -->
+              <div v-if="availableLocations.length === 0" style="padding:12px;text-align:center;color:var(--text-3);font-size:13px">
+                Aucune donnée de volume de ventes disponible pour cet objet.
+              </div>
+
+              <template v-else>
+                <!-- Key Stats Grid -->
+                <div class="volume-stats-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <!-- Avg Daily 7d -->
+                  <div class="vol-stat-card" style="background:rgba(255,255,255,0.02);border:1px solid var(--border-divider);border-radius:var(--radius-sm);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">Moyenne 7 jours</span>
+                    <span style="font-size:18px;font-weight:600;color:var(--gold-bright);font-family:var(--font-mono)">
+                      {{ avgSales7d.toLocaleString('fr-FR') }}
+                      <span style="font-size:11px;font-weight:normal;color:var(--text-2);font-family:var(--font-body)">/ jour</span>
+                    </span>
+                  </div>
+
+                  <!-- Avg Daily 30d -->
+                  <div class="vol-stat-card" style="background:rgba(255,255,255,0.02);border:1px solid var(--border-divider);border-radius:var(--radius-sm);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">Moyenne 30 jours</span>
+                    <span style="font-size:18px;font-weight:600;color:var(--text-0);font-family:var(--font-mono)">
+                      {{ avgSales30d.toLocaleString('fr-FR') }}
+                      <span style="font-size:11px;font-weight:normal;color:var(--text-2);font-family:var(--font-body)">/ jour</span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Peak hour badge -->
+                <div v-if="peakHourSlot && peakHourSlot.count > 0" class="peak-activity-alert" style="background:rgba(201,161,74,0.04);border:1px solid rgba(201,161,74,0.15);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;line-height:1.45;color:var(--text-1);display:flex;align-items:center;gap:10px">
+                  <span style="font-size:16px;color:var(--gold)">✦</span>
+                  <div>
+                    Période d'activité maximale constatée vers <strong style="color:var(--gold-bright)">{{ peakHourSlot.hour }}h - {{ peakHourSlot.hour + 1 }}h</strong>
+                     avec environ <strong style="color:var(--text-0)">{{ peakHourSlot.count }}</strong> unités échangées en moyenne.
+                  </div>
+                </div>
+
+                <!-- Hourly Slots Bar Chart -->
+                <div>
+                  <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;font-family:var(--font-display);margin-bottom:12px">
+                    Ventes par créneaux horaires
+                  </div>
+
+                  <!-- Chart canvas area using dynamic SVG and CSS -->
+                  <div class="hourly-chart-container" style="background:rgba(0,0,0,0.1);border-radius:var(--radius-sm);border:1px solid var(--border-divider);padding:16px 12px 8px">
+                    <div style="height:120px;display:flex;align-items:flex-end;gap:3px;position:relative">
+                      <!-- Grid lines -->
+                      <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none">
+                        <div style="border-top:1px dashed rgba(255,255,255,0.05);width:100%"></div>
+                        <div style="border-top:1px dashed rgba(255,255,255,0.05);width:100%"></div>
+                        <div style="border-top:1px dashed rgba(255,255,255,0.05);width:100%"></div>
+                      </div>
+
+                      <!-- Hourly Bars -->
+                      <div
+                        v-for="item in hourlyDistribution"
+                        :key="item.hour"
+                        style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative"
+                        class="chart-bar-col"
+                      >
+                        <!-- Tooltip on hover -->
+                        <div class="chart-tooltip" style="position:absolute;bottom:calc(100% + 6px);background:var(--bg-panel);border:1px solid var(--gold);border-radius:var(--radius-xs);padding:4px 6px;font-size:10px;font-family:var(--font-mono);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.15s ease, transform 0.15s ease;transform:translateY(4px);z-index:10;box-shadow:var(--shadow-lg)">
+                          {{ item.hour }}h: <strong>{{ item.count }}</strong> u/h
+                        </div>
+
+                        <!-- Bar element -->
+                        <div
+                          :style="{ height: `${maxHourlyCount > 0 ? (item.count / maxHourlyCount) * 100 : 0}%` }"
+                          style="width:100%;background:linear-gradient(to top, var(--gold-dim) 20%, var(--gold) 100%);border-radius:1px 1px 0 0;transition:all 0.3s ease;cursor:pointer"
+                          :class="['bar-fill', item.hour === peakHourSlot?.hour && 'peak-bar']"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <!-- X-Axis hours labels -->
+                    <div style="display:flex;justify-content:space-between;margin-top:6px;padding:0 2px;font-size:9px;font-family:var(--font-mono);color:var(--text-3)">
+                      <span>00h</span>
+                      <span>06h</span>
+                      <span>12h</span>
+                      <span>18h</span>
+                      <span>23h</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
           <!-- Farming & Breeding Panel (Only for farming items) -->
           <div v-if="isFarmingItem" class="panel parchment framed">
             <div class="panel-header"><h3>Agriculture & Élevage</h3></div>
@@ -459,6 +568,122 @@ const { data: item, pending, error } = await useFetch(
   }
 )
 
+// --- Market Sales Volume History Logic ---
+const selectedLocationId = ref('Caerleon')
+
+// Available locations from marketHistory data
+const availableLocations = computed(() => {
+  if (!item.value?.marketHistory) return []
+  const locationsMap = new Map<string, { id: string; name: string }>()
+  for (const h of item.value.marketHistory) {
+    if (h.locationId && !locationsMap.has(h.locationId)) {
+      const resolved = item.value.resolvedPrices?.find((p: any) => p.locationId === h.locationId)?.location
+      locationsMap.set(h.locationId, {
+        id: h.locationId,
+        name: resolved?.name ?? h.locationId
+      })
+    }
+  }
+  return [...locationsMap.values()]
+})
+
+// Automatically set default location to Caerleon, Black Market or first available
+watchEffect(() => {
+  if (availableLocations.value.length > 0) {
+    if (!selectedLocationId.value || !availableLocations.value.some(l => l.id === selectedLocationId.value)) {
+      const preferOrder = ['Caerleon', 'BlackMarket', 'Bridgewatch', 'Lymhurst', 'FortSterling', 'Martlock', 'Thetford']
+      const found = preferOrder.find(id => availableLocations.value.some(l => l.id === id))
+      selectedLocationId.value = found || availableLocations.value[0]!.id
+    }
+  }
+})
+
+// Daily history stats (timeScale = 24)
+const dailyHistory = computed(() => {
+  if (!item.value?.marketHistory) return []
+  return item.value.marketHistory.filter(
+    (h: any) =>
+      h.timeScale === 24 &&
+      h.quality === selectedQuality.value &&
+      h.locationId === selectedLocationId.value
+  )
+})
+
+// 7-day average daily sales volume
+const avgSales7d = computed(() => {
+  const data = dailyHistory.value
+  if (!data.length) return 0
+  const now = Date.now()
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000
+  const recent = data.filter((h: any) => new Date(h.timestamp).getTime() >= sevenDaysAgo)
+  if (!recent.length) return 0
+  const sum = recent.reduce((acc: number, h: any) => acc + h.itemCount, 0)
+  return Math.round(sum / 7)
+})
+
+// 30-day average daily sales volume
+const avgSales30d = computed(() => {
+  const data = dailyHistory.value
+  if (!data.length) return 0
+  const now = Date.now()
+  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000
+  const recent = data.filter((h: any) => new Date(h.timestamp).getTime() >= thirtyDaysAgo)
+  if (!recent.length) return 0
+  const sum = recent.reduce((acc: number, h: any) => acc + h.itemCount, 0)
+  return Math.round(sum / 30)
+})
+
+// Hourly history stats (timeScale = 1)
+const hourlyHistory = computed(() => {
+  if (!item.value?.marketHistory) return []
+  return item.value.marketHistory.filter(
+    (h: any) =>
+      h.timeScale === 1 &&
+      h.quality === selectedQuality.value &&
+      h.locationId === selectedLocationId.value
+  )
+})
+
+// Hour slots (00h-23h) transaction volume distribution
+const hourlyDistribution = computed(() => {
+  const distribution = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }))
+  const data = hourlyHistory.value
+  if (!data.length) return distribution
+
+  for (const h of data) {
+    const d = new Date(h.timestamp)
+    const hour = d.getHours()
+    if (hour >= 0 && hour < 24) {
+      distribution[hour]!.count += h.itemCount
+    }
+  }
+
+  const uniqueDays = new Set(data.map((h: any) => new Date(h.timestamp).toDateString())).size || 1
+  return distribution.map(d => ({
+    hour: d.hour,
+    count: Math.round(d.count / uniqueDays),
+  }))
+})
+
+// Peak activity hour slot
+const peakHourSlot = computed(() => {
+  const dist = hourlyDistribution.value
+  if (!dist.some(d => d.count > 0)) return null
+  let max = dist[0]!
+  for (const d of dist) {
+    if (d.count > max.count) {
+      max = d
+    }
+  }
+  return max
+})
+
+// Maximum hourly count for chart scaling
+const maxHourlyCount = computed(() => {
+  const counts = hourlyDistribution.value.map(d => d.count)
+  return Math.max(...counts, 1)
+})
+
 const description = computed(() =>
   item.value?.localizations?.find((l: any) => l.locale === 'EN-US')?.description ?? null
 )
@@ -611,3 +836,19 @@ useHead(() => ({
   meta: [{ name: 'description', content: item.value ? `${item.value.name} T${item.value.tier} — Craft, raffinage, marché` : '' }],
 }))
 </script>
+
+<style scoped>
+.chart-bar-col:hover .chart-tooltip {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.chart-bar-col:hover .bar-fill {
+  background: linear-gradient(to top, var(--gold-bright) 20%, var(--gold-bright) 100%) !important;
+  filter: drop-shadow(0 0 4px var(--gold-bright));
+}
+
+.peak-bar {
+  background: linear-gradient(to top, var(--gold-bright) 0%, var(--gold-bright) 100%) !important;
+}
+</style>

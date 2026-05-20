@@ -36,6 +36,20 @@ export function normalizeBuilding(
   const name = localizations['EN-US']?.[nameTag] || enNameHeuristic
   const description = localizations['EN-US']?.[descTag] || (raw['@descriptionlocatag'] ? localizations['EN-US']?.[raw['@descriptionlocatag']] : undefined)
   const capability = localizations['EN-US']?.[capTag] || undefined
+
+  const localizationsList: Array<{ locale: string; name: string; description?: string }> = []
+  for (const locale of Object.keys(localizations)) {
+    if (locale === 'ForceTranslationByKey') continue
+    const nameVal = localizations[locale]?.[nameTag]
+    const descVal = localizations[locale]?.[descTag] || (raw['@descriptionlocatag'] ? localizations[locale]?.[raw['@descriptionlocatag']] : undefined)
+    if (nameVal) {
+      localizationsList.push({
+        locale,
+        name: nameVal,
+        description: descVal
+      })
+    }
+  }
   
   const requirements: Array<{ uniqueName: string; count: number }> = []
   if (raw.craftingrequirements?.craftresource) {
@@ -98,6 +112,7 @@ export function normalizeBuilding(
     uiSpriteName: raw['@uispritename'],
     uiBuildMenuTexture: raw['@uibuildmenutexture'],
     permittedItemIds: permittedItemIds.length > 0 ? [...new Set(permittedItemIds)] : undefined,
-    requirements
+    requirements,
+    localizations: localizationsList
   }
 }

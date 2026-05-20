@@ -309,6 +309,7 @@ model Item {
   cityBonuses    CityItemBonus[]
   marketPrices   MarketPrice[]
   marketPricesHistory MarketPriceHistory[]
+  marketHistory  MarketHistory[]
   resolvedPrices ResolvedPrice[]
   itemSpells     ItemSpell[]
   buildingResources BuildingResource[]
@@ -406,11 +407,26 @@ model CraftingStation {
   craftingRecipes    CraftingRecipe[]
   refiningRecipes    RefiningRecipe[]
   buildings         IslandBuilding[]
+  localizations     CraftingStationLocalization[]
   
   favoriteDish      Item? @relation("FavoriteDish", fields: [favoriteDishItemId], references: [id])
 
   @@index([type])
   @@index([favoriteDishItemId])
+}
+
+model CraftingStationLocalization {
+  id          String  @id @default(cuid())
+  stationId   String
+  locale      String
+  name        String
+  description String? @db.Text
+
+  station     CraftingStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@unique([stationId, locale])
+  @@index([stationId])
+  @@index([locale])
 }
 
 model StationItem {
@@ -509,6 +525,7 @@ model Location {
   cityBonuses    CityItemBonus[]
   marketPrices   MarketPrice[]
   resolvedPrices ResolvedPrice[]
+  marketHistory  MarketHistory[]
   islands        Island[]
 
   @@index([type])
@@ -619,6 +636,24 @@ model MarketPriceHistory {
 
   @@index([itemId, locationId, quality])
   @@index([itemId, locationId, quality, timestamp])
+  @@index([timestamp])
+}
+
+model MarketHistory {
+  id          String   @id @default(cuid())
+  itemId      String
+  locationId  String
+  quality     Int      @default(1)
+  timeScale   Int      // 1 for hourly, 24 for daily
+  timestamp   DateTime
+  itemCount   Int      @default(0)
+  avgPrice    Float    @default(0)
+
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, locationId, quality, timeScale, timestamp])
+  @@index([itemId, locationId, quality, timeScale])
   @@index([timestamp])
 }
 

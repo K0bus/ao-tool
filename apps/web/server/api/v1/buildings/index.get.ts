@@ -5,6 +5,7 @@ const schema = z.object({
   type: z.string().optional(),
   q: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  locale: z.string().default('FR-FR'),
 });
 
 export default defineEventHandler(async (event) => {
@@ -17,7 +18,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const { type, q, limit } = query.data;
+  const { type, q, limit, locale } = query.data;
 
   const where: any = {};
   if (type) {
@@ -27,7 +28,17 @@ export default defineEventHandler(async (event) => {
   }
   
   if (q) {
-    where.name = { contains: q, mode: "insensitive" };
+    where.OR = [
+      { name: { contains: q, mode: "insensitive" } },
+      {
+        localizations: {
+          some: {
+            locale,
+            name: { contains: q, mode: "insensitive" },
+          },
+        },
+      },
+    ];
   }
 
   const buildings = await prisma.craftingStation.findMany({
@@ -47,10 +58,27 @@ export default defineEventHandler(async (event) => {
       iconUrl: true,
       uiSpriteName: true,
       uiBuildMenuTexture: true,
+      localizations: {
+        where: { locale },
+        select: { name: true, description: true },
+        take: 1,
+      },
     }
   });
 
+  const formatted = buildings.map((b) => ({
+    id: b.id,
+    name: b.localizations[0]?.name ?? b.name,
+    type: b.type,
+    tier: b.tier,
+    description: b.localizations[0]?.description ?? b.description,
+    capability: b.capability,
+    iconUrl: b.iconUrl,
+    uiSpriteName: b.uiSpriteName,
+    uiBuildMenuTexture: b.uiBuildMenuTexture,
+  }));
+
   return {
-    data: buildings
+    data: formatted
   };
 });

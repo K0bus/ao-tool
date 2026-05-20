@@ -42,7 +42,7 @@
             @click="openEditBuilding(building)"
           >
             <div class="plot-header">
-              <span class="plot-type">{{ building.building?.name || 'Bâtiment' }}</span>
+              <span class="plot-type">{{ building.buildingName || building.building?.name || 'Bâtiment' }}</span>
               <span class="plot-tier t-dim">T{{ building.tier || '?' }}</span>
               <div class="plot-actions" @click.stop>
                  <button class="ds-btn ghost xs icon-only danger" @click="deleteBuilding(building.id)">
@@ -135,14 +135,14 @@
     <div v-if="activeBuilding" class="modal-overlay" @click.self="activeBuilding = null">
       <div class="modal panel parchment framed">
         <div class="modal-header">
-          <h3>Gérer {{ activeBuilding.building?.name || 'le bâtiment' }}</h3>
+          <h3>Gérer {{ activeBuilding.buildingName || activeBuilding.building?.name || 'le bâtiment' }}</h3>
           <button class="close-btn" @click="activeBuilding = null">&times;</button>
         </div>
         <div class="modal-body">
           <div class="b-mgmt-header">
              <img v-if="activeBuilding.buildingIcon" :src="activeBuilding.buildingIcon" style="width: 48px" />
              <div class="b-mgmt-title">
-                <strong>{{ activeBuilding.building?.name }}</strong>
+                <strong>{{ activeBuilding.buildingName || activeBuilding.building?.name }}</strong>
                 <span class="t-dim">Tier {{ activeBuilding.tier }}</span>
              </div>
           </div>

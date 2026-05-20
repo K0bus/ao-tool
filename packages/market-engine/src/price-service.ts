@@ -9,7 +9,7 @@ import type {
   Prisma as PrismaType,
   PriceConfidence as PriceConfidenceType,
 } from '@albion-tool/database'
-import { marketApiClient } from './api-client'
+import { marketApiClient, type RawHistoryPrice } from './api-client'
 
 export interface MarketSyncItem {
   id: string
@@ -83,11 +83,29 @@ export class MarketPriceService {
       id: item.id,
       apiItemId: this.toMarketApiItemId(item.uniqueName, item.enchantmentLevel),
     }))
-    const rawPrices = await marketApiClient.getPrices(
-      apiItems.map(item => item.apiItemId),
-      locations,
-      qualities,
-    )
+
+    const apiItemIds = apiItems.map(item => item.apiItemId)
+
+    // Call API endpoints concurrently to fetch live prices, daily history (24h), and hourly history (1h)
+    const [pricesResult, history24Result, history1Result] = await Promise.allSettled([
+      marketApiClient.getPrices(apiItemIds, locations, qualities),
+      marketApiClient.getHistory(apiItemIds, locations, qualities, 24),
+      marketApiClient.getHistory(apiItemIds, locations, qualities, 1),
+    ])
+
+    const rawPrices = pricesResult.status === 'fulfilled' ? pricesResult.value : []
+    const rawHistory24 = history24Result.status === 'fulfilled' ? history24Result.value : []
+    const rawHistory1 = history1Result.status === 'fulfilled' ? history1Result.value : []
+
+    if (pricesResult.status === 'rejected') {
+      console.error('[MarketPriceService] Failed to fetch prices from API:', pricesResult.reason)
+    }
+    if (history24Result.status === 'rejected') {
+      console.error('[MarketPriceService] Failed to fetch 24h history from API:', history24Result.reason)
+    }
+    if (history1Result.status === 'rejected') {
+      console.error('[MarketPriceService] Failed to fetch 1h history from API:', history1Result.reason)
+    }
 
     const itemIdResolver = this.buildItemIdResolver(items)
 
@@ -132,8 +150,9 @@ export class MarketPriceService {
     }
 
     try {
-      if (rows.length > 0) {
-        await this.bulkPersistPrices(rows)
+      if (rows.length > 0 || rawHistory24.length > 0 || rawHistory1.length > 0) {
+        // Pass historical data and itemIdResolver to bulk persistence
+        await this.bulkPersistPrices(rows, rawHistory24, rawHistory1, itemIdResolver)
         itemsUpdated = rows.length
       }
     } catch (error) {
@@ -167,10 +186,29 @@ export class MarketPriceService {
     return { itemsUpdated, itemsFailed }
   }
 
-  private async bulkPersistPrices(rows: MarketPriceRow[]) {
-    if (rows.length === 0) return
+  private async bulkPersistPrices(
+    rows: MarketPriceRow[],
+    rawHistory24: RawHistoryPrice[] = [],
+    rawHistory1: RawHistoryPrice[] = [],
+    itemIdResolver?: (apiItemId: string) => string | undefined,
+  ) {
+    if (rows.length === 0 && rawHistory24.length === 0 && rawHistory1.length === 0) return
 
-    const itemIds = [...new Set(rows.map((r) => r.itemId))]
+    // If rows is empty but we have history data, let's load all item IDs from the raw history arrays
+    let itemIds: string[] = []
+    if (rows.length > 0) {
+      itemIds = [...new Set(rows.map((r) => r.itemId))]
+    } else if (itemIdResolver) {
+      const ids = new Set<string>()
+      for (const h of [...rawHistory24, ...rawHistory1]) {
+        const id = itemIdResolver(h.item_id)
+        if (id) ids.add(id)
+      }
+      itemIds = [...ids]
+    }
+
+    if (itemIds.length === 0) return
+
     const items = await prisma.item.findMany({
       where: { id: { in: itemIds } },
       select: { id: true, maxQuality: true },
@@ -182,7 +220,6 @@ export class MarketPriceService {
       return row.quality <= maxQ
     })
 
-    if (filteredRows.length === 0) return
     rows = filteredRows
 
     const existingPrices = await this.getExistingPriceMap(rows)
@@ -197,6 +234,61 @@ export class MarketPriceService {
         timestamp: row.dataUpdatedAt,
       }))
 
+    // Parse actual transaction MarketHistory rows
+    const marketHistoryRows: Array<{
+      itemId: string
+      locationId: string
+      quality: number
+      timeScale: number
+      timestamp: Date
+      itemCount: number
+      avgPrice: number
+    }> = []
+
+    const validLocationIds = await this.getValidLocationIds()
+
+    if (itemIdResolver) {
+      const processRawHistory = (rawList: RawHistoryPrice[], scale: number) => {
+        for (const raw of rawList) {
+          const locationId = this.normalizeLocationId(raw.location)
+          const itemId = itemIdResolver(raw.item_id)
+
+          if (!itemId || !validLocationIds.has(locationId)) {
+            continue
+          }
+
+          const maxQ = maxQualityMap.get(itemId) ?? 1
+          if (raw.quality > maxQ) {
+            continue
+          }
+
+          if (!raw.data || !Array.isArray(raw.data)) {
+            continue
+          }
+
+          for (const dataPoint of raw.data) {
+            const timestamp = this.parseSafeDate(dataPoint.timestamp)
+            if (!timestamp) {
+              continue
+            }
+
+            marketHistoryRows.push({
+              itemId,
+              locationId,
+              quality: raw.quality,
+              timeScale: scale,
+              timestamp,
+              itemCount: dataPoint.item_count || 0,
+              avgPrice: dataPoint.avg_price || 0,
+            })
+          }
+        }
+      }
+
+      processRawHistory(rawHistory24, 24)
+      processRawHistory(rawHistory1, 1)
+    }
+
     const [sellFallbacks, buyFallbacks, globalFallbacks, q1Prices] = await Promise.all([
       this.getLatestHistoryFallbacks(rows, 'sell'),
       this.getLatestHistoryFallbacks(rows, 'buy'),
@@ -206,23 +298,46 @@ export class MarketPriceService {
 
     const resolvedRows = rows.map(row => this.toResolvedPriceRow(row, sellFallbacks, buyFallbacks, globalFallbacks, q1Prices))
 
+    // Chunk both sets of data
     const rowBatches = this.chunkArray(rows, this.BULK_WRITE_SIZE)
     const resolvedBatches = this.chunkArray(resolvedRows, this.BULK_WRITE_SIZE)
 
-    for (let i = 0; i < rowBatches.length; i++) {
-      const batchRows = rowBatches[i]
-      const batchResolvedRows = resolvedBatches[i]
-      const batchKeys = new Set(batchRows.map(r => this.priceKey(r)))
-      const batchHistoryRows = historyRows.filter(r => batchKeys.has(this.priceKey(r)))
+    // Even if rowBatches is empty, we might have marketHistoryRows to persist.
+    // Let's ensure we process them.
+    if (rowBatches.length > 0) {
+      for (let i = 0; i < rowBatches.length; i++) {
+        const batchRows = rowBatches[i]!
+        const batchResolvedRows = resolvedBatches[i] || []
+        const batchKeys = new Set(batchRows.map(r => this.priceKey(r)))
+        const batchHistoryRows = historyRows.filter(r => batchKeys.has(this.priceKey(r)))
 
-      await prisma.$transaction(
-        async (tx) => {
-          await this.bulkUpsertMarketPrices(tx, batchRows)
-          await this.bulkInsertHistory(tx, batchHistoryRows)
-          await this.bulkUpsertResolvedPrices(tx, batchResolvedRows)
-        },
-        { timeout: 15000 },
-      )
+        // Get the market history rows belonging to items in this batch
+        const batchItemIds = new Set(batchRows.map(r => r.itemId))
+        const batchMarketHistoryRows = marketHistoryRows.filter(r => batchItemIds.has(r.itemId))
+
+        await prisma.$transaction(
+          async (tx) => {
+            await this.bulkUpsertMarketPrices(tx, batchRows)
+            await this.bulkInsertHistory(tx, batchHistoryRows)
+            await this.bulkUpsertResolvedPrices(tx, batchResolvedRows)
+            if (batchMarketHistoryRows.length > 0) {
+              await this.bulkUpsertMarketHistory(tx, batchMarketHistoryRows)
+            }
+          },
+          { timeout: 30000 },
+        )
+      }
+    } else if (marketHistoryRows.length > 0) {
+      // If we only have market history data but no live price rows (unusual but possible)
+      const historyBatches = this.chunkArray(marketHistoryRows, this.BULK_WRITE_SIZE)
+      for (const batch of historyBatches) {
+        await prisma.$transaction(
+          async (tx) => {
+            await this.bulkUpsertMarketHistory(tx, batch)
+          },
+          { timeout: 30000 },
+        )
+      }
     }
   }
 
@@ -643,6 +758,55 @@ export class MarketPriceService {
         "source" = EXCLUDED."source",
         "updatedAt" = EXCLUDED."updatedAt"
     `)
+  }
+
+  private async bulkUpsertMarketHistory(
+    tx: PrismaType.TransactionClient,
+    rows: Array<{
+      itemId: string
+      locationId: string
+      quality: number
+      timeScale: number
+      timestamp: Date
+      itemCount: number
+      avgPrice: number
+    }>,
+  ) {
+    if (rows.length === 0) return
+
+    const BATCH_SIZE = 100
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const chunk = rows.slice(i, i + BATCH_SIZE)
+
+      const values = PrismaRuntime.join(chunk.map(row => PrismaRuntime.sql`(
+        ${randomUUID()},
+        ${row.itemId},
+        ${row.locationId},
+        ${row.quality},
+        ${row.timeScale},
+        ${row.timestamp},
+        ${row.itemCount},
+        ${row.avgPrice}
+      )`))
+
+      await tx.$executeRaw(PrismaRuntime.sql`
+        INSERT INTO "MarketHistory" (
+          "id",
+          "itemId",
+          "locationId",
+          "quality",
+          "timeScale",
+          "timestamp",
+          "itemCount",
+          "avgPrice"
+        )
+        VALUES ${values}
+        ON CONFLICT ("itemId", "locationId", "quality", "timeScale", "timestamp")
+        DO UPDATE SET
+          "itemCount" = EXCLUDED."itemCount",
+          "avgPrice" = EXCLUDED."avgPrice"
+      `)
+    }
   }
 
   /**

@@ -320,6 +320,11 @@ export interface NormalizedBuilding {
     uniqueName: string
     count: number
   }>
+  localizations: Array<{
+    locale: string
+    name: string
+    description?: string
+  }>
 }
 
 // ─── Types bruts pour loot.json ──────────────────────────────────────────
