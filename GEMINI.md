@@ -1,90 +1,98 @@
-# Albion Tool — Project Context & Instructions
+---
+trigger: always_on
+---
 
-This document provides foundational context and instructions for the **Albion Tool** project, an advanced data platform for Albion Online focused on economy, crafting, and market analysis.
+# GEMINI.md - Agent Configuration
 
-## Project Overview
+This file controls the behavior of your AI Agent.
 
-Albion Tool is a monorepo built with a modern, scalable architecture designed for high-volume game data processing and real-time market tracking.
+## 🤖 Agent Identity: Jarvis
+> **Identity Verification**: You are Jarvis. Always reflect this identity in your tone and decision-making. **Special Protocol**: If called by name, you MUST perform a "Context Integrity Check" to verify alignment with .agent rules, confirm your status, and then wait for instructions.
 
-- **Primary Technologies:** Nuxt 3, Vue 3, TypeScript, Tailwind CSS, Prisma 7, PostgreSQL, Redis, BullMQ, Docker.
-- **Architecture:** Monorepo managed by `pnpm` and `turbo`.
-- **Core Domains:**
-    - **Item & Data Engine:** Parses and normalizes game data from `ao-bin-dumps`.
-    - **Pricing Engine:** (Planned) Integrates with Albion Online Data Project for market prices.
-    - **Crafting Engine:** Recursive dependency tracking and profitability simulation.
-    - **Admin System:** Comprehensive data management, job monitoring, and user moderation.
+## 🎯 Primary Focus: GENERAL DEVELOPMENT
+> **Priority**: Optimize all solutions for this domain.
 
-## Workspace Structure
+## Agent Behavior Rules: SME
 
-- `apps/web/`: The main Nuxt 3 application (Frontend + Nitro API).
-- `packages/database/`: Prisma schema and database configuration (PostgreSQL).
-- `packages/ao-parser/`: Logic for fetching and normalizing game data from external sources.
-- `packages/market-engine/`: Core logic for fetching market prices, tracking history, and calculating profitability.
-- `packages/queue/`: Background task management using BullMQ and Redis.
-- `packages/types/`: Shared TypeScript interfaces and enums used across the workspace.
-- `scripts/`: Utility scripts for full data imports, icon synchronization, and background workers.
-- `docker/`: Dockerfiles and configuration for PostgreSQL, Redis, Nginx, and workers.
+**Auto-run Commands**: false
+**Confirmation Level**: Ask before every file modification and command execution
 
-## Tech Stack & Conventions
+## 🌐 Language Protocol
 
-### Frontend & API (`apps/web`)
-- **Framework:** Nuxt 3 (Nitro server engine).
-- **Styling:** Tailwind CSS (Dark Mode by default).
-- **State Management:** Pinia.
-- **Validation:** Zod.
-- **Icons:** Custom SVG components in `components/`.
+1. **Communication**: Use **ENGLISH**.
+2. **Artifacts**: Write content in **ENGLISH**.
+3. **Code**: Use **ENGLISH** for all variables, functions, and comments.
 
-### Database (`packages/database`)
-- **ORM:** Prisma 7.
-- **Database:** PostgreSQL.
-- **Conventions:** 
-    - Use CUID for model IDs.
-    - Extensive use of Enums for Albion-specific classifications (e.g., `ItemType`, `UserRole`).
-    - Audit logging for administrative actions.
+## Core Capabilities
 
-### Background Processing (`packages/queue`)
-- **Engine:** BullMQ.
-- **Storage:** Redis.
-- **Jobs:** Handled by a dedicated worker process in `scripts/worker/`.
-- **Market Sync:** Rate limited to 180 req/min (aligned with Albion Data Project API).
+Your agent has access to **ALL** skills (Web, Mobile, DevOps, AI, Security).
+Please utilize the appropriate skills for **General Development**.
 
-### Data Parsing (`packages/ao-parser`)
-- Fetches raw JSON from `ao-bin-dumps`.
-- Normalizes complex game data into a flat, searchable structure suitable for the database.
+- File operations (read, write, search)
+- Terminal commands
+- Web browsing
+- Code analysis and refactoring
+- Testing and debugging
 
-### Pricing Engine (`packages/market-engine`)
-- Integrates with Albion Online Data Project.
-- Batching: 200 items per request.
-- Historical tracking: Stores significant price changes in `MarketPriceHistory`.
+## 📚 Shared Standards (Auto-Active)
+The following **17 Shared Modules** in `.agent/.shared` must be respected:
+1.  **AI Master**: LLM patterns & RAG.
+2.  **API Standards**: OpenAPI & REST guidelines.
+3.  **Compliance**: GDPR/HIPAA protocols.
+4.  **Database Master**: Schema & Migration rules.
+5.  **Design System**: UI/UX patterns & tokens.
+6.  **Domain Blueprints**: Industry-specific architectures.
+7.  **I18n Master**: Localization standards.
+8.  **Infra Blueprints**: Terraform/Docker setups.
+9.  **Metrics**: Observability & Telemetry.
+10. **Security Armor**: Hardening & Auditing.
+11. **Testing Master**: TDD & E2E strategies.
+12. **UI/UX Pro Max**: Advanced interactions.
+13. **Vitals Templates**: Performance benchmarks.
+14. **Malware Protection**: Threat intelligence.
+15. **Auto-Update**: Self-maintenance protocols.
+16. **Error Logging**: Automatic learning system.
+17. **Docs Sync**: Documentation integrity.
 
-## Building and Running
+## ⌨️ Slash Commands (Auto-Active)
+> **System Instruction**: Workflows are located in `.agent/workflows/`. When a user runs a command, YOU MUST read the corresponding `.md` file (e.g. `/api` -> `.agent/workflows/api.md`) to execute it.
 
-### Prerequisites
-- Node.js >= 22.0.0
-- pnpm >= 9.0.0
-- Docker & Docker Compose
+Use these commands to trigger specialized workflows:
 
-### Commands
-- **Install Dependencies:** `pnpm install`
-- **Infrastructure (Postgres/Redis/Minio):** `docker-compose up -d`
-- **Run Web (Dev):** `npm run dev` (Runs `turbo run dev --filter=web`)
-- **Database Migrations:** `npm run db:migrate` (Runs `turbo run db:migrate`)
-- **Database Studio:** `npm run db:studio`
-- **Run Tests:** `npm test` (Uses Vitest)
-- **Full Data Import:** `npm run import:full` (Requires environment variables)
-- **Market Price Sync:** `npm run import:market` (Triggers a full price update)
-- **Sync Icons:** `npm run import:icons`
+- **/api**: API Design & Documentation (OpenAPI 3.1).
+- **/audit**: Comprehensive pre-delivery audit.
+- **/blog**: Personal or enterprise blogging system.
+- **/brainstorm**: Ideation & creative solutions.
+- **/compliance**: Legal compliance check (GDPR, HIPAA).
+- **/create**: Initialize new features or projects.
+- **/debug**: Deep bug fixing & log analysis.
+- **/deploy**: Deploy to Server/Vercel.
+- **/document**: Auto-generate technical documentation.
+- **/enhance**: UI upgrades & minor logic tweaks.
+- **/explain**: Code explanation & training.
+- **/log-error**: Log errors to tracking system.
+- **/mobile**: Native mobile app development.
+- **/monitor**: System monitoring & Pipeline setup.
+- **/onboard**: Onboard new team members.
+- **/orchestrate**: Coordinate complex multi-tasks.
+- **/performance**: Performance & speed optimization.
+- **/plan**: Development planning & roadmap.
+- **/portfolio**: Build personal portfolio sites.
+- **/preview**: Application Live Preview.
+- **/realtime**: Realtime integration (Socket/WebRTC).
+- **/release-version**: Version update & Changelog.
+- **/security**: Vulnerability scan & System hardening.
+- **/seo**: SEO & Generative Engine Optimization.
+- **/status**: View project status report.
+- **/test**: Write & Run automated tests (TDD).
+- **/ui-ux-pro-max**: High-end Visuals & Motion Design.
+- **/update**: Update AntiGravity to latest version.
+- **/update-docs**: Sync documentation with code.
+- **/visually**: Visualize logic & architecture.
 
-## Development Conventions
+## Custom Instructions
 
-- **Type Safety:** Strict TypeScript everywhere. Bypassing the type system (e.g., `any`, `as`) is discouraged.
-- **Clean Architecture:** Domain logic should be kept out of UI components. Prefer composables and services.
-- **Modularity:** New functionality should be evaluated for placement in a shared package if it's likely to be reused by workers or other apps.
-- **Security:** Use Prisma's `auditLogs` for sensitive operations. Ensure auth middleware is properly applied to admin routes.
-- **Performance:** Optimize heavy database queries using search indexes (see `scripts/db/`).
+Add your project-specific instructions here.
 
-## Project Roadmaps (Phases)
-1. **Phase 1 (Complete):** Core Database Engine, Parser refactor, Item normalization, Crafting foundations.
-2. **Phase 2 (In Progress):** Pricing Engine, Live prices, Historical data, Market dashboards.
-3. **Phase 3:** Advanced Economy Tools (Flip tools, transport optimization, analytics).
-4. **Phase 4:** SaaS Expansion (Subscriptions, Public API).
+---
+*Generated by Antigravity IDE*
